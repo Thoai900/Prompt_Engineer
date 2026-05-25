@@ -1,0 +1,548 @@
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-slide-up: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-slide-down: slide-down 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slide-up {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes slide-down {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+}
+
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 20px;
+  }
+  .pb-safe {
+      padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+html, body, #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+/* ==========================================================================
+   THEME OVERRIDES FOR LIGHT/DARK MODE CONSISTENCY
+   ========================================================================== */
+
+/* 1. LIGHT MODE OVERRIDES (Targeting Prompt Builder and dark-hardcoded elements) */
+html:not(.dark) {
+  /* Page background and general containers */
+  main,
+  .bg-slate-955,
+  .bg-slate-950 {
+    background-color: var(--color-slate-50) !important;
+    color: var(--color-slate-900) !important;
+  }
+  
+  .bg-slate-900 {
+    background-color: var(--color-slate-100) !important;
+    color: var(--color-slate-800) !important;
+  }
+
+  .bg-slate-850,
+  .bg-slate-800 {
+    background-color: var(--color-white) !important;
+    color: var(--color-slate-800) !important;
+  }
+
+  /* Hover states */
+  .hover\:bg-slate-800:hover,
+  .hover\:bg-slate-750:hover,
+  .hover\:bg-slate-700:hover {
+    background-color: var(--color-slate-50) !important;
+  }
+
+  .active\:bg-slate-800:active {
+    background-color: var(--color-slate-100) !important;
+  }
+
+  /* Custom text opacity / contrasts */
+  .text-slate-100 {
+    color: var(--color-slate-900) !important;
+  }
+
+  .text-slate-200 {
+    color: var(--color-slate-800) !important;
+  }
+
+  .text-slate-300 {
+    color: var(--color-slate-750) !important;
+  }
+
+  .text-slate-350 {
+    color: var(--color-slate-600) !important;
+  }
+
+  .text-slate-400 {
+    color: var(--color-slate-500) !important;
+  }
+
+  .text-slate-450 {
+    color: var(--color-slate-500) !important;
+  }
+
+  .text-slate-550 {
+    color: var(--color-slate-600) !important;
+  }
+
+  .text-slate-500 {
+    color: var(--color-slate-600) !important;
+  }
+
+  .text-slate-655,
+  .placeholder-slate-655::placeholder {
+    color: var(--color-slate-400) !important;
+  }
+
+  /* Borders */
+  .border-slate-900,
+  .border-slate-855,
+  .border-slate-850,
+  .border-slate-800,
+  .border-slate-750,
+  .border-slate-700,
+  .border-slate-700\/50,
+  .border-slate-700\/30 {
+    border-color: var(--color-slate-200) !important;
+  }
+
+  /* Form Elements */
+  input, textarea, select {
+    background-color: var(--color-white) !important;
+    color: var(--color-slate-800) !important;
+    border-color: var(--color-slate-300) !important;
+    border-radius: 12px;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-slate-400) !important;
+  }
+
+  /* Opacity background classes */
+  .bg-slate-900\/90 {
+    background-color: var(--color-white) !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  }
+
+  .bg-slate-900\/60,
+  .bg-slate-900\/50,
+  .bg-slate-900\/40,
+  .bg-slate-900\/30,
+  .bg-slate-900\/20,
+  .bg-slate-900\/10 {
+    background-color: rgba(241, 245, 249, 0.8) !important;
+  }
+
+  .bg-slate-850\/50 {
+    background-color: rgba(241, 245, 249, 0.5) !important;
+  }
+
+  .bg-slate-800\/80,
+  .bg-slate-800\/60,
+  .bg-slate-800\/40 {
+    background-color: var(--color-white) !important;
+    border-color: var(--color-slate-200) !important;
+  }
+
+  .bg-slate-500\/10,
+  .bg-slate-500\/20 {
+    background-color: rgba(148, 163, 184, 0.12) !important;
+  }
+
+  .bg-slate-955\/40 {
+    background-color: rgba(248, 250, 252, 0.8) !important;
+  }
+
+  /* Scrollbars in Light mode */
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--color-slate-300) !important;
+  }
+
+  /* Specific color badges in Prompt Builder */
+  .text-blue-300 { color: #1d4ed8 !important; }       /* blue-700 */
+  .text-violet-300 { color: #6d28d9 !important; }     /* violet-700 */
+  .text-emerald-300 { color: #047857 !important; }   /* emerald-700 */
+  .text-indigo-300 { color: #4338ca !important; }     /* indigo-700 */
+  .text-amber-300 { color: #b45309 !important; }      /* amber-700 */
+  .text-purple-300 { color: #7e22ce !important; }     /* purple-700 */
+  .text-pink-300 { color: #be185d !important; }       /* pink-700 */
+  .text-rose-300 { color: #be123c !important; }       /* rose-700 */
+  .text-cyan-300 { color: #0e7490 !important; }       /* cyan-700 */
+  .text-teal-300 { color: #0f766e !important; }       /* teal-700 */
+  .text-sky-300 { color: #0369a1 !important; }       /* sky-700 */
+  .text-red-300 { color: #b91c1c !important; }       /* red-700 */
+  .text-lime-300 { color: #4d7c0f !important; }       /* lime-700 */
+
+  /* Sửa lỗi ô mờ xám ở chế độ sáng */
+  .bg-slate-955\/60,
+  .bg-slate-955\/50,
+  .bg-slate-950\/70,
+  .bg-slate-950\/60 {
+    background-color: rgba(241, 245, 249, 0.75) !important;
+  }
+
+  .bg-slate-955\/40,
+  .bg-slate-950\/40 {
+    background-color: rgba(241, 245, 249, 0.5) !important;
+  }
+
+  /* Đảm bảo các placeholder và input/select hiển thị rõ ràng trên nền sáng */
+  .placeholder-slate-600::placeholder {
+    color: var(--color-slate-400) !important;
+  }
+
+  /* Ép các ô input và select có class bg-slate-900 phải có nền trắng ở chế độ sáng */
+  input.bg-slate-900,
+  select.bg-slate-900,
+  textarea.bg-slate-900 {
+    background-color: var(--color-white) !important;
+    color: var(--color-slate-800) !important;
+    border-color: var(--color-slate-200) !important;
+  }
+
+  /* Các thành phần AI Prompt Doctor và màu violet tối ở chế độ sáng */
+  .bg-violet-950\/15 {
+    background-color: rgba(139, 92, 246, 0.08) !important;
+  }
+
+  .bg-violet-950\/40 {
+    background-color: rgba(139, 92, 246, 0.1) !important;
+  }
+
+  .text-violet-300 {
+    color: var(--color-violet-700) !important;
+  }
+
+  .hover\:bg-violet-900\/50:hover {
+    background-color: rgba(139, 92, 246, 0.2) !important;
+  }
+
+  .border-violet-500\/30,
+  .border-violet-500\/20 {
+    border-color: rgba(139, 92, 246, 0.25) !important;
+  }
+}
+
+/* 2. DARK MODE OVERRIDES (Targeting Learn, Enhancer, Library, Config tabs and their children) */
+html.dark {
+  /* Override light background classes */
+  main,
+  .bg-white,
+  .bg-\[\#fafafa\],
+  .bg-\[\#FAFAFA\] {
+    background-color: var(--color-slate-900) !important;
+  }
+
+  .bg-slate-50 {
+    background-color: var(--color-slate-950) !important;
+  }
+
+  .bg-slate-100 {
+    background-color: var(--color-slate-800) !important;
+  }
+
+  .bg-slate-200 {
+    background-color: var(--color-slate-700) !important;
+  }
+
+  .bg-slate-300 {
+    background-color: var(--color-slate-600) !important;
+  }
+
+  .bg-slate-50\/50 {
+    background-color: rgba(15, 23, 42, 0.4) !important;
+  }
+
+  /* Text overrides */
+  .text-slate-900 {
+    color: var(--color-slate-100) !important;
+  }
+
+  .text-slate-800 {
+    color: var(--color-slate-200) !important;
+  }
+
+  .text-slate-700 {
+    color: var(--color-slate-300) !important;
+  }
+
+  .text-slate-600 {
+    color: var(--color-slate-400) !important;
+  }
+
+  .text-slate-500 {
+    color: var(--color-slate-400) !important;
+  }
+
+  .text-slate-400 {
+    color: var(--color-slate-500) !important;
+  }
+
+  .text-slate-300 {
+    color: var(--color-slate-600) !important;
+  }
+
+  /* Borders */
+  .border-slate-200,
+  .border-slate-100,
+  .border-slate-200\/80,
+  .border-slate-200\/60 {
+    border-color: var(--color-slate-800) !important;
+  }
+
+  .border-slate-300 {
+    border-color: var(--color-slate-700) !important;
+  }
+
+  /* Form Elements */
+  input, textarea, select {
+    background-color: var(--color-slate-800) !important;
+    color: var(--color-slate-100) !important;
+    border-color: var(--color-slate-700) !important;
+    border-radius: 12px;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-slate-500) !important;
+  }
+
+  /* Scrollbars in Dark mode */
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--color-slate-700) !important;
+  }
+
+  /* Hover states */
+  .hover\:bg-slate-50:hover {
+    background-color: var(--color-slate-800) !important;
+  }
+
+  .hover\:bg-slate-100:hover {
+    background-color: var(--color-slate-800) !important;
+  }
+
+  /* Category pills inside Library tab */
+  .bg-white.text-slate-600.border.border-slate-200.hover\:bg-slate-100 {
+    background-color: var(--color-slate-800) !important;
+    color: var(--color-slate-200) !important;
+    border-color: var(--color-slate-700) !important;
+  }
+  .bg-white.text-slate-600.border.border-slate-200.hover\:bg-slate-100:hover {
+    background-color: var(--color-slate-750) !important;
+  }
+
+  /* Specific Learn Tab banner and cards styles */
+  .from-amber-50.to-orange-50 {
+    --tw-gradient-from: #78350f !important;
+    --tw-gradient-to: #7c2d12 !important;
+    background-image: linear-gradient(to right, var(--tw-gradient-stops)) !important;
+  }
+
+  .border-amber-200 {
+    border-color: #b45309 !important;
+  }
+
+  .text-amber-500 {
+    color: #fbbf24 !important;
+  }
+
+  .bg-indigo-50 {
+    background-color: #1e1b4b !important;
+    color: #818cf8 !important;
+  }
+
+  .text-indigo-600 {
+    color: #818cf8 !important;
+  }
+
+  .bg-blue-50 {
+    background-color: #172554 !important;
+    color: #60a5fa !important;
+  }
+
+  .group-hover\:bg-blue-100:hover {
+    background-color: #1e3a8a !important;
+  }
+
+  .text-blue-600 {
+    color: #60a5fa !important;
+  }
+
+  .bg-emerald-50 {
+    background-color: #022c22 !important;
+    color: #34d399 !important;
+  }
+
+  .group-hover\:bg-emerald-100:hover {
+    background-color: #064e3b !important;
+  }
+
+  .text-emerald-600 {
+    color: #34d399 !important;
+  }
+
+  .group-hover\:bg-indigo-100:hover {
+    background-color: #312e81 !important;
+  }
+
+  .bg-rose-50 {
+    background-color: #4c0519 !important;
+    color: #fb7185 !important;
+  }
+
+  .group-hover\:bg-rose-100:hover {
+    background-color: #881337 !important;
+  }
+
+  .text-rose-600 {
+    color: #fb7185 !important;
+  }
+
+  .bg-amber-50 {
+    background-color: #451a03 !important;
+    color: #fbbf24 !important;
+  }
+
+  .group-hover\:bg-amber-100:hover {
+    background-color: #78350f !important;
+  }
+
+  .text-amber-600 {
+    color: #fbbf24 !important;
+  }
+
+  /* Specific visual thumbnails inside Library tab / Prompt cards */
+  .bg-\[\#fdfbf7\],
+  .bg-\[\#fcfaf4\] {
+    background-color: var(--color-slate-800) !important;
+    color: var(--color-slate-200) !important;
+    border-color: var(--color-slate-700) !important;
+  }
+
+  /* ==========================================================================
+     UtilityBeltTab (LLM Config) Dark Mode Overrides
+     ========================================================================== */
+  .bg-\[\#FAFBFD\],
+  .bg-\[\#fafbfd\] {
+    background-color: var(--color-slate-950) !important;
+  }
+
+  /* Profile slider active state */
+  .bg-orange-50 {
+    background-color: rgba(249, 115, 22, 0.12) !important;
+    border-color: rgba(249, 115, 22, 0.3) !important;
+  }
+  .text-orange-700,
+  .text-orange-600 {
+    color: var(--color-orange-400) !important;
+  }
+
+  /* Undo optimization button */
+  .bg-amber-50 {
+    background-color: rgba(245, 158, 11, 0.12) !important;
+    border-color: rgba(245, 158, 11, 0.3) !important;
+  }
+
+  /* Tab switcher inner pill */
+  .bg-slate-100\/80 {
+    background-color: rgba(15, 23, 42, 0.6) !important;
+  }
+  .border-slate-200\/50 {
+    border-color: rgba(51, 65, 85, 0.5) !important;
+  }
+
+  /* Code block & Custom Instructions preview box backgrounds and borders */
+  .bg-slate-50\/60,
+  .bg-slate-50\/40 {
+    background-color: rgba(15, 23, 42, 0.6) !important;
+    border-color: rgba(51, 65, 85, 0.5) !important;
+  }
+  .border-slate-100\/50 {
+    border-color: rgba(51, 65, 85, 0.35) !important;
+  }
+  .font-mono.text-slate-600 {
+    color: var(--color-slate-300) !important;
+  }
+
+  /* Step 1: Active Platform selector button gradients, rings & texts */
+  .from-indigo-50\/80.to-blue-50\/50 {
+    --tw-gradient-from: rgba(30, 27, 75, 0.6) !important;
+    --tw-gradient-to: rgba(23, 37, 84, 0.4) !important;
+    background-image: linear-gradient(to bottom right, var(--tw-gradient-stops)) !important;
+    color: var(--color-indigo-200) !important;
+    border-color: rgba(99, 102, 241, 0.4) !important;
+    --tw-ring-color: rgba(99, 102, 241, 0.4) !important;
+  }
+  .from-emerald-50\/80.to-teal-50\/50 {
+    --tw-gradient-from: rgba(2, 44, 34, 0.6) !important;
+    --tw-gradient-to: rgba(4, 47, 46, 0.4) !important;
+    background-image: linear-gradient(to bottom right, var(--tw-gradient-stops)) !important;
+    color: var(--color-emerald-200) !important;
+    border-color: rgba(16, 185, 129, 0.4) !important;
+    --tw-ring-color: rgba(16, 185, 129, 0.4) !important;
+  }
+  .from-orange-50\/80.to-amber-50\/50 {
+    --tw-gradient-from: rgba(67, 20, 7, 0.6) !important;
+    --tw-gradient-to: rgba(69, 26, 3, 0.4) !important;
+    background-image: linear-gradient(to bottom right, var(--tw-gradient-stops)) !important;
+    color: var(--color-orange-200) !important;
+    border-color: rgba(249, 115, 22, 0.4) !important;
+    --tw-ring-color: rgba(249, 115, 22, 0.4) !important;
+  }
+
+  .text-indigo-950 { color: var(--color-indigo-200) !important; }
+  .text-emerald-950 { color: var(--color-emerald-200) !important; }
+  .text-orange-950 { color: var(--color-orange-200) !important; }
+
+  /* Step 2: Active Guide LLM selector text colors */
+  .text-indigo-700 { color: var(--color-indigo-300) !important; }
+  .text-emerald-700 { color: var(--color-emerald-300) !important; }
+  .text-orange-700 { color: var(--color-orange-300) !important; }
+}
+
+/* Custom class to override input style when transparent background is needed */
+html:not(.dark) input.input-transparent,
+html.dark input.input-transparent,
+html:not(.dark) textarea.input-transparent,
+html.dark textarea.input-transparent {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+html:not(.dark) input.input-transparent:focus,
+html.dark input.input-transparent:focus,
+html:not(.dark) textarea.input-transparent:focus,
+html.dark textarea.input-transparent:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+
+
+
+

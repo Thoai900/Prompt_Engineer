@@ -1,0 +1,44 @@
+{
+  "entities": {
+    "PromptTemplate": {
+      "title": "PromptTemplate",
+      "description": "Represents a custom prompt template created by a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The UID of the user who owns the template." },
+        "title": { "type": "string", "description": "Title of the template." },
+        "description": { "type": "string", "description": "Description of the template." },
+        "blocks": { 
+          "type": "array",
+          "description": "List of prompt blocks. Array size <= 50.",
+          "items": { "type": "object" }
+        },
+        "category": { "type": "string" },
+        "variables": { "type": "array", "items": { "type": "object" } },
+        "version": { "type": "string" },
+        "parentPromptId": { "type": "string" },
+        "changelog": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "language": { "type": "string" },
+        "difficultyLevel": { "type": "string" },
+        "useCase": { "type": "string" },
+        "aiConfig": { "type": "object" },
+        "metrics": { "type": "object" },
+        "fewShots": { "type": "array", "items": { "type": "object" } },
+        "isPublic": { "type": "boolean" },
+        "status": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      },
+      "required": ["userId", "title", "blocks", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/templates/{templateId}": {
+      "schema": { "$ref": "#/entities/PromptTemplate" },
+      "description": "Stores user custom prompt templates."
+    }
+  }
+}

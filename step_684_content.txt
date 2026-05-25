@@ -1,0 +1,1 @@
+I will now clean up this second duplicate snippet (lines 1626 to 1651) containing the broken, extra variable map loop. This will leave just a single, correct map loop.
