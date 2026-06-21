@@ -7,9 +7,21 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 
-export const loginWithGoogle = () => {
+export const loginWithGoogle = async () => {
   const provider = new GoogleAuthProvider();
-  return signInWithPopup(auth, provider);
+  try {
+    return await signInWithPopup(auth, provider);
+  } catch (error: any) {
+    console.error("Firebase Google Auth Error:", error);
+    if (error.code === 'auth/operation-not-allowed') {
+      alert("Đăng nhập Google chưa được kích hoạt trong Firebase Console. Vui lòng bật Google Auth trong phần Sign-in method.");
+    } else if (error.code === 'auth/popup-closed-by-user') {
+      // User closed popup, do nothing
+    } else {
+      alert(`Đăng nhập thất bại: ${error.message} (Mã lỗi: ${error.code})`);
+    }
+    throw error;
+  }
 };
 
 export const logoutUser = () => signOut(auth);

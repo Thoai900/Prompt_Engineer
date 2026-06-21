@@ -1,0 +1,808 @@
+Created At: 2026-06-15T04:15:07Z
+Completed At: 2026-06-15T04:15:07Z
+File Path: `file:///c:/Users/THOAI%20PC/Prompt_Builder-main/src/components/ProjectChainTab.tsx`
+Total Lines: 2045
+Total Bytes: 98280
+Showing lines 801 to 1600
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+801:     setRootInputs(updated);
+802:     if (simulatorNode && activeProject) {
+803:       const preview = compilePromptText(simulatorNode, activeProject, updated);
+804:       setCompiledPromptPreview(preview);
+805:     }
+806:   };
+807: 
+808:   const handleRunSimulation = async () => {
+809:     if (!simulatorNode || !activeProject) return;
+810:     
+811:     setIsSimulating(true);
+812:     setSimulationResponse('');
+813: 
+814:     const systemInstruction = `Bạn là Mentor AI - gia sư thân thiện, kiên nhẫn và khuyến khích cho học sinh trung học. Hãy tuân thủ nghiêm ngặt:
+815: 1. Tuyệt đối KHÔNG giải hộ bài tập hay đưa ra đáp án trực tiếp. Sử dụng phương pháp Socratic để đặt câu hỏi khơi gợi tư duy, dẫn dắt từng bước để học sinh tự tìm ra câu trả lời.
+816: 2. Giọng điệu thân thiện, kiên nhẫn, sử dụng emoji một cách ấm áp, khích lệ.
+817: 3. Khi viết các công thức toán học hoặc khoa học, hãy luôn sử dụng LaTeX (bọc bằng $ hoặc $$).`;
+818: 
+819:     const customKey = localStorage.getItem('mentor_ai_gemini_key') || '';
+820:     const useSystemKey = localStorage.getItem('mentor_ai_use_system_key') !== 'false';
+821:     const openaiKey = localStorage.getItem('mentor_ai_openai_key') || '';
+822: 
+823:     const apiKey = simProvider === 'gemini' 
+824:       ? (useSystemKey ? undefined : customKey)
+825:       : openaiKey;
+826: 
+827:     try {
+828:       updateNodeStatus(simulatorNode.id, 'running');
+829: 
+830:       let accumulated = '';
+831:       await runPlaygroundChatStream(
+832:         simProvider,
+833:         systemInstruction,
+834:         [{ role: 'user', content: compiledPromptPreview }],
+835:         {
+836:           apiKey,
+837:           model: simModel,
+838:           temperature: simTemp
+839:         },
+840:         (chunk) => {
+841:           accumulated += chunk;
+842:           setSimulationResponse(accumulated);
+843:         }
+844:       );
+845: 
+846:       updateNodeOutputAndStatus(simulatorNode.id, accumulated, 'success');
+847:     } catch (err: any) {
+848:       console.error('Simulation error:', err);
+849:       setSimulationResponse(`[Lỗi mô phỏng]: ${err.message || err}\n\nVui lòng kiểm tra lại cấu hình API Key trong mục "LLM Config" hoặc thử lại.`);
+850:       updateNodeStatus(simulatorNode.id, 'error');
+851:     } finally {
+852:       setIsSimulating(false);
+853:     }
+854:   };
+855: 
+856:   const updateNodeStatus = (nodeId: string, status: TreeNode['status']) => {
+857:     if (!activeProject) return;
+858:     const updatedNodes = activeProject.nodes.map(n => 
+859:       n.id === nodeId ? { ...n, status } : n
+860:     );
+861:     const updatedProj = { ...activeProject, nodes: updatedNodes };
+862:     saveActiveProject(updatedProj);
+863:   };
+864: 
+865:   const updateNodeOutputAndStatus = (nodeId: string, output: string, status: TreeNode['status']) => {
+866:     if (!activeProject) return;
+867:     const updatedNodes = activeProject.nodes.map(n => 
+868:       n.id === nodeId ? { ...n, output, status } : n
+869:     );
+870:     const updatedProj = { ...activeProject, nodes: updatedNodes, updatedAt: new Date().toISOString() };
+871:     saveActiveProject(updatedProj);
+872:     
+873:     if (simulatorNode && simulatorNode.id === nodeId) {
+874:       setSimulatorNode(prev => prev ? { ...prev, output, status } : null);
+875:     }
+876:   };
+877: 
+878:   const handleSaveModifiedSimulatorOutput = (text: string) => {
+879:     if (!simulatorNode || !activeProject) return;
+880:     updateNodeOutputAndStatus(simulatorNode.id, text, 'success');
+881:   };
+882: 
+883:   // --- 7. SIDEBAR EDITOR CỤ THỂ ---
+884: 
+885:   const activeNode = useMemo(() => {
+886:     if (!activeProject || !selectedNodeId) return null;
+887:     return activeProject.nodes.find(n => n.id === selectedNodeId) || null;
+888:   }, [activeProject, selectedNodeId]);
+889: 
+890:   const handleUpdateNodeFields = (fields: Partial<TreeNode>) => {
+891:     if (!activeProject || !selectedNodeId) return;
+892:     const updatedNodes = activeProject.nodes.map(n => 
+893:       n.id === selectedNodeId ? { ...n, ...fields } : n
+894:     );
+895:     const updatedProj = { ...activeProject, nodes: updatedNodes, updatedAt: new Date().toISOString() };
+896:     saveActiveProject(updatedProj);
+897:   };
+898: 
+899:   const handleAddBlockToNode = (type: PromptBlock['type']) => {
+900:     if (!activeNode) return;
+901:     const typeTitles: Record<string, string> = {
+902:       role: 'Vai trò (Role)',
+903:       task: 'Nhiệm vụ (Task)',
+904:       context: 'Ngữ cảnh (Context)',
+905:       format: 'Định dạng (Format)',
+906:       tone: 'Giọng điệu (Tone)',
+907:       constraints: 'Ràng buộc (Constraints)',
+908:       custom: 'Tùy chỉnh'
+909:     };
+910: 
+911:     const newBlock: PromptBlock = {
+912:       id: `block-${Date.now()}`,
+913:       type,
+914:       title: typeTitles[type] || 'Khối mới',
+915:       content: ''
+916:     };
+917: 
+918:     handleUpdateNodeFields({
+919:       blocks: [...activeNode.blocks, newBlock]
+920:     });
+921:   };
+922: 
+923:   const handleUpdateBlockContent = (blockId: string, content: string) => {
+924:     if (!activeNode) return;
+925:     const updatedBlocks = activeNode.blocks.map(b => 
+926:       b.id === blockId ? { ...b, content } : b
+927:     );
+928:     handleUpdateNodeFields({ blocks: updatedBlocks });
+929:   };
+930: 
+931:   const handleUpdateBlockTitle = (blockId: string, title: string) => {
+932:     if (!activeNode) return;
+933:     const updatedBlocks = activeNode.blocks.map(b => 
+934:       b.id === blockId ? { ...b, title } : b
+935:     );
+936:     handleUpdateNodeFields({ blocks: updatedBlocks });
+937:   };
+938: 
+939:   const handleDeleteBlockFromNode = (blockId: string) => {
+940:     if (!activeNode) return;
+941:     const remaining = activeNode.blocks.filter(b => b.id !== blockId);
+942:     handleUpdateNodeFields({ blocks: remaining });
+943:   };
+944: 
+945:   const handleAddPresetBlock = (type: string, title: string, content: string) => {
+946:     if (!activeNode) return;
+947:     const hasBlock = activeNode.blocks.some(b => b.title === title || b.type === type);
+948:     if (hasBlock) {
+949:       alert(`Khối "${title}" đã tồn tại trong Node.`);
+950:       return;
+951:     }
+952:     const newBlock: PromptBlock = {
+953:       id: `block-preset-${Date.now()}`,
+954:       type: type as any,
+955:       title: title,
+956:       content: content
+957:     };
+958:     handleUpdateNodeFields({
+959:       blocks: [...activeNode.blocks, newBlock]
+960:     });
+961:   };
+962: 
+963:   const handleAddVariableToNode = () => {
+964:     if (!activeNode) return;
+965:     const newVar: PromptVariable = {
+966:       name: `new_variable_${Date.now().toString().slice(-4)}`,
+967:       type: 'text',
+968:       description: 'Mô tả biến',
+969:       required: true,
+970:       defaultValue: ''
+971:     };
+972:     handleUpdateNodeFields({
+973:       variables: [...(activeNode.variables || []), newVar]
+974:     });
+975:   };
+976: 
+977:   const handleUpdateVariableField = (index: number, fields: Partial<PromptVariable>) => {
+978:     if (!activeNode) return;
+979:     const updated = [...(activeNode.variables || [])];
+980:     updated[index] = { ...updated[index], ...fields };
+981:     handleUpdateNodeFields({ variables: updated });
+982:   };
+983: 
+984:   const handleDeleteVariable = (index: number) => {
+985:     if (!activeNode) return;
+986:     const updated = (activeNode.variables || []).filter((_, i) => i !== index);
+987:     handleUpdateNodeFields({ variables: updated });
+988:   };
+989: 
+990:   // --- 8. THƯ VIỆN BÊN NGOÀI (IMPORT / EXPORT TEMPLATE) ---
+991: 
+992:   const allAvailableTemplates = useMemo(() => {
+993:     const presets = TEMPLATES;
+994:     const customs = customTemplates || [];
+995:     return [...presets, ...customs];
+996:   }, [customTemplates]);
+997: 
+998:   const filteredTemplates = useMemo(() => {
+999:     if (!searchTemplateQuery) return allAvailableTemplates;
+1000:     return allAvailableTemplates.filter(t => 
+1001:       t.title.toLowerCase().includes(searchTemplateQuery.toLowerCase()) ||
+1002:       t.description.toLowerCase().includes(searchTemplateQuery.toLowerCase())
+1003:     );
+1004:   }, [allAvailableTemplates, searchTemplateQuery]);
+1005: 
+1006:   const handleImportTemplateIntoNode = (template: PromptTemplate) => {
+1007:     if (!activeNode) return;
+1008:     if (!confirm(`Bạn có muốn thay thế các khối Prompt hiện tại của node "${activeNode.title}" bằng mẫu "${template.title}" không?`)) return;
+1009: 
+1010:     handleUpdateNodeFields({
+1011:       title: `${activeNode.title.split('.')[0] || 'Node'}. ${template.title}`,
+1012:       description: template.description || activeNode.description,
+1013:       blocks: template.blocks.map(b => ({
+1014:         id: `block-${Date.now()}-${b.id}`,
+1015:         type: b.type,
+1016:         title: b.title,
+1017:         content: b.content
+1018:       })),
+1019:       variables: template.variables ? template.variables.map(v => ({ ...v })) : []
+1020:     });
+1021: 
+1022:     setIsImportModalOpen(false);
+1023:   };
+1024: 
+1025:   const handleExportNodeAsTemplate = async () => {
+1026:     if (!activeNode || !onSaveTemplate) return;
+1027:     const title = prompt('Đặt tên cho mẫu Prompt cần lưu:', activeNode.title);
+1028:     if (!title) return;
+1029: 
+1030:     const newTemplate: PromptTemplate = {
+1031:       id: `tpl-${Date.now()}`,
+1032:       title,
+1033:       description: activeNode.description || 'Được xuất từ sơ đồ chuỗi prompt',
+1034:       blocks: activeNode.blocks,
+1035:       variables: activeNode.variables,
+1036:       category: 'My templates',
+1037:       isPublic: false,
+1038:       status: 'Published',
+1039:       createdAt: new Date().toISOString()
+1040:     };
+1041: 
+1042:     try {
+1043:       await onSaveTemplate(newTemplate);
+1044:       alert('Đã xuất thành công mẫu prompt vào thư viện của bạn!');
+1045:     } catch (e: any) {
+1046:       alert('Không thể xuất mẫu: ' + e.message);
+1047:     }
+1048:   };
+1049: 
+1050:   return (
+1051:     <div className="flex h-full w-full overflow-hidden bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-200">
+1052:       
+1053:       {/* 1. CANVAS VIEWPORT AND HEADER */}
+1054:       <div className="relative flex flex-1 flex-col overflow-hidden border-r border-slate-200/50 dark:border-slate-800/50">
+1055:         
+1056:         {/* HEADER PANEL */}
+1057:         <header className="z-20 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/50 bg-white/85 p-4 backdrop-blur-md dark:border-slate-850/50 dark:bg-slate-900/85">
+1058:           <div className="flex items-center gap-3">
+1059:             <div className="rounded-xl bg-cyan-500/10 p-2 text-cyan-500 dark:bg-cyan-500/20">
+1060:               <Workflow size={20} />
+1061:             </div>
+1062:             <div>
+1063:               <div className="flex items-center gap-2">
+1064:                 <select
+1065:                   value={activeProject?.id || ''}
+1066:                   onChange={(e) => {
+1067:                     const proj = projects.find(p => p.id === e.target.value);
+1068:                     if (proj) {
+1069:                       setActiveProject(proj);
+1070:                       setSelectedNodeId(proj.nodes[0]?.id || null);
+1071:                     }
+1072:                   }}
+1073:                   className="bg-transparent text-sm font-bold text-slate-900 focus:outline-none dark:text-white cursor-pointer py-0.5 pr-8 border border-slate-200 rounded-lg px-2 dark:border-slate-855 bg-slate-50 dark:bg-slate-950"
+1074:                 >
+1075:                   {projects.map(p => (
+1076:                     <option key={p.id} value={p.id} className="dark:bg-slate-900">{p.name}</option>
+1077:                   ))}
+1078:                 </select>
+1079:                 <button 
+1080:                   onClick={handleCreateNewProject}
+1081:                   className="rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-slate-850 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+1082:                   title="Tạo dự án mới"
+1083:                 >
+1084:                   <Plus size={16} />
+1085:                 </button>
+1086:               </div>
+1087:               <p className="text-[10px] text-slate-400 dark:text-slate-500 max-w-xs truncate">
+1088:                 {activeProject?.description || 'Không có mô tả'}
+1089:               </p>
+1090:             </div>
+1091:           </div>
+1092: 
+1093:           <div className="flex items-center gap-2">
+1094:             
+1095:             {/* Sync status */}
+1096:             <div className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-550 bg-slate-100 dark:bg-slate-850 px-2 py-1.5 rounded-lg border border-slate-200/50 dark:border-slate-800/50">
+1097:               {syncStatus === 'synced' && (
+1098:                 <>
+1099:                   <Cloud size={14} className="text-emerald-500 animate-pulse" />
+1100:                   <span>Đồng bộ</span>
+1101:                 </>
+1102:               )}
+1103:               {syncStatus === 'saving' && (
+1104:                 <>
+1105:                   <RefreshCw size={14} className="animate-spin text-cyan-500" />
+1106:                   <span>Đang lưu...</span>
+1107:                 </>
+1108:               )}
+1109:               {syncStatus === 'local' && (
+1110:                 <>
+1111:                   <Database size={14} className="text-slate-400" />
+1112:                   <span>Ngoại tuyến</span>
+1113:                 </>
+1114:               )}
+1115:               {syncStatus === 'error' && (
+1116:                 <>
+1117:                   <CloudOff size={14} className="text-rose-500" />
+1118:                   <span>Lỗi đồng bộ</span>
+1119:                 </>
+1120:               )}
+1121:             </div>
+1122: 
+1123:             {/* Delete project */}
+1124:             {activeProject && (
+1125:               <button 
+1126:                 onClick={() => handleDeleteProject(activeProject.id)}
+1127:                 className="flex items-center gap-1 rounded-lg border border-slate-200/60 bg-white px-3 py-1.5 text-xs font-semibold text-rose-500 hover:bg-rose-50 dark:border-slate-850 dark:bg-slate-900 dark:hover:bg-rose-955/20 cursor-pointer transition-colors"
+1128:                 title="Xóa dự án hiện tại"
+1129:               >
+1130:                 <Trash2 size={13} />
+1131:                 <span className="hidden sm:inline">Xóa</span>
+1132:               </button>
+1133:             )}
+1134: 
+1135:             {/* Import JSON */}
+1136:             <label className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-850 cursor-pointer transition-colors">
+1137:               <Upload size={13} className="text-slate-450" />
+1138:               <span className="hidden sm:inline">Nhập JSON</span>
+1139:               <input type="file" accept=".json" onChange={handleImportProjectJSON} className="hidden" />
+1140:             </label>
+1141: 
+1142:             {/* Export JSON */}
+1143:             <button 
+1144:               onClick={handleExportProjectJSON}
+1145:               className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-850 cursor-pointer transition-colors"
+1146:             >
+1147:               <Download size={13} className="text-slate-455" />
+1148:               <span className="hidden sm:inline">Xuất JSON</span>
+1149:             </button>
+1150: 
+1151:             {/* Help button */}
+1152:             <button
+1153:               onClick={() => setShowHelp(prev => !prev)}
+1154:               className={`rounded-lg p-1.5 border transition-all cursor-pointer ${showHelp ? 'bg-indigo-50 border-indigo-200 text-indigo-600 dark:bg-indigo-950/30 dark:border-indigo-900/50 dark:text-indigo-400' : 'bg-white border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800'}`}
+1155:               title="Hướng dẫn liên kết biến"
+1156:             >
+1157:               <HelpCircle size={16} />
+1158:             </button>
+1159:           </div>
+1160:         </header>
+1161: 
+1162:         {/* CANVAS FLOATING CONTROLS */}
+1163:         <div className="absolute bottom-5 left-5 z-20 flex flex-col gap-1.5 rounded-xl border border-slate-200/80 bg-white/90 p-1.5 shadow-lg backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/90">
+1164:           <button 
+1165:             onClick={() => setZoom(prev => Math.min(1.5, prev + 0.1))} 
+1166:             className="rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-slate-600 dark:text-slate-300"
+1167:             title="Phóng to"
+1168:           >
+1169:             <ZoomIn size={16} />
+1170:           </button>
+1171:           <button 
+1172:             onClick={() => setZoom(prev => Math.max(0.5, prev - 0.1))} 
+1173:             className="rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-slate-600 dark:text-slate-300"
+1174:             title="Thu nhỏ"
+1175:           >
+1176:             <ZoomOut size={16} />
+1177:           </button>
+1178:           <button 
+1179:             onClick={resetCanvasView} 
+1180:             className="rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-slate-600 dark:text-slate-300 border-t border-slate-100 dark:border-slate-850"
+1181:             title="Góc nhìn mặc định"
+1182:           >
+1183:             <Maximize2 size={16} />
+1184:           </button>
+1185:         </div>
+1186: 
+1187:         {/* FLOATING HELP PANEL */}
+1188:         {showHelp && (
+1189:           <div className="absolute top-20 right-5 z-20 max-w-xs rounded-xl border border-indigo-150/40 bg-indigo-50/95 dark:bg-indigo-950/90 dark:border-indigo-900/40 p-4 shadow-xl backdrop-blur-md text-xs relative text-slate-700 dark:text-slate-300">
+1190:             <button 
+1191:               onClick={() => setShowHelp(false)}
+1192:               className="absolute top-2 right-2 text-slate-450 hover:text-slate-700 dark:hover:text-white cursor-pointer"
+1193:             >
+1194:               <X size={14} />
+1195:             </button>
+1196:             <h4 className="font-bold text-indigo-700 dark:text-indigo-400 flex items-center gap-1 mb-2">
+1197:               <Sparkles size={14} />
+1198:               Liên kết Prompt xuyên suốt
+1199:             </h4>
+1200:             <ul className="space-y-1.5 list-disc list-inside">
+1201:               <li>Mỗi node cha khi chạy simulator sẽ lưu lại <b>Đầu ra (output)</b>.</li>
+1202:               <li>Tại node con, tham chiếu đầu ra của cha trực tiếp bằng: <code>{"{{parent.output}}"}</code>.</li>
+1203:               <li>Tham chiếu tổ tiên cụ thể bằng tên của họ: <code>{"{{TenNodeKhôngDấuKhoảngTrắng.output}}"}</code>. Ví dụ: <code>{"{{1.PhântíchChủđề.output}}"}</code>.</li>
+1204:               <li>Các biến toàn cục khai báo ở Node gốc (vd: <code>{"{{subject}}"}</code>) có thể dùng ở mọi node con.</li>
+1205:             </ul>
+1206:           </div>
+1207:         )}
+1208: 
+1209:         {/* ACTUAL CANVAS ELEMENT */}
+1210:         <div 
+1211:           ref={canvasRef}
+1212:           onMouseDown={startPanning}
+1213:           onWheel={handleWheel}
+1214:           className="canvas-bg relative flex-1 overflow-hidden cursor-grab active:cursor-grabbing bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] dark:bg-[radial-gradient(#334155_1px,transparent_1px)] bg-[size:20px_20px]"
+1215:         >
+1216:           
+1217:           {/* SVG line connections */}
+1218:           {activeProject && (
+1219:             <svg 
+1220:               className="absolute inset-0 pointer-events-none z-0" 
+1221:               style={{ 
+1222:                 transform: `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${zoom})`,
+1223:                 transformOrigin: '0 0',
+1224:                 width: '4000px',
+1225:                 height: '4000px'
+1226:               }}
+1227:             >
+1228:               {activeProject.nodes.map(node => {
+1229:                 if (!node.parentId) return null;
+1230:                 const parent = activeProject.nodes.find(n => n.id === node.parentId);
+1231:                 if (!parent) return null;
+1232: 
+1233:                 const isVertical = Math.abs(node.position.y - parent.position.y) > Math.abs(node.position.x - parent.position.x);
+1234:                 
+1235:                 let startX, startY, endX, endY, pathD, circleX, circleY;
+1236:                 if (isVertical) {
+1237:                   startX = parent.position.x + 128;
+1238:                   startY = parent.position.y + 120;
+1239:                   endX = node.position.x + 128;
+1240:                   endY = node.position.y;
+1241:                   const controlY = startY + (endY - startY) / 2;
+1242:                   pathD = `M ${startX} ${startY} C ${startX} ${controlY}, ${endX} ${controlY}, ${endX} ${endY}`;
+1243:                   circleX = (startX + endX) / 2;
+1244:                   circleY = controlY;
+1245:                 } else {
+1246:                   startX = parent.position.x + 256;
+1247:                   startY = parent.position.y + 60;
+1248:                   endX = node.position.x;
+1249:                   endY = node.position.y + 60;
+1250:                   const controlX = startX + (endX - startX) / 2;
+1251:                   pathD = `M ${startX} ${startY} C ${controlX} ${startY}, ${controlX} ${endY}, ${endX} ${endY}`;
+1252:                   circleX = controlX;
+1253:                   circleY = (startY + endY) / 2;
+1254:                 }
+1255: 
+1256:                 return (
+1257:                   <g key={`path-${node.id}`}>
+1258:                     <path
+1259:                       d={pathD}
+1260:                       fill="none"
+1261:                       stroke={
+1262:                         selectedNodeId === node.id 
+1263:                           ? '#14b8a6' 
+1264:                           : node.branchType === 'success'
+1265:                             ? '#10b981'
+1266:                             : node.branchType === 'failure'
+1267:                               ? '#f97316'
+1268:                               : theme === 'dark' 
+1269:                                 ? '#334155' 
+1270:                                 : '#cbd5e1'
+1271:                       }
+1272:                       strokeWidth={selectedNodeId === node.id ? 2.5 : 2}
+1273:                       className="transition-colors duration-150"
+1274:                     />
+1275:                     <circle
+1276:                       cx={circleX}
+1277:                       cy={circleY}
+1278:                       r={3}
+1279:                       fill={
+1280:                         selectedNodeId === node.id 
+1281:                           ? '#14b8a6' 
+1282:                           : node.branchType === 'success'
+1283:                             ? '#10b981'
+1284:                             : node.branchType === 'failure'
+1285:                               ? '#f97316'
+1286:                               : theme === 'dark' 
+1287:                                 ? '#475569' 
+1288:                                 : '#94a3b8'
+1289:                       }
+1290:                     />
+1291:                   </g>
+1292:                 );
+1293:               })}
+1294:             </svg>
+1295:           )}
+1296: 
+1297:           {/* Node absolute containers */}
+1298:           {activeProject && (
+1299:             <div 
+1300:               className="absolute inset-0 pointer-events-none z-10"
+1301:               style={{ 
+1302:                 transform: `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${zoom})`,
+1303:                 transformOrigin: '0 0'
+1304:               }}
+1305:             >
+1306:               {activeProject.nodes.map(node => {
+1307:                 const isSelected = selectedNodeId === node.id;
+1308: 
+1309:                 return (
+1310:                   <div
+1311:                     key={node.id}
+1312:                     className="pointer-events-auto absolute flex w-64 flex-col rounded-2xl border bg-white dark:bg-slate-900 shadow-md hover:shadow-lg transition-all duration-200"
+1313:                     style={{ 
+1314:                       left: node.position.x, 
+1315:                       top: node.position.y,
+1316:                       borderColor: isSelected 
+1317:                         ? '#06b6d4' 
+1318:                         : node.status === 'running'
+1319:                           ? '#06b6d4'
+1320:                           : node.branchType === 'success'
+1321:                             ? '#10b981'
+1322:                             : node.branchType === 'failure'
+1323:                               ? '#f97316'
+1324:                               : node.status === 'success' 
+1325:                                 ? '#10b981' 
+1326:                                 : node.status === 'error' 
+1327:                                   ? '#f43f5e' 
+1328:                                   : theme === 'dark' ? '#1e293b' : '#e2e8f0',
+1329:                       boxShadow: isSelected 
+1330:                         ? '0 10px 25px -5px rgba(6, 182, 212, 0.15), 0 8px 10px -6px rgba(6, 182, 212, 0.15)' 
+1331:                         : 'none'
+1332:                     }}
+1333:                   >
+1334:                     
+1335:                     {/* Header Node - Drag Handle */}
+1336:                     <div 
+1337:                       onMouseDown={(e) => startDragNode(e, node.id)}
+1338:                       onClick={(e) => {
+1339:                         e.stopPropagation();
+1340:                         setSelectedNodeId(node.id);
+1341:                       }}
+1342:                       className="flex cursor-move items-center justify-between border-b border-slate-100 px-3.5 py-2.5 dark:border-slate-800/50"
+1343:                     >
+1344:                       <div className="flex items-center gap-1.5 truncate">
+1345:                         {node.branchType === 'success' ? (
+1346:                           <Sparkles size={13} className="text-emerald-500 shrink-0" />
+1347:                         ) : node.branchType === 'failure' ? (
+1348:                           <Wrench size={13} className="text-orange-500 shrink-0 animate-pulse" />
+1349:                         ) : (
+1350:                           <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${
+1351:                             node.status === 'success' 
+1352:                               ? 'bg-emerald-500' 
+1353:                               : node.status === 'running' 
+1354:                                 ? 'bg-cyan-500 animate-pulse'
+1355:                                 : node.status === 'error'
+1356:                                   ? 'bg-rose-500'
+1357:                                   : 'bg-slate-300 dark:bg-slate-600'
+1358:                           }`} />
+1359:                         )}
+1360:                         <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate select-none">
+1361:                           {node.title}
+1362:                         </span>
+1363:                       </div>
+1364:                       <div className="flex items-center gap-0.5">
+1365:                         <button
+1366:                           onClick={(e) => {
+1367:                             e.stopPropagation();
+1368:                             handleOpenSimulator(node.id);
+1369:                           }}
+1370:                           className="rounded-md p-1 hover:bg-slate-100 text-slate-500 hover:text-emerald-500 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+1371:                           title="Chạy mô phỏng Node này"
+1372:                         >
+1373:                           <Play size={12} fill="currentColor" className="text-emerald-500" />
+1374:                         </button>
+1375:                         {node.parentId && (
+1376:                           <button
+1377:                             onClick={(e) => {
+1378:                               e.stopPropagation();
+1379:                               handleDeleteNode(node.id);
+1380:                             }}
+1381:                             className="rounded-md p-1 hover:bg-slate-100 text-slate-400 hover:text-rose-500 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+1382:                             title="Xóa Node này"
+1383:                           >
+1384:                             <Trash2 size={12} />
+1385:                           </button>
+1386:                         )}
+1387:                       </div>
+1388:                     </div>
+1389: 
+1390:                     {/* Summary content */}
+1391:                     <div 
+1392:                       onClick={() => setSelectedNodeId(node.id)}
+1393:                       className="flex-1 cursor-pointer p-3.5 text-xs text-slate-500 dark:text-slate-400"
+1394:                     >
+1395:                       <p className="line-clamp-2 leading-relaxed mb-2.5 select-none text-[11px]">
+1396:                         {node.description || 'Không có mô tả cho node này.'}
+1397:                       </p>
+1398:                       
+1399:                       <div className="flex flex-wrap items-center justify-between gap-1 border-t border-slate-100 pt-2 dark:border-slate-800/30 text-[10px]">
+1400:                         <span className="font-semibold text-slate-400 bg-slate-100 dark:bg-slate-800 dark:text-slate-400 px-1.5 py-0.5 rounded">
+1401:                           {node.blocks.length} khối Prompt
+1402:                         </span>
+1403:                         
+1404:                         {node.output ? (
+1405:                           <span className="flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400">
+1406:                             <Check size={11} /> Đã có đầu ra
+1407:                           </span>
+1408:                         ) : (
+1409:                           <span className="text-slate-400 italic">Chưa chạy</span>
+1410:                         )}
+1411:                       </div>
+1412:                     </div>
+1413: 
+1414:                     {/* Plus button to add children */}
+1415:                     <div className="absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 z-20">
+1416:                       <button
+1417:                         onClick={(e) => {
+1418:                           e.stopPropagation();
+1419:                           handleAddChildNode(node.id);
+1420:                         }}
+1421:                         className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-md hover:border-cyan-500 hover:bg-cyan-50 hover:text-cyan-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-cyan-400 transition-all cursor-pointer"
+1422:                         title="Tạo nhánh con tiếp theo"
+1423:                       >
+1424:                         <Plus size={14} />
+1425:                       </button>
+1426:                     </div>
+1427: 
+1428:                     {/* Left connection dot */}
+1429:                     {node.parentId && (
+1430:                       <div className="absolute left-0 top-1/2 -translate-x-1.5 -translate-y-1/2 h-3 w-3 rounded-full border-2 border-white bg-slate-400 dark:border-slate-900 dark:bg-slate-600" />
+1431:                     )}
+1432:                   </div>
+1433:                 );
+1434:               })}
+1435:             </div>
+1436:           )}
+1437:         </div>
+1438:       </div>
+1439: 
+1440:       {/* 2. SIDEBAR EDITOR */}
+1441:       <div className="w-80 border-l border-slate-200/50 bg-white dark:border-slate-850/50 dark:bg-slate-900 flex flex-col shrink-0 overflow-y-auto">
+1442:         {activeNode ? (
+1443:           <div className="flex flex-col h-full">
+1444:             
+1445:             {/* Header Sidebar */}
+1446:             <div className="border-b border-slate-150 p-4 dark:border-slate-800/80">
+1447:               <div className="flex items-center justify-between mb-2">
+1448:                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Cấu hình Node</span>
+1449:                 <div className="flex items-center gap-1.5">
+1450:                   <button
+1451:                     onClick={() => setIsImportModalOpen(true)}
+1452:                     className="flex items-center gap-1 rounded bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-705 cursor-pointer transition-colors"
+1453:                   >
+1454:                     <Upload size={11} />
+1455:                     Nạp mẫu
+1456:                   </button>
+1457:                   <button
+1458:                     onClick={handleExportNodeAsTemplate}
+1459:                     className="flex items-center gap-1 rounded bg-indigo-50 px-2 py-1 text-[11px] font-bold text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-400 dark:hover:bg-indigo-900/50 cursor-pointer transition-colors"
+1460:                   >
+1461:                     <Download size={11} />
+1462:                     Lưu mẫu
+1463:                   </button>
+1464:                 </div>
+1465:               </div>
+1466: 
+1467:               <input
+1468:                 type="text"
+1469:                 value={activeNode.title}
+1470:                 onChange={(e) => handleUpdateNodeFields({ title: e.target.value })}
+1471:                 className="w-full bg-transparent text-sm font-bold text-slate-900 focus:outline-none dark:text-white border-b border-transparent hover:border-slate-200 focus:border-cyan-500 dark:hover:border-slate-850 pb-1"
+1472:                 placeholder="Tên node..."
+1473:               />
+1474:               <textarea
+1475:                 value={activeNode.description}
+1476:                 onChange={(e) => handleUpdateNodeFields({ description: e.target.value })}
+1477:                 className="mt-2 w-full bg-transparent text-xs text-slate-500 focus:outline-none dark:text-slate-400 border-none resize-none leading-relaxed"
+1478:                 placeholder="Nhập mô tả về vai trò của bước này trong sơ đồ..."
+1479:                 rows={2}
+1480:               />
+1481:             </div>
+1482: 
+1483:             {/* Blocks List */}
+1484:             <div className="flex-1 p-4 space-y-4">
+1485:               <div className="flex items-center justify-between">
+1486:                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Các khối Prompt ({activeNode.blocks.length})</span>
+1487:                 
+1488:                 <div className="relative group/addblock">
+1489:                   <button className="flex items-center gap-1 text-[10px] font-bold text-cyan-600 dark:text-cyan-400 cursor-pointer">
+1490:                     <Plus size={12} /> Thêm khối
+1491:                   </button>
+1492:                   <div className="absolute right-0 top-full mt-1 hidden group-hover/addblock:flex flex-col bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg shadow-xl py-1 z-30 w-36">
+1493:                     {['role', 'task', 'context', 'format', 'tone', 'constraints', 'custom'].map((type) => (
+1494:                       <button
+1495:                         key={type}
+1496:                         onClick={() => handleAddBlockToNode(type as any)}
+1497:                         className="px-3 py-1.5 text-left text-[11px] font-semibold text-slate-700 hover:bg-slate-50 dark:text-slate-350 dark:hover:bg-slate-900 cursor-pointer"
+1498:                       >
+1499:                         {type.charAt(0).toUpperCase() + type.slice(1)}
+1500:                       </button>
+1501:                     ))}
+1502:                   </div>
+1503:                 </div>
+1504:               </div>
+1505: 
+1506:               {activeNode.blocks.length === 0 ? (
+1507:                 <div className="rounded-xl border border-dashed border-slate-250 p-6 text-center text-xs text-slate-400 dark:border-slate-800 dark:text-slate-500">
+1508:                   Node này chưa có khối Prompt nào. Vui lòng bấm "Nạp mẫu" hoặc bấm "Thêm khối" để tạo cấu trúc.
+1509:                 </div>
+1510:               ) : (
+1511:                 <div className="space-y-3">
+1512:                   {activeNode.blocks.map((block) => (
+1513:                     <div 
+1514:                       key={block.id}
+1515:                       className="rounded-xl border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-850 dark:bg-slate-955/40"
+1516:                     >
+1517:                       <div className="flex items-center justify-between mb-2">
+1518:                         <input
+1519:                           type="text"
+1520:                           value={block.title}
+1521:                           onChange={(e) => handleUpdateBlockTitle(block.id, e.target.value)}
+1522:                           className="bg-transparent text-[11px] font-bold text-slate-800 dark:text-slate-300 focus:outline-none w-2/3 border-b border-transparent hover:border-slate-200 dark:hover:border-slate-850"
+1523:                         />
+1524:                         <button
+1525:                           onClick={() => handleDeleteBlockFromNode(block.id)}
+1526:                           className="text-slate-400 hover:text-rose-500 p-0.5 cursor-pointer"
+1527:                           title="Xóa khối"
+1528:                         >
+1529:                           <X size={12} />
+1530:                         </button>
+1531:                       </div>
+1532:                       <textarea
+1533:                         value={block.content}
+1534:                         onChange={(e) => handleUpdateBlockContent(block.id, e.target.value)}
+1535:                         className="w-full bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-lg p-2 text-xs focus:outline-none dark:text-slate-300 min-h-[80px]"
+1536:                         placeholder="Nội dung chi tiết của khối..."
+1537:                       />
+1538:                     </div>
+1539:                   ))}
+1540:                 </div>
+1541:               )}
+1542: 
+1543:               {/* Bảng gợi ý nâng cấp cho nhánh A - Hiệu quả */}
+1544:               {activeNode.branchType === 'success' && (
+1545:                 <div className="border-t border-slate-150 pt-4 dark:border-slate-800/40">
+1546:                   <div className="rounded-xl border border-emerald-250 bg-emerald-500/5 p-3 dark:border-emerald-900/30">
+1547:                     <h4 className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 mb-1.5">
+1548:                       <Sparkles size={13} className="text-emerald-500 animate-pulse" />
+1549:                       Nâng cấp & Phát triển Prompt
+1550:                     </h4>
+1551:                     <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-3 leading-relaxed">
+1552:                       Prompt trước đang chạy rất tốt. Nhấn chèn các khối tối ưu cao cấp để phát triển thêm:
+1553:                     </p>
+1554:                     
+1555:                     <div className="flex flex-col gap-2.5">
+1556:                       <button
+1557:                         onClick={() => handleAddPresetBlock(
+1558:                           'task',
+1559:                           'Suy nghĩ logic (Chain-of-thought)',
+1560:                           'Hãy phân tích vấn đề và lập luận từng bước (Chain-of-Thought) trong thẻ suy nghĩ <thinking>...</thinking> trước khi đưa ra phản hồi cuối cùng cho học sinh.'
+1561:                         )}
+1562:                         className="w-full text-left bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 transition-colors flex flex-col gap-1 cursor-pointer border-l-3 border-l-emerald-500"
+1563:                       >
+1564:                         <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+1565:                           <Plus size={11} />
+1566:                           Khối Suy nghĩ logic (Chain-of-Thought)
+1567:                         </span>
+1568:                         <span className="text-[9.5px] text-slate-455 dark:text-slate-400 leading-normal">Yêu cầu AI phân tích và suy luận từng bước một cách có logic trước khi phản hồi.</span>
+1569:                       </button>
+1570: 
+1571:                       <button
+1572:                         onClick={() => handleAddPresetBlock(
+1573:                           'format',
+1574:                           'Định dạng đầu ra cấu trúc',
+1575:                           'Trình bày câu trả lời dưới dạng Markdown chuẩn hóa. Các tiêu đề chính dùng h3 (###), in đậm các thuật ngữ quan trọng, và tổ chức nội dung rõ ràng bằng bullet points.'
+1576:                         )}
+1577:                         className="w-full text-left bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 transition-colors flex flex-col gap-1 cursor-pointer border-l-3 border-l-emerald-500"
+1578:                       >
+1579:                         <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+1580:                           <Plus size={11} />
+1581:                           Định dạng cấu trúc (Markdown)
+1582:                         </span>
+1583:                         <span className="text-[9.5px] text-slate-455 dark:text-slate-400 leading-normal">Quy chuẩn kết quả hiển thị bằng bảng biểu hoặc định dạng tài liệu tiêu chuẩn.</span>
+1584:                       </button>
+1585: 
+1586:                       <button
+1587:                         onClick={() => handleAddPresetBlock(
+1588:                           'role',
+1589:                           'Thái độ & Phong cách Mentor AI',
+1590:                           'Giữ phong cách giao tiếp ấm áp, đồng cảm và tích cực động viên học sinh. Sử dụng các emoji phù hợp (như 🌟, 👏, 💪) để tạo bầu không khí học tập thân thiện.'
+1591:                         )}
+1592:                         className="w-full text-left bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 transition-colors flex flex-col gap-1 cursor-pointer border-l-3 border-l-emerald-500"
+1593:                       >
+1594:                         <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+1595:                           <Plus size={11} />
+1596:                           Thái độ & Phong cách Mentor AI
+1597:                         </span>
+1598:                         <span className="text-[9.5px] text-slate-455 dark:text-slate-400 leading-normal">Động viên học sinh, kèm emoji tạo không khí thân thiện và kiên nhẫn.</span>
+1599:                       </button>
+1600: 
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

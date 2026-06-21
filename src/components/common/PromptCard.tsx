@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PromptTemplate } from '../types';
+import { PromptTemplate } from '../../types';
 import { Heart, Bookmark, Copy, Users, CheckCircle, Layout, FileText, Code2, Video, GitMerge, GraduationCap, FlaskConical } from 'lucide-react';
 
 interface PromptCardProps {
@@ -56,7 +56,7 @@ const detectFramework = (template: PromptTemplate): { name: string; steps: Stepp
       steps: [
         { letter: 'R', name: 'Role', color: 'bg-blue-50 border-blue-200 text-blue-600', hoverColor: 'group-hover:bg-blue-500 group-hover:text-white', description: 'Role: Đóng vai chuyên gia phù hợp.' },
         { letter: 'O', name: 'Objective', color: 'bg-rose-50 border-rose-200 text-rose-600', hoverColor: 'group-hover:bg-rose-500 group-hover:text-white', description: 'Objective: Đặt ra mục tiêu hành động cụ thể cần hoàn thành.' },
-        { letter: 'C', name: 'Context', color: 'bg-indigo-50 border-indigo-200 text-indigo-600', hoverColor: 'group-hover:bg-indigo-500 group-hover:text-white', description: 'Context: Cung cấp bối cảnh chi tiết.' },
+        { letter: 'L', name: 'Limits', color: 'bg-indigo-50 border-indigo-200 text-indigo-600', hoverColor: 'group-hover:bg-indigo-500 group-hover:text-white', description: 'Limits: Đặt ra các giới hạn, ràng buộc hoặc độ dài cho phản hồi.' },
         { letter: 'E', name: 'Expectation', color: 'bg-emerald-50 border-emerald-200 text-emerald-600', hoverColor: 'group-hover:bg-emerald-500 group-hover:text-white', description: 'Expectation: Quy chuẩn cấu trúc kết quả mong đợi.' }
       ]
     };

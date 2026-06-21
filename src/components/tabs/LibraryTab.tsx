@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { TEMPLATES } from '../data';
-import { PromptTemplate } from '../types';
-import { Search, Filter, TrendingUp, Sparkles, Clock, History, Layout, FileText, Code2, Video, GitMerge, GraduationCap, Play, Eye, BookOpen, Brain, Briefcase } from 'lucide-react';
-import PromptCard from './PromptCard';
-import PromptDetailModal from './PromptDetailModal';
-import ExamplePreviewModal from './ExamplePreviewModal';
+import { TEMPLATES } from '../../data';
+import { PromptTemplate } from '../../types';
+import { Search, Filter, TrendingUp, Sparkles, Clock, History, Layout, FileText, Code2, Video, GitMerge, GraduationCap, Play, Eye, BookOpen, Brain, Briefcase, Workflow } from 'lucide-react';
+import PromptCard from '../common/PromptCard';
+import PromptDetailModal from '../modals/PromptDetailModal';
+import ExamplePreviewModal from '../modals/ExamplePreviewModal';
+import AddToProjectModal from '../modals/AddToProjectModal';
 
 const MOCK_RESULTS: PromptTemplate[] = [
   {
@@ -119,17 +120,21 @@ Thay vì vội vã dùng công thức biệt thức Delta (Δ) dài dòng, chún
 interface LibraryTabProps {
   onSelectTemplate: (template: PromptTemplate) => void;
   customTemplates?: PromptTemplate[];
+  user: any;
+  onNavigateToTab: (tab: any) => void;
 }
 
 const CATEGORIES = ['Tất cả', 'Công thức Prompt', 'Học sinh/Sinh viên', 'Người đi làm', 'Sáng tạo nội dung', 'Phát triển cá nhân', 'Mẫu của tôi'];
 
-export default function LibraryTab({ onSelectTemplate, customTemplates = [] }: LibraryTabProps) {
+export default function LibraryTab({ onSelectTemplate, customTemplates = [], user, onNavigateToTab }: LibraryTabProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
   const [activeTab, setActiveTab] = useState<'trending' | 'new' | 'following'>('trending');
   
   const [selectedPrompt, setSelectedPrompt] = useState<PromptTemplate | null>(null);
   const [previewPrompt, setPreviewPrompt] = useState<PromptTemplate | null>(null);
+  const [isAddToProjOpen, setIsAddToProjOpen] = useState(false);
+  const [addToProjTemplate, setAddToProjTemplate] = useState<PromptTemplate | null>(null);
 
   const [userResults, setUserResults] = useState<PromptTemplate[]>(() => {
     const saved = localStorage.getItem('my_prompt_results');
@@ -416,6 +421,11 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [] }: L
             setSelectedPrompt(null);
             onSelectTemplate(t);
           }} 
+          onAddToProject={(t) => {
+            setSelectedPrompt(null);
+            setAddToProjTemplate(t);
+            setIsAddToProjOpen(true);
+          }}
         />
       )}
 
@@ -425,6 +435,14 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [] }: L
           onClose={() => setPreviewPrompt(null)}
         />
       )}
+
+      <AddToProjectModal
+        isOpen={isAddToProjOpen}
+        onClose={() => setIsAddToProjOpen(false)}
+        user={user}
+        template={addToProjTemplate}
+        onNavigateToTab={onNavigateToTab || (() => {})}
+      />
     </div>
   );
 }

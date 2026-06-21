@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, ArrowRight, Loader2, Copy, Check, ExternalLink, Settings } from 'lucide-react';
-import { PromptBlock, PromptTemplate } from '../types';
-import { enhancePromptWithAi } from '../services/aiService';
+import { PromptBlock, PromptTemplate } from '../../types';
+import { enhancePromptWithAi } from '../../services/aiService';
 
 interface EnhancerTabProps {
   onApplyTemplate?: (template: PromptTemplate) => void;

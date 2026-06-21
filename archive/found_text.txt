@@ -1,0 +1,808 @@
+Created At: 2026-06-15T04:15:05Z
+Completed At: 2026-06-15T04:15:05Z
+File Path: `file:///c:/Users/THOAI%20PC/Prompt_Builder-main/src/components/ProjectChainTab.tsx`
+Total Lines: 2045
+Total Bytes: 98280
+Showing lines 1 to 800
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: import React, { useState, useEffect, useRef, useMemo } from 'react';
+2: import { 
+3:   Plus, Trash2, Play, Save, Download, Upload, X, Edit2, 
+4:   Sparkles, Check, AlertCircle, ArrowRight, Search, FileText, 
+5:   ChevronRight, ChevronDown, Settings, Database, HelpCircle, 
+6:   RefreshCw, Cloud, CloudOff, ZoomIn, ZoomOut, Maximize2, Workflow, Wrench
+7: } from 'lucide-react';
+8: import { motion, AnimatePresence } from 'motion/react';
+9: import { 
+10:   collection, doc, getDocs, query, where, setDoc, deleteDoc, serverTimestamp 
+11: } from 'firebase/firestore';
+12: import { TreeNode, PromptProject, PromptBlock, PromptVariable, TabType, PromptTemplate } from '../types';
+13: import { db, handleFirestoreError } from '../firebase';
+14: import { TEMPLATES } from '../data';
+15: import AIResponseRenderer from './AIResponseRenderer';
+16: import { runPlaygroundChatStream, enhancePromptWithAi } from '../services/aiService';
+17: 
+18: interface ProjectChainTabProps {
+19:   theme?: 'light' | 'dark';
+20:   user: any;
+21:   customTemplates?: PromptTemplate[];
+22:   onSaveTemplate?: (template: PromptTemplate) => Promise<void>;
+23: }
+24: 
+25: const DEFAULT_PROJECTS: PromptProject[] = [
+26:   {
+27:     id: 'proj-education-tutor',
+28:     name: 'Gia sư Mentor AI chuyên sâu',
+29:     description: 'Chuỗi prompt phân tích chủ đề, xây dựng bài học lý thuyết và tạo đề thi trắc nghiệm đi kèm giải thích.',
+30:     createdAt: new Date().toISOString(),
+31:     updatedAt: new Date().toISOString(),
+32:     nodes: [
+33:       {
+34:         id: 'node-root',
+35:         parentId: null,
+36:         title: '1. Phân tích Chủ đề',
+37:         description: 'Phân tích chủ đề giảng dạy thành các nhánh bài học cốt lõi',
+38:         status: 'idle',
+39:         position: { x: 100, y: 220 },
+40:         blocks: [
+41:           {
+42:             id: 'block-root-1',
+43:             type: 'role',
+44:             title: 'Vai trò (Role)',
+45:             content: 'Bạn là một Mentor AI - chuyên gia phát triển nội dung giáo dục phổ thông theo phương pháp Socratic.'
+46:           },
+47:           {
+48:             id: 'block-root-2',
+49:             type: 'task',
+50:             title: 'Nhiệm vụ (Task)',
+51:             content: 'Hãy phân tích chủ đề: "{{subject}}" dành cho học sinh lớp {{grade}}.\n\nChia chủ đề thành 3 nội dung cốt lõi nhất cần nắm vững. Đối với mỗi nội dung, hãy nêu rõ mục tiêu học tập (Learning Objective) và từ khóa chính cần nhớ.\n\nLưu ý:\n- Sử dụng emoji thân thiện 😊\n- Trình bày dạng bullet points\n- Công thức nếu có hãy dùng LaTeX.'
+52:           }
+53:         ],
+54:         variables: [
+55:           { name: 'subject', type: 'text', description: 'Chủ đề bài học (vd: Quang hợp ở thực vật)', required: true, defaultValue: 'Chiến tranh thế giới thứ hai' },
+56:           { name: 'grade', type: 'text', description: 'Lớp học (vd: 10, 11, 12)', required: true, defaultValue: '11' }
+57:         ]
+58:       },
+59:       {
+60:         id: 'node-child-lesson',
+61:         parentId: 'node-root',
+62:         title: '2. Soạn bài giảng',
+63:         description: 'Tạo giáo án chi tiết và các ví dụ minh họa trực quan',
+64:         status: 'idle',
+65:         position: { x: 450, y: 100 },
+66:         blocks: [
+67:           {
+68:             id: 'block-lesson-1',
+69:             type: 'role',
+70:             title: 'Vai trò (Role)',
+71:             content: 'Bạn là một Mentor AI - gia sư thân thiện và ấm áp.'
+72:           },
+73:           {
+74:             id: 'block-lesson-2',
+75:             type: 'context',
+76:             title: 'Ngữ cảnh (Context)',
+77:             content: 'Dưới đây là phân tích chủ đề được thực hiện ở bước trước:\n\n{{1.Phân tíchChủđề.output}}'
+78:           },
+79:           {
+80:             id: 'block-lesson-3',
+81:             type: 'task',
+82:             title: 'Nhiệm vụ (Task)',
+83:             content: 'Hãy viết nội dung bài giảng chi tiết cho nhánh nội dung thứ nhất trong phần phân tích phía trên.\n\nKết cấu bài giảng gồm:\n1. Phần khởi động (Hook): đặt một câu hỏi khơi gợi tò mò theo phương pháp Socratic.\n2. Nội dung kiến thức: giải thích ngắn gọn, dễ hiểu.\n3. Ví dụ minh họa thực tế sinh động.'
+84:           }
+85:         ],
+86:         variables: []
+87:       },
+88:       {
+89:         id: 'node-child-quiz',
+90:         parentId: 'node-root',
+91:         title: '3. Bộ câu hỏi ôn tập',
+92:         description: 'Thiết kế các câu hỏi trắc nghiệm kiểm tra mức độ thấu hiểu bài học',
+93:         status: 'idle',
+94:         position: { x: 450, y: 350 },
+95:         blocks: [
+96:           {
+97:             id: 'block-quiz-1',
+98:             type: 'role',
+99:             title: 'Vai trò (Role)',
+100:             content: 'Bạn là một giáo viên Mentor AI chuyên ra đề thi tương tác.'
+101:           },
+102:           {
+103:             id: 'block-quiz-2',
+104:             type: 'context',
+105:             title: 'Ngữ cảnh (Context)',
+106:             content: 'Tham khảo phân tích chủ đề:\n{{1.Phân tíchChủđề.output}}'
+107:           },
+108:           {
+109:             id: 'block-quiz-3',
+110:             type: 'task',
+111:             title: 'Nhiệm vụ (Task)',
+112:             content: 'Hãy tạo ra 2 câu hỏi trắc nghiệm (mỗi câu 4 phương án A, B, C, D) kiểm tra kiến thức về các từ khóa chính nêu trong đề cương.\n\nBẮT BUỘC: Không cung cấp đáp án trực tiếp. Với mỗi câu hỏi, hãy viết gợi ý (Hint) định hướng tư duy theo phong cách Socratic giúp học sinh tự suy nghĩ chọn đáp án đúng.'
+113:           }
+114:         ],
+115:         variables: []
+116:       }
+117:     ]
+118:   }
+119: ];
+120: 
+121: export default function ProjectChainTab({ 
+122:   theme = 'dark', 
+123:   user, 
+124:   customTemplates = [],
+125:   onSaveTemplate 
+126: }: ProjectChainTabProps) {
+127:   
+128:   // State quản lý danh sách dự án
+129:   const [projects, setProjects] = useState<PromptProject[]>([]);
+130:   const [activeProject, setActiveProject] = useState<PromptProject | null>(null);
+131:   const [syncStatus, setSyncStatus] = useState<'synced' | 'local' | 'saving' | 'error'>('local');
+132: 
+133:   // State Canvas (dịch, zoom)
+134:   const [canvasOffset, setCanvasOffset] = useState({ x: 50, y: 50 });
+135:   const [zoom, setZoom] = useState(1);
+136:   const canvasRef = useRef<HTMLDivElement>(null);
+137: 
+138:   // State quản lý Node đang được chọn & Sidebar Editor
+139:   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+140: 
+141:   // State cho Modal Import Template vào Node
+142:   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+143:   const [searchTemplateQuery, setSearchTemplateQuery] = useState('');
+144: 
+145:   // State cho Simulator (Chạy thử Prompt)
+146:   const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
+147:   const [simulatorNode, setSimulatorNode] = useState<TreeNode | null>(null);
+148:   const [rootInputs, setRootInputs] = useState<Record<string, string>>({});
+149:   const [compiledPromptPreview, setCompiledPromptPreview] = useState('');
+150:   const [simulationResponse, setSimulationResponse] = useState('');
+151:   const [isSimulating, setIsSimulating] = useState(false);
+152:   
+153:   // Cấu hình mô hình cho mô phỏng (lấy từ localStorage hoặc mặc định)
+154:   const [simProvider, setSimProvider] = useState<'gemini' | 'openai'>('gemini');
+155:   const [simModel, setSimModel] = useState('gemini-2.5-flash');
+156:   const [simTemp, setSimTemp] = useState(0.7);
+157: 
+158:   // Tab hướng dẫn / trợ giúp
+159:   const [showHelp, setShowHelp] = useState(true);
+160: 
+161:   // Gợi ý khi rẽ nhánh (đóng mở sidebar panel cho node sửa lỗi)
+162:   const [openSuggestionPanelNodeId, setOpenSuggestionPanelNodeId] = useState<string | null>(null);
+163: 
+164:   // --- 1. TẢI VÀ LƯU DỰ ÁN (LOCAL / FIRESTORE) ---
+165: 
+166:   // Tải dự án khi mount hoặc khi thay đổi user
+167:   useEffect(() => {
+168:     async function loadProjects() {
+169:       // 1. Tải từ LocalStorage trước
+170:       let localProjects: PromptProject[] = [];
+171:       try {
+172:         const saved = localStorage.getItem('mentor_ai_prompt_projects');
+173:         if (saved) {
+174:           localProjects = JSON.parse(saved);
+175:         }
+176:       } catch (e) {
+177:         console.error('Lỗi parse local projects:', e);
+178:       }
+179: 
+180:       if (localProjects.length === 0) {
+181:         localProjects = [...DEFAULT_PROJECTS];
+182:         localStorage.setItem('mentor_ai_prompt_projects', JSON.stringify(localProjects));
+183:       }
+184: 
+185:       // 2. Nếu đã đăng nhập, tải thêm từ Firestore
+186:       if (user) {
+187:         setSyncStatus('saving');
+188:         try {
+189:           const q = query(collection(db, 'projects'), where('userId', '==', user.uid));
+190:           const querySnapshot = await getDocs(q);
+191:           const dbProjects: PromptProject[] = [];
+192:           
+193:           querySnapshot.forEach((docSnap) => {
+194:             const data = docSnap.data();
+195:             dbProjects.push({
+196:               id: docSnap.id,
+197:               name: data.name,
+198:               description: data.description || '',
+199:               nodes: data.nodes || [],
+200:               createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt || new Date().toISOString(),
+201:               updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt || new Date().toISOString(),
+202:               userId: data.userId
+203:             });
+204:           });
+205: 
+206:           // Trộn dự án cục bộ và đám mây (ưu tiên đám mây hoặc theo id)
+207:           const merged = [...dbProjects];
+208:           localProjects.forEach(lp => {
+209:             if (!merged.some(mp => mp.id === lp.id)) {
+210:               merged.push(lp);
+211:             }
+212:           });
+213: 
+214:           setProjects(merged);
+215:           setActiveProject(merged[0] || null);
+216:           setSyncStatus('synced');
+217:         } catch (err) {
+218:           console.error('Lỗi tải từ Firestore, fallback LocalStorage:', err);
+219:           setProjects(localProjects);
+220:           setActiveProject(localProjects[0] || null);
+221:           setSyncStatus('local');
+222:         }
+223:       } else {
+224:         setProjects(localProjects);
+225:         setActiveProject(localProjects[0] || null);
+226:         setSyncStatus('local');
+227:       }
+228:     }
+229: 
+230:     loadProjects();
+231:   }, [user]);
+232: 
+233:   // Tự động nhận diện Node và Dự án mới chuyển hướng từ các Tab khác
+234:   useEffect(() => {
+235:     if (projects.length === 0) return;
+236:     
+237:     const targetProjId = localStorage.getItem('mentor_ai_active_project_id');
+238:     const targetNodeId = localStorage.getItem('mentor_ai_selected_node_id');
+239:     
+240:     if (targetProjId) {
+241:       const proj = projects.find(p => p.id === targetProjId);
+242:       if (proj) {
+243:         setActiveProject(proj);
+244:         localStorage.removeItem('mentor_ai_active_project_id');
+245:         
+246:         if (targetNodeId) {
+247:           setSelectedNodeId(targetNodeId);
+248:           localStorage.removeItem('mentor_ai_selected_node_id');
+249:           
+250:           const node = proj.nodes.find(n => n.id === targetNodeId);
+251:           if (node) {
+252:             setCanvasOffset({
+253:               x: Math.max(50, 250 - node.position.x * zoom),
+254:               y: Math.max(50, 200 - node.position.y * zoom)
+255:             });
+256:           }
+257:         }
+258:       }
+259:     }
+260:   }, [projects]);
+261: 
+262:   // Hàm lưu dự án hiện tại (LocalStorage & Firestore)
+263:   const saveActiveProject = async (updatedProject: PromptProject) => {
+264:     // Cập nhật state danh sách
+265:     const updatedProjects = projects.map(p => p.id === updatedProject.id ? updatedProject : p);
+266:     setProjects(updatedProjects);
+267:     setActiveProject(updatedProject);
+268: 
+269:     // 1. Lưu LocalStorage
+270:     try {
+271:       localStorage.setItem('mentor_ai_prompt_projects', JSON.stringify(updatedProjects));
+272:     } catch (e) {
+273:       console.error('Lỗi lưu LocalStorage:', e);
+274:     }
+275: 
+276:     // 2. Lưu Firestore nếu đã đăng nhập
+277:     if (user) {
+278:       setSyncStatus('saving');
+279:       try {
+280:         const docRef = doc(db, 'projects', updatedProject.id);
+281:         const isNew = !projects.some(p => p.id === updatedProject.id);
+282: 
+283:         const payload = {
+284:           id: updatedProject.id,
+285:           userId: user.uid,
+286:           name: updatedProject.name,
+287:           description: updatedProject.description || '',
+288:           nodes: updatedProject.nodes,
+289:           createdAt: isNew ? new Date().toISOString() : updatedProject.createdAt,
+290:           updatedAt: new Date().toISOString()
+291:         };
+292: 
+293:         await setDoc(docRef, payload);
+294:         setSyncStatus('synced');
+295:       } catch (err) {
+296:         console.error('Lỗi đồng bộ lên Firestore:', err);
+297:         setSyncStatus('error');
+298:       }
+299:     } else {
+300:       setSyncStatus('local');
+301:     }
+302:   };
+303: 
+304:   // --- 2. THAO TÁC TRÊN DỰ ÁN ---
+305: 
+306:   const handleCreateNewProject = () => {
+307:     const newId = `proj-${Date.now()}`;
+308:     const newProj: PromptProject = {
+309:       id: newId,
+310:       name: 'Dự án Prompt mới ' + (projects.length + 1),
+311:       description: 'Mô tả ngắn gọn về quy trình chuỗi prompt này.',
+312:       createdAt: new Date().toISOString(),
+313:       updatedAt: new Date().toISOString(),
+314:       nodes: [
+315:         {
+316:           id: 'node-root-' + Date.now(),
+317:           parentId: null,
+318:           title: '1. Khởi đầu',
+319:           description: 'Điểm bắt đầu của chuỗi prompt',
+320:           status: 'idle',
+321:           position: { x: 150, y: 200 },
+322:           blocks: [
+323:             { id: 'b1', type: 'role', title: 'Vai trò (Role)', content: 'Bạn là chuyên gia giáo dục Mentor AI.' },
+324:             { id: 'b2', type: 'task', title: 'Nhiệm vụ (Task)', content: 'Hãy phân tích chủ đề: "{{topic}}".' }
+325:           ],
+326:           variables: [
+327:             { name: 'topic', type: 'text', description: 'Chủ đề chính của dự án', required: true, defaultValue: '' }
+328:           ]
+329:         }
+330:       ]
+331:     };
+332: 
+333:     const updated = [newProj, ...projects];
+334:     setProjects(updated);
+335:     setActiveProject(newProj);
+336:     setSelectedNodeId(newProj.nodes[0].id);
+337:     saveActiveProject(newProj);
+338:   };
+339: 
+340:   const handleDeleteProject = async (projectId: string) => {
+341:     if (projects.length <= 1) {
+342:       alert('Bạn phải giữ lại ít nhất một dự án.');
+343:       return;
+344:     }
+345:     if (!confirm('Bạn có chắc chắn muốn xóa dự án này?')) return;
+346: 
+347:     const remaining = projects.filter(p => p.id !== projectId);
+348:     setProjects(remaining);
+349:     setActiveProject(remaining[0]);
+350:     setSelectedNodeId(null);
+351: 
+352:     // Xóa local
+353:     localStorage.setItem('mentor_ai_prompt_projects', JSON.stringify(remaining));
+354: 
+355:     // Xóa Firestore
+356:     if (user) {
+357:       setSyncStatus('saving');
+358:       try {
+359:         await deleteDoc(doc(db, 'projects', projectId));
+360:         setSyncStatus('synced');
+361:       } catch (err) {
+362:         console.error('Lỗi xóa trên Firestore:', err);
+363:         setSyncStatus('error');
+364:       }
+365:     }
+366:   };
+367: 
+368:   const handleImportProjectJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+369:     const file = e.target.files?.[0];
+370:     if (!file) return;
+371: 
+372:     const reader = new FileReader();
+373:     reader.onload = (event) => {
+374:       try {
+375:         const parsed = JSON.parse(event.target?.result as string);
+376:         if (!parsed.id || !parsed.name || !Array.isArray(parsed.nodes)) {
+377:           alert('Định dạng tệp JSON dự án không hợp lệ!');
+378:           return;
+379:         }
+380:         
+381:         // Cấp ID mới để tránh xung đột
+382:         const newProj = {
+383:           ...parsed,
+384:           id: `proj-${Date.now()}`,
+385:           createdAt: new Date().toISOString(),
+386:           updatedAt: new Date().toISOString()
+387:         };
+388: 
+389:         const updated = [newProj, ...projects];
+390:         setProjects(updated);
+391:         setActiveProject(newProj);
+392:         saveActiveProject(newProj);
+393:         alert('Đã nhập dự án thành công!');
+394:       } catch (err) {
+395:         alert('Không thể đọc tệp JSON: ' + (err as Error).message);
+396:       }
+397:     };
+398:     reader.readAsText(file);
+399:   };
+400: 
+401:   const handleExportProjectJSON = () => {
+402:     if (!activeProject) return;
+403:     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(activeProject, null, 2));
+404:     const downloadAnchor = document.createElement('a');
+405:     downloadAnchor.setAttribute("href", dataStr);
+406:     downloadAnchor.setAttribute("download", `${activeProject.name.toLowerCase().replace(/\s+/g, '_')}_project.json`);
+407:     document.body.appendChild(downloadAnchor);
+408:     downloadAnchor.click();
+409:     downloadAnchor.remove();
+410:   };
+411: 
+412:   // --- 3. THAO TÁC TRÊN NODE (THÊM, XÓA, DRAG) ---
+413: 
+414:   const handleAddChildNode = (parentId: string) => {
+415:     if (!activeProject) return;
+416:     const parentNode = activeProject.nodes.find(n => n.id === parentId);
+417:     if (!parentNode) return;
+418: 
+419:     // Đếm số con hiện tại của node này để xếp hàng dọc
+420:     const childrenCount = activeProject.nodes.filter(n => n.parentId === parentId).length;
+421: 
+422:     const newChild: TreeNode = {
+423:       id: `node-${Date.now()}`,
+424:       parentId: parentId,
+425:       title: `${parentNode.title.split('.')[0] || 'Node'}.${childrenCount + 1} Tiếp theo`,
+426:       description: 'Nhánh con của ' + parentNode.title,
+427:       status: 'idle',
+428:       position: { 
+429:         x: parentNode.position.x + 280, 
+430:         y: parentNode.position.y + (childrenCount * 140) - (childrenCount > 0 ? 50 : 0) 
+431:       },
+432:       blocks: [
+433:         {
+434:           id: `b-${Date.now()}-1`,
+435:           type: 'context',
+436:           title: 'Ngữ cảnh (Context)',
+437:           content: `Tham khảo kết quả từ bước trước:\n\n{{${parentNode.title.replace(/\s+/g, '')}.output}}`
+438:         },
+439:         {
+440:           id: `b-${Date.now()}-2`,
+441:           type: 'task',
+442:           title: 'Nhiệm vụ (Task)',
+443:           content: 'Hãy thực hiện...'
+444:         }
+445:       ],
+446:       variables: []
+447:     };
+448: 
+449:     const updatedNodes = [...activeProject.nodes, newChild];
+450:     const updatedProj = { ...activeProject, nodes: updatedNodes, updatedAt: new Date().toISOString() };
+451:     saveActiveProject(updatedProj);
+452:     setSelectedNodeId(newChild.id);
+453:   };
+454: 
+455:   const handleDeleteNode = (nodeId: string) => {
+456:     if (!activeProject) return;
+457:     const node = activeProject.nodes.find(n => n.id === nodeId);
+458:     if (!node) return;
+459:     
+460:     if (node.parentId === null) {
+461:       alert('Không thể xóa Node gốc!');
+462:       return;
+463:     }
+464: 
+465:     if (!confirm(`Bạn có chắc chắn muốn xóa Node "${node.title}" và mọi node phụ thuộc?`)) return;
+466: 
+467:     // Tìm đệ quy tất cả con cháu để xóa cùng lúc
+468:     const idsToDelete = new Set<string>([nodeId]);
+469:     let checking = true;
+470:     while (checking) {
+471:       const sizeBefore = idsToDelete.size;
+472:       activeProject.nodes.forEach(n => {
+473:         if (n.parentId && idsToDelete.has(n.parentId)) {
+474:           idsToDelete.add(n.id);
+475:         }
+476:       });
+477:       if (idsToDelete.size === sizeBefore) {
+478:         checking = false;
+479:       }
+480:     }
+481: 
+482:     const remainingNodes = activeProject.nodes.filter(n => !idsToDelete.has(n.id));
+483:     const updatedProj = { ...activeProject, nodes: remainingNodes, updatedAt: new Date().toISOString() };
+484:     saveActiveProject(updatedProj);
+485:     
+486:     if (selectedNodeId && idsToDelete.has(selectedNodeId)) {
+487:       setSelectedNodeId(null);
+488:     }
+489:   };
+490: 
+491:   const updateNodePosition = (nodeId: string, pos: { x: number; y: number }) => {
+492:     if (!activeProject) return;
+493:     const updatedNodes = activeProject.nodes.map(n => 
+494:       n.id === nodeId ? { ...n, position: pos } : n
+495:     );
+496:     const updatedProj = { ...activeProject, nodes: updatedNodes };
+497:     
+498:     // Cập nhật state cục bộ nhanh trước để tránh lag kéo
+499:     setProjects(prev => prev.map(p => p.id === activeProject.id ? updatedProj : p));
+500:     setActiveProject(updatedProj);
+501:   };
+502: 
+503:   // Lưu vị trí khi kết thúc kéo
+504:   const saveNodeDragEnd = () => {
+505:     if (activeProject) {
+506:       saveActiveProject(activeProject);
+507:     }
+508:   };
+509: 
+510:   // Kéo Node
+511:   const startDragNode = (e: React.MouseEvent, nodeId: string) => {
+512:     e.stopPropagation();
+513:     e.preventDefault();
+514:     if (!activeProject) return;
+515:     const node = activeProject.nodes.find(n => n.id === nodeId);
+516:     if (!node) return;
+517: 
+518:     const startX = e.clientX;
+519:     const startY = e.clientY;
+520:     const initialX = node.position.x;
+521:     const initialY = node.position.y;
+522:     
+523:     const handleMouseMove = (moveEvent: MouseEvent) => {
+524:       const dx = (moveEvent.clientX - startX) / zoom;
+525:       const dy = (moveEvent.clientY - startY) / zoom;
+526:       updateNodePosition(nodeId, {
+527:         x: Math.round(initialX + dx),
+528:         y: Math.round(initialY + dy)
+529:       });
+530:     };
+531:     
+532:     const handleMouseUp = () => {
+533:       window.removeEventListener('mousemove', handleMouseMove);
+534:       window.removeEventListener('mouseup', handleMouseUp);
+535:       saveNodeDragEnd();
+536:     };
+537:     
+538:     window.addEventListener('mousemove', handleMouseMove);
+539:     window.addEventListener('mouseup', handleMouseUp);
+540:   };
+541: 
+542:   // Tạo nhánh rẽ nước thành công (success) hoặc thất bại (failure)
+543:   const handleCreateBranchNode = (type: 'success' | 'failure') => {
+544:     if (!activeProject || !simulatorNode) return;
+545:     
+546:     // Đếm số con cùng nhánh để xếp vị trí
+547:     const siblingCount = activeProject.nodes.filter(
+548:       n => n.parentId === simulatorNode.id && n.branchType === type
+549:     ).length;
+550:     
+551:     // Tọa độ của node con dựa trên branchType:
+552:     // Success (nhánh trên) -> y dịch lên (-125)
+553:     // Failure (nhánh dưới) -> y dịch xuống (+125)
+554:     const offsetSlot = siblingCount * 140;
+555:     const posX = simulatorNode.position.x + 280;
+556:     const posY = type === 'success' 
+557:       ? simulatorNode.position.y - 125 - offsetSlot
+558:       : simulatorNode.position.y + 125 + offsetSlot;
+559: 
+560:     const newTitle = type === 'success'
+561:       ? `${simulatorNode.title.split('.')[0] || 'Node'}.A Nâng cao ${siblingCount + 1}`
+562:       : `${simulatorNode.title.split('.')[0] || 'Node'}.B Sửa lỗi ${siblingCount + 1}`;
+563: 
+564:     const newDescription = type === 'success'
+565:       ? `Nhánh nâng cao khi prompt "${simulatorNode.title}" hoạt động hiệu quả.`
+566:       : `Nhánh khắc phục và sửa đổi lỗi khi prompt "${simulatorNode.title}" chưa được như ý.`;
+567: 
+568:     const newChild: TreeNode = {
+569:       id: `node-${Date.now()}`,
+570:       parentId: simulatorNode.id,
+571:       title: newTitle,
+572:       description: newDescription,
+573:       status: 'idle',
+574:       branchType: type,
+575:       position: { x: posX, y: posY },
+576:       blocks: type === 'success' ? [
+577:         {
+578:           id: `b-${Date.now()}-1`,
+579:           type: 'context',
+580:           title: 'Kết quả bước trước',
+581:           content: `Kết quả từ bước trước:\n\n{{${simulatorNode.title.replace(/\s+/g, '')}.output}}`
+582:         },
+583:         {
+584:           id: `b-${Date.now()}-2`,
+585:           type: 'task',
+586:           title: 'Nhiệm vụ nâng cao',
+587:           content: 'Dựa trên kết quả hiệu quả phía trên, hãy thực hiện bước tiếp theo...'
+588:         }
+589:       ] : [
+590:         {
+591:           id: `b-${Date.now()}-1`,
+592:           type: 'context',
+593:           title: 'Kết quả lỗi',
+594:           content: `Kết quả chưa đạt từ bước trước:\n\n{{${simulatorNode.title.replace(/\s+/g, '')}.output}}`
+595:         },
+596:         {
+597:           id: `b-${Date.now()}-2`,
+598:           type: 'task',
+599:           title: 'Nhiệm vụ sửa đổi',
+600:           content: 'Hãy điều chỉnh lại prompt hoặc bổ sung các cấu trúc ràng buộc (Constraints) chặt chẽ hơn...'
+601:         }
+602:       ],
+603:       variables: []
+604:     };
+605: 
+606:     const updatedNodes = [...activeProject.nodes, newChild];
+607:     const updatedProj = { ...activeProject, nodes: updatedNodes, updatedAt: new Date().toISOString() };
+608:     saveActiveProject(updatedProj);
+609:     
+610:     // Chọn node mới và đóng simulator, đề xuất sẽ tự động xuất hiện ở Sidebar Editor
+611:     setSelectedNodeId(newChild.id);
+612:     setIsSimulatorOpen(false);
+613:   };
+614: 
+615:   // Gọi AI Enhancer tối ưu hóa cấu trúc prompt của Node
+616:   const handleEnhancePromptWithAI = async (nodeId: string) => {
+617:     const targetNode = activeProject?.nodes.find(n => n.id === nodeId);
+618:     if (!targetNode || !activeProject) return;
+619:     
+620:     setSyncStatus('saving');
+621:     try {
+622:       const currentPrompt = targetNode.blocks.map(b => `${b.title}: ${b.content}`).join('\n');
+623:       
+624:       const customKey = localStorage.getItem('mentor_ai_gemini_key') || '';
+625:       const useSystemKey = localStorage.getItem('mentor_ai_use_system_key') !== 'false';
+626:       const apiKey = useSystemKey ? undefined : customKey;
+627:       
+628:       const enhancedBlocks = await enhancePromptWithAi(currentPrompt, { apiKey });
+629:       
+630:       if (enhancedBlocks && Array.isArray(enhancedBlocks)) {
+631:         const updatedBlocks = enhancedBlocks.map((b: any, idx: number) => ({
+632:           id: `block-enhanced-${Date.now()}-${idx}`,
+633:           type: b.type || 'custom',
+634:           title: b.title || 'Khối tối ưu',
+635:           content: b.content || ''
+636:         }));
+637:         
+638:         const updatedNodes = activeProject.nodes.map(n => 
+639:           n.id === nodeId ? { ...n, blocks: updatedBlocks } : n
+640:         );
+641:         const updatedProj = { ...activeProject, nodes: updatedNodes, updatedAt: new Date().toISOString() };
+642:         saveActiveProject(updatedProj);
+643:         alert('Đã tối ưu hóa cấu trúc Prompt bằng AI thành công!');
+644:       } else {
+645:         alert('Không nhận được định dạng cấu trúc hợp lệ từ AI. Hãy thử lại.');
+646:       }
+647:     } catch (err: any) {
+648:       console.error('Enhance failed:', err);
+649:       alert('Tối ưu hóa thất bại: ' + err.message);
+650:     } finally {
+651:       if (user) setSyncStatus('synced');
+652:       else setSyncStatus('local');
+653:     }
+654:   };
+655: 
+656:   // --- 4. PANNING VÀ ZOOMING CANVAS ---
+657: 
+658:   const startPanning = (e: React.MouseEvent) => {
+659:     if (e.target !== e.currentTarget && !(e.target as HTMLElement).classList.contains('canvas-bg')) return;
+660:     e.preventDefault();
+661:     const startX = e.clientX - canvasOffset.x;
+662:     const startY = e.clientY - canvasOffset.y;
+663:     
+664:     const handleMouseMove = (moveEvent: MouseEvent) => {
+665:       setCanvasOffset({
+666:         x: moveEvent.clientX - startX,
+667:         y: moveEvent.clientY - startY
+668:       });
+669:     };
+670:     
+671:     const handleMouseUp = () => {
+672:       window.removeEventListener('mousemove', handleMouseMove);
+673:       window.removeEventListener('mouseup', handleMouseUp);
+674:     };
+675:     
+676:     window.addEventListener('mousemove', handleMouseMove);
+677:     window.addEventListener('mouseup', handleMouseUp);
+678:   };
+679: 
+680:   const handleWheel = (e: React.WheelEvent) => {
+681:     e.preventDefault();
+682:     const zoomFactor = 0.05;
+683:     const newZoom = e.deltaY < 0 ? zoom + zoomFactor : zoom - zoomFactor;
+684:     setZoom(Math.max(0.5, Math.min(1.5, newZoom)));
+685:   };
+686: 
+687:   const resetCanvasView = () => {
+688:     setCanvasOffset({ x: 50, y: 50 });
+689:     setZoom(1);
+690:   };
+691: 
+692:   // --- 5. BIÊN DỊCH VÀ PHÂN TÍCH BIẾN PROMPT ---
+693: 
+694:   const extractVariablesInNode = (node: TreeNode): string[] => {
+695:     const varRegex = /\{\{([^}]+)\}\}/g;
+696:     const foundVars = new Set<string>();
+697:     node.blocks.forEach(b => {
+698:       let match;
+699:       while ((match = varRegex.exec(b.content)) !== null) {
+700:         foundVars.add(match[1].trim());
+701:       }
+702:     });
+703:     return Array.from(foundVars);
+704:   };
+705: 
+706:   const getRequiredInputsForNode = (node: TreeNode, project: PromptProject): string[] => {
+707:     const allVars = extractVariablesInNode(node);
+708:     
+709:     const ancestorTitles = new Set<string>();
+710:     let currentParentId = node.parentId;
+711:     while (currentParentId) {
+712:       const parent = project.nodes.find(n => n.id === currentParentId);
+713:       if (parent) {
+714:         ancestorTitles.add(parent.title.replace(/\s+/g, ''));
+715:         currentParentId = parent.parentId;
+716:       } else {
+717:         break;
+718:       }
+719:     }
+720: 
+721:     return allVars.filter(v => {
+722:       const isParentOutput = v === 'parent.output';
+723:       const isNamedOutput = v.endsWith('.output') && ancestorTitles.has(v.replace('.output', ''));
+724:       return !isParentOutput && !isNamedOutput;
+725:     });
+726:   };
+727: 
+728:   const compilePromptText = (node: TreeNode, project: PromptProject, inputs: Record<string, string>): string => {
+729:     let compiled = node.blocks.map(b => `[${b.title}]\n${b.content}`).join('\n\n');
+730:     const varRegex = /\{\{([^}]+)\}\}/g;
+731:     
+732:     const replacements: Record<string, string> = {};
+733: 
+734:     const ancestors: TreeNode[] = [];
+735:     let currentParentId = node.parentId;
+736:     while (currentParentId) {
+737:       const parentNode = project.nodes.find(n => n.id === currentParentId);
+738:       if (parentNode) {
+739:         ancestors.push(parentNode);
+740:         currentParentId = parentNode.parentId;
+741:       } else {
+742:         break;
+743:       }
+744:     }
+745: 
+746:     const directParent = ancestors[0];
+747:     if (directParent) {
+748:       replacements['parent.output'] = directParent.output || `[LƯU Ý: Đầu ra của Node "${directParent.title}" chưa được thực thi. Vui lòng chạy Node cha trước!]`;
+749:     }
+750: 
+751:     ancestors.forEach(anc => {
+752:       const key = `${anc.title.replace(/\s+/g, '')}.output`;
+753:       replacements[key] = anc.output || `[LƯU Ý: Đầu ra của Node "${anc.title}" chưa được thực thi. Vui lòng chạy Node này trước!]`;
+754:     });
+755: 
+756:     return compiled.replace(varRegex, (match, varName) => {
+757:       const cleanedName = varName.trim();
+758:       if (replacements[cleanedName] !== undefined) {
+759:         return replacements[cleanedName];
+760:       }
+761:       if (inputs[cleanedName] !== undefined && inputs[cleanedName] !== '') {
+762:         return inputs[cleanedName];
+763:       }
+764:       const defVar = project.nodes.flatMap(n => n.variables || []).find(v => v.name === cleanedName);
+765:       if (defVar && defVar.defaultValue) {
+766:         return defVar.defaultValue;
+767:       }
+768:       return match;
+769:     });
+770:   };
+771: 
+772:   // --- 6. SIMULATOR & LLM EXECUTION ---
+773: 
+774:   const handleOpenSimulator = (nodeId: string) => {
+775:     if (!activeProject) return;
+776:     const node = activeProject.nodes.find(n => n.id === nodeId);
+777:     if (!node) return;
+778: 
+779:     setSimulatorNode(node);
+780:     
+781:     const defaultInputs: Record<string, string> = { ...rootInputs };
+782:     
+783:     activeProject.nodes.forEach(n => {
+784:       n.variables?.forEach(v => {
+785:         if (v.defaultValue && defaultInputs[v.name] === undefined) {
+786:           defaultInputs[v.name] = v.defaultValue;
+787:         }
+788:       });
+789:     });
+790: 
+791:     setRootInputs(defaultInputs);
+792: 
+793:     const preview = compilePromptText(node, activeProject, defaultInputs);
+794:     setCompiledPromptPreview(preview);
+795:     setSimulationResponse(node.output || '');
+796:     setIsSimulatorOpen(true);
+797:   };
+798: 
+799:   const handleVariableInputChange = (name: string, value: string) => {
+800:     const updated = { ...rootInputs, [name]: value };
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

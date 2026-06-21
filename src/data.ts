@@ -192,7 +192,7 @@ export const TEMPLATES: PromptTemplate[] = [
     blocks: [
       { id: 'role-1', type: 'role', title: 'Vai trò (Role)', content: 'Bạn là {{Chuyên gia/Vai trò cụ thể}}' },
       { id: 'role-2', type: 'task', title: 'Mục tiêu (Objective)', content: 'Tôi cần {{Hành động cụ thể}}' },
-      { id: 'role-3', type: 'context', title: 'Ngữ cảnh (Context)', content: 'Trong tình huống {{Bối cảnh chi tiết}}' },
+      { id: 'role-3', type: 'constraints', title: 'Giới hạn (Limits)', content: 'Với các giới hạn hoặc ràng buộc: {{Các ràng buộc/giới hạn}}' },
       { id: 'role-4', type: 'format', title: 'Kỳ vọng (Expectation)', content: 'Kết quả cần {{Định dạng/Phong cách/Độ dài}}' }
     ]
   },

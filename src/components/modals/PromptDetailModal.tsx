@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { PromptTemplate } from '../types';
-import { X, Heart, Bookmark, Copy, Users, CheckCircle, MessageSquare, Share2, Star } from 'lucide-react';
-import InteractiveFewShotPanel from './InteractiveFewShotPanel';
+import { PromptTemplate } from '../../types';
+import { X, Heart, Bookmark, Copy, Users, CheckCircle, MessageSquare, Share2, Star, Workflow } from 'lucide-react';
+import InteractiveFewShotPanel from '../common/InteractiveFewShotPanel';
 
 interface PromptDetailModalProps {
   template: PromptTemplate;
   onClose: () => void;
   onRemix: (template: PromptTemplate) => void;
+  onAddToProject?: (template: PromptTemplate) => void;
 }
 
-export default function PromptDetailModal({ template, onClose, onRemix }: PromptDetailModalProps) {
+export default function PromptDetailModal({ template, onClose, onRemix, onAddToProject }: PromptDetailModalProps) {
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [newComment, setNewComment] = useState('');
@@ -236,7 +237,6 @@ export default function PromptDetailModal({ template, onClose, onRemix }: Prompt
           </div>
         </div>
 
-        {/* Footer Fixed Action */}
         <div className="px-6 py-4 border-t border-slate-100 bg-white shrink-0 flex justify-end gap-3 z-10 rounded-b-3xl">
           <button 
             onClick={onClose}
@@ -244,6 +244,15 @@ export default function PromptDetailModal({ template, onClose, onRemix }: Prompt
           >
             Đóng
           </button>
+          {onAddToProject && (
+            <button 
+              onClick={() => onAddToProject(template)}
+              className="px-5 py-2.5 text-sm font-bold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-all shadow-md shadow-cyan-600/20 hover:shadow-lg hover:shadow-cyan-600/30 flex items-center gap-2 active:scale-95 cursor-pointer animate-fade-in"
+            >
+              <Workflow className="w-4 h-4" />
+              Thêm vào Chain
+            </button>
+          )}
           <button 
             onClick={handleRemix}
             className="px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-md shadow-indigo-600/20 hover:shadow-lg hover:shadow-indigo-600/30 flex items-center gap-2 active:scale-95"

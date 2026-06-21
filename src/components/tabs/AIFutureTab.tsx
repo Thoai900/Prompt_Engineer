@@ -4,11 +4,11 @@ import {
   Sparkles, Bot, Code, Cpu, Globe, Image as ImageIcon, Video, 
   Workflow, Zap, Shield, Search, ChevronRight, Copy, Check, Lock, Unlock,
   Layers, BarChart3, Clock, Rocket, Smile, RefreshCw, Play, Pause, 
-  RotateCcw, HelpCircle, Send, Plus, Sliders, X, Activity, Eye, BookOpen, TrendingUp, Newspaper
+  RotateCcw, HelpCircle, Send, Plus, Sliders, X, Activity, Eye, BookOpen, TrendingUp, Newspaper, Info
 } from 'lucide-react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { generateLatestAiNews, AiNewsItem } from '../services/aiService';
+import { generateLatestAiNews, AiNewsItem } from '../../services/aiService';
 
 type TabType = 'big3' | 'opensource' | 'specialized' | 'trends';
 type ThreeMode = 'transformer' | 'vector';
@@ -47,6 +47,7 @@ export default function AIFutureTab({ theme = 'dark' }: { theme?: 'light' | 'dar
   // News States
   const [newsItems, setNewsItems] = useState<AiNewsItem[]>([]);
   const [newsLoading, setNewsLoading] = useState(false);
+  const [newsError, setNewsError] = useState<string | null>(null);
   const [newsSearch, setNewsSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'models' | 'technology' | 'policy' | 'society'>('all');
   const [selectedImpact, setSelectedImpact] = useState<'all' | 'High' | 'Medium' | 'Low'>('all');
@@ -76,6 +77,14 @@ export default function AIFutureTab({ theme = 'dark' }: { theme?: 'light' | 'dar
 
   // Load News on Mount
   useEffect(() => {
+    try {
+      const cached = localStorage.getItem('mentor_ai_news_cache');
+      if (cached) {
+        setNewsItems(JSON.parse(cached));
+      }
+    } catch (e) {
+      console.error("Failed to parse cached news:", e);
+    }
     loadNews();
   }, []);
 
@@ -96,16 +105,30 @@ export default function AIFutureTab({ theme = 'dark' }: { theme?: 'light' | 'dar
 
   const loadNews = async () => {
     setNewsLoading(true);
-    // Start log simulation concurrently
+    setNewsError(null);
     const logPromise = simulateLogs();
     
     try {
       const items = await generateLatestAiNews();
-      // Ensure logs finish typing for futuristic feel
       await logPromise;
-      setNewsItems(items);
-    } catch (err) {
-      console.error(err);
+      if (items && items.length > 0) {
+        setNewsItems(items);
+        localStorage.setItem('mentor_ai_news_cache', JSON.stringify(items));
+      } else {
+        const cached = localStorage.getItem('mentor_ai_news_cache');
+        if (cached) {
+          setNewsItems(JSON.parse(cached));
+        }
+      }
+    } catch (err: any) {
+      console.error("Failed to fetch latest AI news:", err);
+      setNewsError(err.message || String(err));
+      const cached = localStorage.getItem('mentor_ai_news_cache');
+      if (cached) {
+        try {
+          setNewsItems(JSON.parse(cached));
+        } catch (e) {}
+      }
     } finally {
       setNewsLoading(false);
     }
@@ -996,6 +1019,13 @@ export default function AIFutureTab({ theme = 'dark' }: { theme?: 'light' | 'dar
               {newsLoading ? 'Đang nạp tin tức AI...' : 'Làm mới tin tức'}
             </button>
           </div>
+
+          {newsError && (
+            <div className="mb-6 p-4 rounded-2xl border border-amber-250 bg-amber-50/50 dark:bg-amber-950/20 text-xs text-amber-800 dark:text-amber-400 flex items-center gap-2 shadow-xs">
+              <Info size={14} className="shrink-0 text-amber-600 dark:text-amber-500" />
+              <span>Không thể kết nối đến máy chủ tin tức AI (mô hình đang quá tải hoặc hết lượt gọi). Đang hiển thị bản tin cũ được lưu từ bộ nhớ tạm.</span>
+            </div>
+          )}
 
           {/* Filtering and Searching Bar */}
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-8 bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-200 dark:border-white/5">

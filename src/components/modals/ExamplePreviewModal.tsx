@@ -1,5 +1,5 @@
 import React from 'react';
-import { PromptTemplate } from '../types';
+import { PromptTemplate } from '../../types';
 import { X, Layout, FileText, Code2, Video, GitMerge, GraduationCap, ArrowRight } from 'lucide-react';
 
 interface ExamplePreviewModalProps {

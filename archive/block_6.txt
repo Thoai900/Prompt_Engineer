@@ -1,0 +1,119 @@
+Created At: 2026-06-15T04:15:29Z
+Completed At: 2026-06-15T04:15:29Z
+File Path: `file:///c:/Users/THOAI%20PC/Prompt_Builder-main/src/components/ProjectChainTab.tsx`
+Total Lines: 2045
+Total Bytes: 98280
+Showing lines 20 to 130
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+20:   user: any;
+21:   customTemplates?: PromptTemplate[];
+22:   onSaveTemplate?: (template: PromptTemplate) => Promise<void>;
+23: }
+24: 
+25: const DEFAULT_PROJECTS: PromptProject[] = [
+26:   {
+27:     id: 'proj-education-tutor',
+28:     name: 'Gia sư Mentor AI chuyên sâu',
+29:     description: 'Chuỗi prompt phân tích chủ đề, xây dựng bài học lý thuyết và tạo đề thi trắc nghiệm đi kèm giải thích.',
+30:     createdAt: new Date().toISOString(),
+31:     updatedAt: new Date().toISOString(),
+32:     nodes: [
+33:       {
+34:         id: 'node-root',
+35:         parentId: null,
+36:         title: '1. Phân tích Chủ đề',
+37:         description: 'Phân tích chủ đề giảng dạy thành các nhánh bài học cốt lõi',
+38:         status: 'idle',
+39:         position: { x: 100, y: 220 },
+40:         blocks: [
+41:           {
+42:             id: 'block-root-1',
+43:             type: 'role',
+44:             title: 'Vai trò (Role)',
+45:             content: 'Bạn là một Mentor AI - chuyên gia phát triển nội dung giáo dục phổ thông theo phương pháp Socratic.'
+46:           },
+47:           {
+48:             id: 'block-root-2',
+49:             type: 'task',
+50:             title: 'Nhiệm vụ (Task)',
+51:             content: 'Hãy phân tích chủ đề: "{{subject}}" dành cho học sinh lớp {{grade}}.\n\nChia chủ đề thành 3 nội dung cốt lõi nhất cần nắm vững. Đối với mỗi nội dung, hãy nêu rõ mục tiêu học tập (Learning Objective) và từ khóa chính cần nhớ.\n\nLưu ý:\n- Sử dụng emoji thân thiện 😊\n- Trình bày dạng bullet points\n- Công thức nếu có hãy dùng LaTeX.'
+52:           }
+53:         ],
+54:         variables: [
+55:           { name: 'subject', type: 'text', description: 'Chủ đề bài học (vd: Quang hợp ở thực vật)', required: true, defaultValue: 'Chiến tranh thế giới thứ hai' },
+56:           { name: 'grade', type: 'text', description: 'Lớp học (vd: 10, 11, 12)', required: true, defaultValue: '11' }
+57:         ]
+58:       },
+59:       {
+60:         id: 'node-child-lesson',
+61:         parentId: 'node-root',
+62:         title: '2. Soạn bài giảng',
+63:         description: 'Tạo giáo án chi tiết và các ví dụ minh họa trực quan',
+64:         status: 'idle',
+65:         position: { x: 450, y: 100 },
+66:         blocks: [
+67:           {
+68:             id: 'block-lesson-1',
+69:             type: 'role',
+70:             title: 'Vai trò (Role)',
+71:             content: 'Bạn là một Mentor AI - gia sư thân thiện và ấm áp.'
+72:           },
+73:           {
+74:             id: 'block-lesson-2',
+75:             type: 'context',
+76:             title: 'Ngữ cảnh (Context)',
+77:             content: 'Dưới đây là phân tích chủ đề được thực hiện ở bước trước:\n\n{{1.Phân tíchChủđề.output}}'
+78:           },
+79:           {
+80:             id: 'block-lesson-3',
+81:             type: 'task',
+82:             title: 'Nhiệm vụ (Task)',
+83:             content: 'Hãy viết nội dung bài giảng chi tiết cho nhánh nội dung thứ nhất trong phần phân tích phía trên.\n\nKết cấu bài giảng gồm:\n1. Phần khởi động (Hook): đặt một câu hỏi khơi gợi tò mò theo phương pháp Socratic.\n2. Nội dung kiến thức: giải thích ngắn gọn, dễ hiểu.\n3. Ví dụ minh họa thực tế sinh động.'
+84:           }
+85:         ],
+86:         variables: []
+87:       },
+88:       {
+89:         id: 'node-child-quiz',
+90:         parentId: 'node-root',
+91:         title: '3. Bộ câu hỏi ôn tập',
+92:         description: 'Thiết kế các câu hỏi trắc nghiệm kiểm tra mức độ thấu hiểu bài học',
+93:         status: 'idle',
+94:         position: { x: 450, y: 350 },
+95:         blocks: [
+96:           {
+97:             id: 'block-quiz-1',
+98:             type: 'role',
+99:             title: 'Vai trò (Role)',
+100:             content: 'Bạn là một giáo viên Mentor AI chuyên ra đề thi tương tác.'
+101:           },
+102:           {
+103:             id: 'block-quiz-2',
+104:             type: 'context',
+105:             title: 'Ngữ cảnh (Context)',
+106:             content: 'Tham khảo phân tích chủ đề:\n{{1.Phân tíchChủđề.output}}'
+107:           },
+108:           {
+109:             id: 'block-quiz-3',
+110:             type: 'task',
+111:             title: 'Nhiệm vụ (Task)',
+112:             content: 'Hãy tạo ra 2 câu hỏi trắc nghiệm (mỗi câu 4 phương án A, B, C, D) kiểm tra kiến thức về các từ khóa chính nêu trong đề cương.\n\nBẮT BUỘC: Không cung cấp đáp án trực tiếp. Với mỗi câu hỏi, hãy viết gợi ý (Hint) định hướng tư duy theo phong cách Socratic giúp học sinh tự suy nghĩ chọn đáp án đúng.'
+113:           }
+114:         ],
+115:         variables: []
+116:       }
+117:     ]
+118:   }
+119: ];
+120: 
+121: export default function ProjectChainTab({ 
+122:   theme = 'dark', 
+123:   user, 
+124:   customTemplates = [],
+125:   onSaveTemplate 
+126: }: ProjectChainTabProps) {
+127:   
+128:   // State quản lý danh sách dự án
+129:   const [projects, setProjects] = useState<PromptProject[]>([]);
+130:   const [activeProject, setActiveProject] = useState<PromptProject | null>(null);
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

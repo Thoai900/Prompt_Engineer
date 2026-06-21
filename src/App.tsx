@@ -4,18 +4,20 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Brain, Briefcase, GraduationCap, Home, Library, LogIn, LogOut, Moon, Sparkles, Sun, Zap, Menu, X } from 'lucide-react';
+import { Brain, Briefcase, GraduationCap, Home, Library, LogIn, LogOut, Moon, Sparkles, Sun, Zap, Menu, X, ScrollText, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, getDocFromServer, getDocs, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
 import { AiPersona, PromptTemplate, TabType, Workspace } from './types';
-import AIFutureTab from './components/AIFutureTab';
-import BuilderTab from './components/BuilderTab';
-import EnhancerTab from './components/EnhancerTab';
-import HomeTab from './components/HomeTab';
-import LearnTab from './components/LearnTab';
-import LibraryTab from './components/LibraryTab';
-import UtilityBeltTab from './components/UtilityBeltTab';
+import AIFutureTab from './components/tabs/AIFutureTab';
+import BuilderTab from './components/tabs/BuilderTab';
+import EnhancerTab from './components/tabs/EnhancerTab';
+import HomeTab from './components/tabs/HomeTab';
+import LearnTab from './components/tabs/LearnTab';
+import LibraryTab from './components/tabs/LibraryTab';
+import UtilityBeltTab from './components/tabs/UtilityBeltTab';
+import RulesSkillsTab from './components/tabs/RulesSkillsTab';
+import ProjectChainTab from './components/tabs/ProjectChainTab';
 import { auth, db, handleFirestoreError, loginWithGoogle, logoutUser } from './firebase';
 
 export default function App() {
@@ -25,6 +27,14 @@ export default function App() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem('mentor_ai_sidebar_collapsed') === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('mentor_ai_sidebar_collapsed', String(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
+
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [loadedTemplate, setLoadedTemplate] = useState<PromptTemplate | null>(null);
@@ -33,7 +43,7 @@ export default function App() {
   const [authReady, setAuthReady] = useState(false);
 
   const workspaces: Workspace[] = useMemo(() => [
-    { id: 'w1', name: 'Prompt Builder' },
+    { id: 'w1', name: 'Dự án chính' },
     { id: 'w2', name: 'Personal Workspace' },
   ], []);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState('w1');
@@ -60,6 +70,8 @@ export default function App() {
   const navigationItems = useMemo(() => [
     { tab: 'home' as TabType, label: 'Home', icon: <Home size={18} />, active: 'bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-800', iconColor: 'text-slate-400' },
     { tab: 'builder' as TabType, label: 'Prompt Builder', icon: <Briefcase size={18} />, active: 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-100 dark:border-indigo-900/50', iconColor: 'text-indigo-500' },
+    { tab: 'projectchain' as TabType, label: 'Project Chain', icon: <Workflow size={18} />, active: 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border-cyan-100 dark:border-cyan-900/50', iconColor: 'text-cyan-500' },
+    { tab: 'rulesskills' as TabType, label: 'Rules & Skills', icon: <ScrollText size={18} />, active: 'bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border-violet-100 dark:border-violet-900/50', iconColor: 'text-violet-500' },
     { tab: 'utilitybelt' as TabType, label: 'LLM Config', icon: <Zap size={18} />, active: 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 border-orange-100 dark:border-orange-900/50', iconColor: 'text-orange-500' },
     { tab: 'library' as TabType, label: 'Library', icon: <Library size={18} />, active: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-900/50', iconColor: 'text-emerald-500' },
     { tab: 'enhancer' as TabType, label: 'AI Enhancer', icon: <Sparkles size={18} />, active: 'bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border-teal-100 dark:border-teal-900/50', iconColor: 'text-teal-500' },
@@ -320,27 +332,60 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Sidebar trên Desktop */}
-      <nav className="hidden md:flex md:w-64 md:flex-col md:items-stretch md:justify-start md:border-r md:p-4 z-[60] border-slate-200/50 bg-white/70 backdrop-blur-md transition-all duration-300 dark:border-slate-850/50 dark:bg-slate-950/70 shrink-0">
-        <div className="flex cursor-pointer items-center space-x-3 md:mb-6 md:px-2" onClick={() => setActiveTab('home')}>
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500 text-lg font-bold text-white shadow-sm">
-            <span className="text-sm">P</span>
+       {/* Sidebar trên Desktop */}
+      <nav className={`hidden md:flex md:flex-col md:items-stretch md:justify-start md:border-r md:p-4 z-[60] border-slate-200/50 bg-white/70 backdrop-blur-md transition-all duration-300 ease-in-out dark:border-slate-850/50 dark:bg-slate-950/70 shrink-0 ${
+        isSidebarCollapsed ? 'md:w-20' : 'md:w-64'
+      }`}>
+        <div className={`flex md:mb-6 md:px-2 shrink-0 ${
+          isSidebarCollapsed ? 'flex-col items-center justify-center gap-2.5' : 'flex-row items-center justify-between'
+        }`}>
+          <div className="flex cursor-pointer items-center space-x-3 overflow-hidden" onClick={() => setActiveTab('home')}>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-lg font-bold text-white shadow-sm">
+              <span className="text-sm">P</span>
+            </div>
+            {!isSidebarCollapsed && (
+              <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white md:text-xl">
+                Prompt<span className="text-emerald-500">Builder</span>
+              </h1>
+            )}
           </div>
-          <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white md:text-xl">Prompt<span className="text-emerald-500">Builder</span></h1>
+          <button
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="rounded-xl p-1.5 hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 cursor-pointer transition-colors"
+            title={isSidebarCollapsed ? "Mở rộng" : "Thu gọn"}
+          >
+            {isSidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          </button>
         </div>
 
         <div className="flex flex-1 flex-col space-y-1">
-          <div className="mb-4 px-2">
-            <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Workspace</h3>
-            <select
-              value={activeWorkspaceId}
-              onChange={(event) => setActiveWorkspaceId(event.target.value)}
-              className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-700 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
-            >
-              {workspaces.map((workspace) => (
-                <option key={workspace.id} value={workspace.id} className="dark:bg-slate-900">{workspace.name}</option>
-              ))}
-            </select>
+          <div className="mb-4 px-2 flex flex-col items-center">
+            {!isSidebarCollapsed ? (
+              <div className="w-full">
+                <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Workspace</h3>
+                <select
+                  value={activeWorkspaceId}
+                  onChange={(event) => setActiveWorkspaceId(event.target.value)}
+                  className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-700 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+                >
+                  {workspaces.map((workspace) => (
+                    <option key={workspace.id} value={workspace.id} className="dark:bg-slate-900">{workspace.name}</option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  const currentIndex = workspaces.findIndex(w => w.id === activeWorkspaceId);
+                  const nextIndex = (currentIndex + 1) % workspaces.length;
+                  setActiveWorkspaceId(workspaces[nextIndex].id);
+                }}
+                title={`Workspace: ${workspaces.find(w => w.id === activeWorkspaceId)?.name} (Bấm để chuyển)`}
+                className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-900 text-xs font-bold text-slate-750 dark:text-slate-300 border border-slate-200/50 dark:border-slate-800 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+              >
+                {workspaces.find(w => w.id === activeWorkspaceId)?.name.charAt(0) || 'W'}
+              </button>
+            )}
           </div>
 
           {navigationItems.map((item) => (
@@ -352,6 +397,7 @@ export default function App() {
               onClick={() => setActiveTab(item.tab)}
               activeColorClass={item.active}
               iconColorClass={item.iconColor}
+              isCollapsed={isSidebarCollapsed}
             />
           ))}
         </div>
@@ -359,52 +405,76 @@ export default function App() {
         <div className="mt-auto w-full border-t border-slate-100 px-2 pt-4 dark:border-slate-900">
           <button
             onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-            className="mb-3 flex w-full cursor-pointer items-center justify-between rounded-xl border border-slate-200/50 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-650 shadow-sm transition-all duration-200 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+            title={theme === 'light' ? 'Chuyển sang Giao diện tối' : 'Chuyển sang Giao diện sáng'}
+            className={`mb-3 flex cursor-pointer items-center rounded-xl border border-slate-200/50 bg-slate-50/50 text-xs font-semibold text-slate-650 shadow-sm transition-all duration-200 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100 ${
+              isSidebarCollapsed ? 'h-9 w-9 justify-center px-0 mx-auto' : 'w-full px-3.5 py-2.5 justify-between'
+            }`}
           >
             <div className="flex items-center gap-2">
               {theme === 'light' ? <Moon size={15} className="text-violet-500" /> : <Sun size={15} className="text-amber-500" />}
-              <span>{theme === 'light' ? 'Dark mode' : 'Light mode'}</span>
+              {!isSidebarCollapsed && <span>{theme === 'light' ? 'Dark mode' : 'Light mode'}</span>}
             </div>
-            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-450 dark:bg-slate-800">
-              {theme === 'light' ? 'Off' : 'On'}
-            </span>
+            {!isSidebarCollapsed && (
+              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-450 dark:bg-slate-800">
+                {theme === 'light' ? 'Off' : 'On'}
+              </span>
+            )}
           </button>
 
           {user ? (
-            <div className="flex flex-col gap-2">
-              <div className="truncate px-1 text-xs font-semibold text-slate-700 dark:text-slate-300">{user.email}</div>
+            <div className={`flex ${isSidebarCollapsed ? 'flex-col items-center' : 'flex-col gap-2'}`}>
+              {!isSidebarCollapsed && <div className="truncate px-1 text-xs font-semibold text-slate-700 dark:text-slate-300">{user.email}</div>}
               <button
                 onClick={logoutUser}
-                className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-655 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-rose-950/20 dark:hover:text-rose-400"
+                title={isSidebarCollapsed ? `Đăng xuất (${user.email})` : undefined}
+                className={`flex cursor-pointer items-center gap-2 rounded-lg text-xs font-medium text-slate-655 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-rose-955/20 dark:hover:text-rose-400 ${
+                  isSidebarCollapsed ? 'h-8 w-8 justify-center px-0 mx-auto' : 'w-full px-3 py-1.5'
+                }`}
               >
                 <LogOut size={14} />
-                Sign out
+                {!isSidebarCollapsed && <span>Sign out</span>}
               </button>
             </div>
           ) : (
             <button
               onClick={loginWithGoogle}
-              className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
+              title={isSidebarCollapsed ? "Đăng nhập để đồng bộ" : undefined}
+              className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-slate-900 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 ${
+                isSidebarCollapsed ? 'h-8 w-8 px-0 mx-auto' : 'w-full px-3 py-2'
+              }`}
             >
               <LogIn size={15} />
-              Sign in to sync
+              {!isSidebarCollapsed && <span>Sign in to sync</span>}
             </button>
           )}
-          <p className="mt-4 px-1 text-[10px] font-semibold text-slate-400 dark:text-slate-500">V2.4 INTERNATIONAL STD</p>
+          {!isSidebarCollapsed && <p className="mt-4 px-1 text-[10px] font-semibold text-slate-400 dark:text-slate-550">V2.4 INTERNATIONAL STD</p>}
         </div>
       </nav>
 
-      <main className="relative flex h-full w-full flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-slate-950">
+      <main className="relative flex h-full w-full flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-slate-955">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.08),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.07),transparent_32%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.12),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(20,184,166,0.08),transparent_32%)]" />
 
         <TabPanel isActive={activeTab === 'home'}>
           <HomeTab onSelectTemplate={handleSelectTemplate} onSaveTemplate={handleSaveTemplate} user={user} onNavigateToBuilder={() => setActiveTab('builder')} />
         </TabPanel>
         <TabPanel isActive={activeTab === 'builder'}>
-          <BuilderTab initialTemplate={loadedTemplate} personas={personas} activePersonaId={activePersonaId} setActivePersonaId={setActivePersonaId} onSaveTemplate={handleSaveTemplate} />
+          <BuilderTab 
+            initialTemplate={loadedTemplate} 
+            personas={personas} 
+            activePersonaId={activePersonaId} 
+            setActivePersonaId={setActivePersonaId} 
+            onSaveTemplate={handleSaveTemplate} 
+            user={user}
+            onNavigateToTab={setActiveTab}
+          />
         </TabPanel>
         <TabPanel isActive={activeTab === 'library'}>
-          <LibraryTab onSelectTemplate={handleSelectTemplate} customTemplates={customTemplates} />
+          <LibraryTab 
+            onSelectTemplate={handleSelectTemplate} 
+            customTemplates={customTemplates} 
+            user={user}
+            onNavigateToTab={setActiveTab}
+          />
         </TabPanel>
         <TabPanel isActive={activeTab === 'enhancer'}>
           <EnhancerTab onApplyTemplate={handleSelectTemplate} />
@@ -417,6 +487,12 @@ export default function App() {
         </TabPanel>
         <TabPanel isActive={activeTab === 'utilitybelt'}>
           <UtilityBeltTab user={user} onSaveTemplate={handleSaveTemplate} />
+        </TabPanel>
+        <TabPanel isActive={activeTab === 'rulesskills'}>
+          <RulesSkillsTab user={user} onApplyTemplate={handleSelectTemplate} />
+        </TabPanel>
+        <TabPanel isActive={activeTab === 'projectchain'}>
+          <ProjectChainTab theme={theme} user={user} customTemplates={customTemplates} onSaveTemplate={handleSaveTemplate} />
         </TabPanel>
       </main>
     </div>
@@ -438,6 +514,7 @@ function NavItem({
   onClick,
   activeColorClass,
   iconColorClass,
+  isCollapsed,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -445,20 +522,28 @@ function NavItem({
   onClick: () => void;
   activeColorClass: string;
   iconColorClass: string;
+  isCollapsed?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center space-x-3 rounded-xl border border-transparent px-3 py-2.5 text-xs font-semibold transition-all duration-200 ${
+      title={isCollapsed ? label : undefined}
+      className={`flex w-full items-center rounded-xl border border-transparent py-2.5 text-xs font-semibold transition-all duration-200 ${
+        isCollapsed ? 'justify-center px-0' : 'space-x-3 px-3'
+      } ${
         isActive
           ? `${activeColorClass} font-bold shadow-sm`
           : 'cursor-pointer text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100'
       }`}
     >
-      <span className={`transition-transform duration-200 ${isActive ? 'scale-110' : iconColorClass}`}>
+      <span className={`transition-transform duration-200 shrink-0 ${isActive ? 'scale-110' : iconColorClass}`}>
         {icon}
       </span>
-      <span className="truncate">{label}</span>
+      <span className={`transition-all duration-300 overflow-hidden whitespace-nowrap text-left ${
+        isCollapsed ? 'w-0 opacity-0 max-w-0 pointer-events-none' : 'w-auto opacity-100 max-w-xs ml-3'
+      }`}>
+        {label}
+      </span>
     </button>
   );
 }

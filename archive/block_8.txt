@@ -1,0 +1,44 @@
+Created At: 2026-06-15T04:15:33Z
+Completed At: 2026-06-15T04:15:33Z
+File Path: `file:///c:/Users/THOAI%20PC/Prompt_Builder-main/src/components/ProjectChainTab.tsx`
+Total Lines: 2045
+Total Bytes: 98280
+Showing lines 270 to 305
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+270:     try {
+271:       localStorage.setItem('mentor_ai_prompt_projects', JSON.stringify(updatedProjects));
+272:     } catch (e) {
+273:       console.error('Lỗi lưu LocalStorage:', e);
+274:     }
+275: 
+276:     // 2. Lưu Firestore nếu đã đăng nhập
+277:     if (user) {
+278:       setSyncStatus('saving');
+279:       try {
+280:         const docRef = doc(db, 'projects', updatedProject.id);
+281:         const isNew = !projects.some(p => p.id === updatedProject.id);
+282: 
+283:         const payload = {
+284:           id: updatedProject.id,
+285:           userId: user.uid,
+286:           name: updatedProject.name,
+287:           description: updatedProject.description || '',
+288:           nodes: updatedProject.nodes,
+289:           createdAt: isNew ? new Date().toISOString() : updatedProject.createdAt,
+290:           updatedAt: new Date().toISOString()
+291:         };
+292: 
+293:         await setDoc(docRef, payload);
+294:         setSyncStatus('synced');
+295:       } catch (err) {
+296:         console.error('Lỗi đồng bộ lên Firestore:', err);
+297:         setSyncStatus('error');
+298:       }
+299:     } else {
+300:       setSyncStatus('local');
+301:     }
+302:   };
+303: 
+304:   // --- 2. THAO TÁC TRÊN DỰ ÁN ---
+305: 
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

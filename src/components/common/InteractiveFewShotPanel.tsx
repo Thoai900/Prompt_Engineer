@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowRight, Check, Copy, FilePlus2, FlaskConical, Plus, Trash2 } from 'lucide-react';
-import { FewShotExample, PromptTemplate } from '../types';
+import { FewShotExample, PromptTemplate } from '../../types';
 
 interface InteractiveFewShotPanelProps {
   template: PromptTemplate;

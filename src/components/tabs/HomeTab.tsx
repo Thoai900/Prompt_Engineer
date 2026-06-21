@@ -5,7 +5,7 @@ import {
   Layers, Brain, Briefcase, GraduationCap, HelpCircle, Compass, 
   CheckCircle, Flame, RefreshCw, Star, Info, Edit3, Sparkle, Trash2
 } from 'lucide-react';
-import { generateStructuredTemplateFromTopic } from '../services/aiService';
+import { generateStructuredTemplateFromTopic } from '../../services/aiService';
 
 interface HomeTabProps {
   onSelectTemplate: (template: any) => void;

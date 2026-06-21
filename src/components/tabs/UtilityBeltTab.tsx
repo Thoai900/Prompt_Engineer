@@ -5,7 +5,7 @@ import {
   CheckCircle, MessageSquare, Save, Terminal, Globe, Cpu
 } from 'lucide-react';
 import { User } from 'firebase/auth';
-import { optimizeCustomInstructions } from '../services/aiService';
+import { optimizeCustomInstructions } from '../../services/aiService';
 
 // Interfaces
 interface CustomProfile {

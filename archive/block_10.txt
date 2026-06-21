@@ -1,0 +1,44 @@
+Created At: 2026-06-15T05:08:19Z
+Completed At: 2026-06-15T05:08:19Z
+File Path: `file:///C:/Users/THOAI%20PC/.gemini/antigravity/brain/62433a80-1b1a-4897-bb3b-e828f45376f1/restore_tab.js`
+Total Lines: 36
+Total Bytes: 1095
+Showing lines 1 to 36
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: const fs = require('fs');
+2: const path = require('path');
+3: 
+4: const logFile = path.join('C:', 'Users', 'THOAI PC', '.gemini', 'antigravity', 'brain', '62433a80-1b1a-4897-bb3b-e828f45376f1', '.system_generated', 'logs', 'transcript_full.jsonl');
+5: if (!fs.existsSync(logFile)) {
+6:   console.log('Log file does not exist at ' + logFile);
+7:   process.exit(1);
+8: }
+9: 
+10: const content = fs.readFileSync(logFile, 'utf8');
+11: const lines = content.split('\n');
+12: 
+13: let views = [];
+14: 
+15: for (const line of lines) {
+16:   if (!line.trim()) continue;
+17:   try {
+18:     const obj = JSON.parse(line);
+19:     // Find view_file tool output
+20:     if (obj.tool_calls) {
+21:       for (const tc of obj.tool_calls) {
+22:         if (tc.name === 'view_file' && tc.response) {
+23:           const res = tc.response;
+24:           if (res.includes('Total Lines: 2045')) {
+25:             views.push(res);
+26:           }
+27:         }
+28:       }
+29:     }
+30:   } catch (e) {}
+31: }
+32: 
+33: console.log(`Found ${views.length} views.`);
+34: // Let's write the views output to files so we can review them
+35: fs.writeFileSync('C:\\Users\\THOAI PC\\Prompt_Builder-main\\views.txt', views.join('\n\n--- VIEW ---\n\n'));
+36: 
+The above content shows the entire, complete file contents of the requested file.

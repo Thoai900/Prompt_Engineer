@@ -1,0 +1,49 @@
+Created At: 2026-06-15T04:15:31Z
+Completed At: 2026-06-15T04:15:31Z
+File Path: `file:///c:/Users/THOAI%20PC/Prompt_Builder-main/src/components/ProjectChainTab.tsx`
+Total Lines: 2045
+Total Bytes: 98280
+Showing lines 185 to 225
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+185:       // 2. Nếu đã đăng nhập, tải thêm từ Firestore
+186:       if (user) {
+187:         setSyncStatus('saving');
+188:         try {
+189:           const q = query(collection(db, 'projects'), where('userId', '==', user.uid));
+190:           const querySnapshot = await getDocs(q);
+191:           const dbProjects: PromptProject[] = [];
+192:           
+193:           querySnapshot.forEach((docSnap) => {
+194:             const data = docSnap.data();
+195:             dbProjects.push({
+196:               id: docSnap.id,
+197:               name: data.name,
+198:               description: data.description || '',
+199:               nodes: data.nodes || [],
+200:               createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt || new Date().toISOString(),
+201:               updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt || new Date().toISOString(),
+202:               userId: data.userId
+203:             });
+204:           });
+205: 
+206:           // Trộn dự án cục bộ và đám mây (ưu tiên đám mây hoặc theo id)
+207:           const merged = [...dbProjects];
+208:           localProjects.forEach(lp => {
+209:             if (!merged.some(mp => mp.id === lp.id)) {
+210:               merged.push(lp);
+211:             }
+212:           });
+213: 
+214:           setProjects(merged);
+215:           setActiveProject(merged[0] || null);
+216:           setSyncStatus('synced');
+217:         } catch (err) {
+218:           console.error('Lỗi tải từ Firestore, fallback LocalStorage:', err);
+219:           setProjects(localProjects);
+220:           setActiveProject(localProjects[0] || null);
+221:           setSyncStatus('local');
+222:         }
+223:       } else {
+224:         setProjects(localProjects);
+225:         setActiveProject(localProjects[0] || null);
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
