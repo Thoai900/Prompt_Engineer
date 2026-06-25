@@ -1132,3 +1132,66 @@ Chỉ trả về JSON object, không sử dụng markdown code block \`\`\`json.
   }
 }
 
+export interface AIChainEvaluation {
+  score: number;
+  weaknesses: string[];
+  suggestions: {
+    title: string;
+    description: string;
+    content: string;
+  }[];
+}
+
+export async function evaluateAndEnhancePrompt(
+  basePrompt: string,
+  simulationOutput: string,
+  options?: AiGenParams
+): Promise<AIChainEvaluation> {
+  try {
+    const client = options?.apiKey ? new GoogleGenAI({ apiKey: options.apiKey }) : ai;
+    const model = options?.model || 'gemini-3.5-flash';
+    
+    const systemInstruction = `Bạn là chuyên gia thẩm định và cải tiến Prompt cho hệ thống Mentor AI.
+Nhiệm vụ của bạn là phân tích prompt gốc của người dùng và kết quả phản hồi giả lập tương ứng của mô hình ngôn ngữ lớn để tìm ra các điểm yếu, lỗ hổng logic, lỗi định dạng, hoặc thiếu sót khác. Từ đó chấm điểm chất lượng và đề xuất các phần bổ sung ngắn gọn (ví dụ: bổ sung quy tắc, ví dụ cụ thể, các ràng buộc bổ sung) để nối vào cuối prompt gốc giúp cải thiện kết quả.
+
+BẠN BẮT BUỘC PHẢI TRẢ VỀ KẾT QUẢ DẠNG MỘT ĐỐI TƯỢNG JSON ĐÚNG CẤU TRÚC SAU (không bọc trong markdown code block \`\`\`json):
+{
+  "score": <điểm số chất lượng từ 0 đến 100>,
+  "weaknesses": [
+    "<nhược điểm/điểm chưa tốt thứ 1 bằng tiếng Việt>",
+    "<nhược điểm/điểm chưa tốt thứ 2 bằng tiếng Việt>"
+  ],
+  "suggestions": [
+    {
+      "title": "<tiêu đề ngắn gọn của đề xuất 1, ví dụ: Ràng buộc định dạng LaTeX>",
+      "description": "<mô tả chi tiết nhược điểm và tại sao cần đề xuất này>",
+      "content": "<nội dung cụ thể dạng text để nối thêm vào prompt gốc, ví dụ: \\n\\n[RÀNG BUỘC PHẢN HỒI]\\n- Luôn sử dụng LaTeX...>"
+    }
+  ]
+}
+
+Lưu ý: nội dung trong suggestions.content phải bắt đầu bằng 1 hoặc 2 dấu xuống dòng (\\n\\n) và được định dạng rõ ràng, sẵn sàng để nối trực tiếp vào prompt gốc của người dùng.`;
+
+    const response = await client.models.generateContent({
+      model,
+      contents: `[PROMPT GỐC CỦA NGƯỜI DÙNG]\n${basePrompt}\n\n[KẾT QUẢ GIẢ LẬP ĐẦU RA CỦA AI]\n${simulationOutput}`,
+      config: {
+        systemInstruction,
+        temperature: 0.2,
+        responseMimeType: "application/json"
+      }
+    });
+
+    const text = response.text || "{}";
+    return safeJsonParse(text);
+  } catch (error) {
+    console.error("evaluateAndEnhancePrompt failed:", error);
+    return {
+      score: 70,
+      weaknesses: ["Không thể thực hiện đánh giá tự động do lỗi kết nối AI."],
+      suggestions: []
+    };
+  }
+}
+
+

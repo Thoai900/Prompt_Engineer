@@ -93,6 +93,7 @@ export default function BuilderTab({
     showPlaygroundConfig,
     setShowPlaygroundConfig,
     handleSendPlaygroundMessage,
+    handleGenerateSampleResult,
     handleResetPlayground,
   } = usePlaygroundSession();
 
@@ -620,9 +621,7 @@ export default function BuilderTab({
 
   const handleStartPlaygroundSession = () => {
     const combinedSystem = generatePreviewContent(false, 'combined');
-    setPlaygroundMessages([
-      { role: 'assistant', content: 'Chào bạn! Mình đã sẵn sàng thử nghiệm. Prompt hệ thống đã được nạp tự động.' }
-    ]);
+    handleGenerateSampleResult(combinedSystem);
   };
 
   const onDragEnd = (result: DropResult) => {

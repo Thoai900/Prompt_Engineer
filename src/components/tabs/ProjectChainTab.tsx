@@ -1,32 +1,22 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
-  Plus, Trash2, Play, Save, Download, Upload, X, Edit2, 
-  Sparkles, Check, AlertCircle, ArrowRight, Search, FileText, 
-  ChevronRight, ChevronDown, Settings, Database, HelpCircle, 
-  RefreshCw, Cloud, CloudOff, ZoomIn, ZoomOut, Maximize2, Workflow, Wrench, Network
+  Plus, Trash2, Play, Save, Check, AlertCircle, ArrowRight, Settings, 
+  RefreshCw, Copy, ExternalLink, Sparkles, AlertTriangle, ArrowLeft,
+  ChevronRight, Wrench, Edit3, HelpCircle, Layers, FileText, X, Clock,
+  Upload, Download, ZoomIn, ZoomOut, Maximize2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  collection, doc, getDocs, query, where, setDoc, deleteDoc, serverTimestamp 
+  collection, doc, getDocs, query, where, setDoc, deleteDoc
 } from 'firebase/firestore';
-import { TreeNode, PromptProject, PromptBlock, PromptVariable, TabType, PromptTemplate, EvolutionType, SystemRole, TestCase, NodeExecutionStatus } from '../../types';
 import { db, handleFirestoreError } from '../../firebase';
 import { TEMPLATES } from '../../data';
-import { PRESET_SYSTEM_ROLES } from '../../presets';
-import { runPlaygroundChatStream, enhancePromptWithAi, evaluateOutputQualityWithAi, runAutomatedTestEvaluation } from '../../services/aiService';
-import { applyAutoLayoutToProject, compileEvolutionPrompt, getRequiredInputsForNode } from '../../utils/chainUtils';
+import { PromptProject, PromptBlock, PromptTemplate, TestCase, PromptVersion, TreeNode, EvolutionType, PromptVariable } from '../../types';
+import { runPlaygroundChatStream, evaluateAndEnhancePrompt, AIChainEvaluation } from '../../services/aiService';
 import AIResponseRenderer from '../common/AIResponseRenderer';
-
-
-// Subcomponents
 import { CanvasView } from '../project-chain/CanvasView';
 import { NodeDetailSidebar } from '../project-chain/NodeDetailSidebar';
 import { SimulatorPanel } from '../project-chain/SimulatorPanel';
-import { TestCasesPanel } from '../project-chain/TestCasesPanel';
-import { GlobalEvalCriteriaModal } from '../project-chain/modals/GlobalEvalCriteriaModal';
-import { LibraryImportPickerModal } from '../project-chain/modals/LibraryImportPickerModal';
-
-// Hooks
 import { useCanvasInteraction } from '../../hooks/useCanvasInteraction';
 import { useProjectPipeline } from '../../hooks/useProjectPipeline';
 
@@ -41,7 +31,7 @@ const DEFAULT_PROJECTS: PromptProject[] = [
   {
     id: 'proj-education-tutor',
     name: 'Gia sư Mentor AI chuyên sâu',
-    description: 'Chuỗi prompt phân tích chủ đề, xây dựng bài học lý thuyết và tạo đề thi trắc nghiệm đi kèm giải thích.',
+    description: 'Dự án mẫu giúp thiết kế và tinh chỉnh prompt cho gia sư ảo sử dụng phương pháp Socratic.',
     globalEvalCriteria: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -49,206 +39,129 @@ const DEFAULT_PROJECTS: PromptProject[] = [
       {
         id: 'node-root',
         parentId: null,
-        title: '1. Phân tích Chủ đề',
-        description: 'Phân tích chủ đề giảng dạy thành các nhánh bài học cốt lõi',
+        title: 'Prompt Nền Móng',
+        description: 'Prompt chính của dự án',
         status: 'idle',
-        position: { x: 100, y: 220 },
+        position: { x: 100, y: 100 },
         blocks: [
           {
-            id: 'block-root-1',
-            type: 'role',
-            title: 'Vai trò (Role)',
-            content: 'Bạn là một Mentor AI - chuyên gia phát triển nội dung giáo dục phổ thông theo phương pháp Socratic.'
-          },
-          {
-            id: 'block-root-2',
+            id: 'block-root-main',
             type: 'task',
-            title: 'Nhiệm vụ (Task)',
-            content: 'Hãy phân tích chủ đề: "{{subject}}" dành cho học sinh lớp {{grade}}.\n\nChia chủ đề thành 3 nội dung cốt lõi nhất cần nắm vững. Đối với mỗi nội dung, hãy nêu rõ mục tiêu học tập (Learning Objective) và từ khóa chính cần nhớ.\n\nLưu ý:\n- Sử dụng emoji thân thiện 😊\n- Trình bày dạng bullet points\n- Công thức nếu có hãy dùng LaTeX.'
-          }
-        ],
-        variables: [
-          { name: 'subject', type: 'text', description: 'Chủ đề bài học (vd: Quang hợp ở thực vật)', required: true, defaultValue: 'Chiến tranh thế giới thứ hai' },
-          { name: 'grade', type: 'text', description: 'Lớp học (vd: 10, 11, 12)', required: true, defaultValue: '11' }
-        ]
-      },
-      {
-        id: 'node-child-lesson',
-        parentId: 'node-root',
-        title: '2. Soạn bài giảng',
-        description: 'Tạo giáo án chi tiết và các ví dụ minh họa trực quan',
-        status: 'idle',
-        position: { x: 450, y: 100 },
-        blocks: [
-          {
-            id: 'block-lesson-1',
-            type: 'role',
-            title: 'Vai trò (Role)',
-            content: 'Bạn là một Mentor AI - gia sư thân thiện và ấm áp.'
-          },
-          {
-            id: 'block-lesson-2',
-            type: 'context',
-            title: 'Ngữ cảnh (Context)',
-            content: 'Dưới đây là phân tích chủ đề được thực hiện ở bước trước:\n\n{{1.Phân tíchChủđề.output}}'
-          },
-          {
-            id: 'block-lesson-3',
-            type: 'task',
-            title: 'Nhiệm vụ (Task)',
-            content: 'Hãy viết nội dung bài giảng chi tiết cho nhánh nội dung thứ nhất trong phần phân tích phía trên.\n\nKết cấu bài giảng gồm:\n1. Phần khởi động (Hook): đặt một câu hỏi khơi gợi tò mò theo phương pháp Socratic.\n2. Nội dung kiến thức: giải thích ngắn gọn, dễ hiểu.\n3. Ví dụ minh họa thực tế sinh động.'
-          }
-        ],
-        variables: []
-      },
-      {
-        id: 'node-child-quiz',
-        parentId: 'node-root',
-        title: '3. Bộ câu hỏi ôn tập',
-        description: 'Thiết kế các câu hỏi trắc nghiệm kiểm tra mức độ thấu hiểu bài học',
-        status: 'idle',
-        position: { x: 450, y: 350 },
-        blocks: [
-          {
-            id: 'block-quiz-1',
-            type: 'role',
-            title: 'Vai trò (Role)',
-            content: 'Bạn là một giáo viên Mentor AI chuyên ra đề thi tương tác.'
-          },
-          {
-            id: 'block-quiz-2',
-            type: 'context',
-            title: 'Ngữ cảnh (Context)',
-            content: 'Tham khảo phân tích chủ đề:\n{{1.Phân tíchChủđề.output}}'
-          },
-          {
-            id: 'block-quiz-3',
-            type: 'task',
-            title: 'Nhiệm vụ (Task)',
-            content: 'Hãy tạo ra 2 câu hỏi trắc nghiệm (mỗi câu 4 phương án A, B, C, D) kiểm tra kiến thức về các từ khóa chính nêu trong đề cương.\n\nBẮT BUỘC: Không cung cấp đáp án trực tiếp. Với mỗi câu hỏi, hãy viết gợi ý (Hint) định hướng tư duy theo phong cách Socratic giúp học sinh tự suy nghĩ chọn đáp án đúng.'
+            title: 'Prompt Nền Móng',
+            content: 'Bạn là một gia sư AI thân thiện. Hãy giải thích chủ đề: "{{subject}}" cho học sinh lớp {{grade}}.\n\nYêu cầu:\n- Không giải hộ bài tập trực tiếp, hãy đặt câu hỏi gợi mở để hướng dẫn học sinh.\n- Định dạng công thức toán nếu có bằng LaTeX.'
           }
         ],
         variables: []
       }
-    ]
+    ],
+    testCases: [],
+    versions: []
   }
 ];
 
-export default function ProjectChainTab({ 
-  theme = 'dark', 
-  user, 
-  customTemplates = [],
-  onSaveTemplate 
-}: ProjectChainTabProps) {
-  
-  // State quản lý danh sách dự án
+export default function ProjectChainTab({ theme = 'dark', user, customTemplates = [], onSaveTemplate }: ProjectChainTabProps) {
   const [projects, setProjects] = useState<PromptProject[]>([]);
   const [activeProject, setActiveProject] = useState<PromptProject | null>(null);
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'saving' | 'local' | 'error'>('local');
 
-  // State Canvas & selected node
-  const {
-    canvasOffset,
-    setCanvasOffset,
-    zoom,
-    setZoom,
-    startPanning,
-    handleWheel,
-    resetCanvasView
-  } = useCanvasInteraction({ x: 50, y: 50 }, 1);
+  // Dual-mode state
+  const [viewMode, setViewMode] = useState<'wizard' | 'canvas'>(() => {
+    return (localStorage.getItem('mentor_ai_project_chain_mode') as 'wizard' | 'canvas') || 'wizard';
+  });
 
-  const canvasRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    localStorage.setItem('mentor_ai_project_chain_mode', viewMode);
+  }, [viewMode]);
+
+  // Canvas View control states
+  const { canvasOffset, setCanvasOffset, zoom, setZoom, startPanning, handleWheel, resetCanvasView } = useCanvasInteraction();
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-
-  // Modals state
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [searchTemplateQuery, setSearchTemplateQuery] = useState('');
-  const [isEvalCriteriaModalOpen, setIsEvalCriteriaModalOpen] = useState(false);
-  const [newCriteriaText, setNewCriteriaText] = useState('');
-  const [isPipelineOpen, setIsPipelineOpen] = useState(false);
-
-  // Simulator state
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  
+  // Simulator Panel state for Canvas
   const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
   const [simulatorNode, setSimulatorNode] = useState<TreeNode | null>(null);
-  const [rootInputs, setRootInputs] = useState<Record<string, string>>({});
   const [compiledPromptPreview, setCompiledPromptPreview] = useState('');
   const [simulationResponse, setSimulationResponse] = useState('');
+  
+  // Node Template Modal state
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [searchTemplateQuery, setSearchTemplateQuery] = useState('');
+
+  // Wizard state
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+
+  // Step 1: Base Prompt state
+  const [basePromptInput, setBasePromptInput] = useState('');
+  const [extractedVars, setExtractedVars] = useState<string[]>([]);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [showVersionDrawer, setShowVersionDrawer] = useState(false);
+  const [selectedVersionToCompare, setSelectedVersionToCompare] = useState<PromptVersion | null>(null);
+  const [selectedNodeIndex, setSelectedNodeIndex] = useState<number>(0);
+
+  // Step 2: Simulation state
+  const [varValues, setVarValues] = useState<Record<string, string>>({});
+  const [simProvider, setSimProvider] = useState<'gemini' | 'openai'>('gemini');
+  const [simModel, setSimModel] = useState('gemini-2.5-flash');
+  const [simTemp, setSimTemp] = useState(0.7);
+  const [simMaxTokens, setSimMaxTokens] = useState(1000);
+  const [simOutput, setSimOutput] = useState('');
   const [isSimulating, setIsSimulating] = useState(false);
   
-  // Helper panels & automated testing state
-  const [showHelp, setShowHelp] = useState(true);
-  const [isUnitTestOpen, setIsUnitTestOpen] = useState(false);
-  const [selectedTestCaseId, setSelectedTestCaseId] = useState<string | null>(null);
-  const [isRunningAllTests, setIsRunningAllTests] = useState(false);
-  const [testSuiteLogs, setTestSuiteLogs] = useState<string[]>([]);
+  // Multi-step simulation execution state
+  const [nodeExecutionOutputs, setNodeExecutionOutputs] = useState<Record<number, string>>({});
+  const [currentExecutingNodeIndex, setCurrentExecutingNodeIndex] = useState<number | null>(null);
+  const [expandedSimNodeIndex, setExpandedSimNodeIndex] = useState<number | null>(0);
 
-  // Function to save project state
-  const saveActiveProject = async (updatedProject: PromptProject) => {
-    const updatedProjects = projects.map(p => p.id === updatedProject.id ? updatedProject : p);
+  // Step 3: Evaluation state
+  const [evaluation, setEvaluation] = useState<AIChainEvaluation | null>(null);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [appliedSuggestions, setAppliedSuggestions] = useState<Record<number, boolean>>({});
+  const [evalNodeIndex, setEvalNodeIndex] = useState<number>(0);
+
+  // Project modification modal/states
+  const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [newProjectDesc, setNewProjectDesc] = useState('');
+
+  const saveProjectState = async (updatedProj: PromptProject) => {
+    const updatedProjects = projects.map(p => p.id === updatedProj.id ? updatedProj : p);
     setProjects(updatedProjects);
-    setActiveProject(updatedProject);
+    setActiveProject(updatedProj);
 
     try {
       localStorage.setItem('mentor_ai_prompt_projects', JSON.stringify(updatedProjects));
     } catch (e) {
-      console.error('Lỗi lưu LocalStorage:', e);
+      console.error(e);
     }
 
     if (user) {
       setSyncStatus('saving');
       try {
-        const docRef = doc(db, 'projects', updatedProject.id);
-        const isNew = !projects.some(p => p.id === updatedProject.id);
-
-        const payload = {
-          id: updatedProject.id,
+        const docRef = doc(db, 'projects', updatedProj.id);
+        await setDoc(docRef, {
+          ...updatedProj,
           userId: user.uid,
-          name: updatedProject.name,
-          description: updatedProject.description || '',
-          globalEvalCriteria: updatedProject.globalEvalCriteria || [],
-          nodes: updatedProject.nodes,
-          createdAt: isNew ? new Date().toISOString() : updatedProject.createdAt,
           updatedAt: new Date().toISOString()
-        };
-
-        await setDoc(docRef, payload);
+        });
         setSyncStatus('synced');
       } catch (err) {
-        console.error('Lỗi lưu Firestore:', err);
+        console.error('Lỗi Firestore:', err);
         setSyncStatus('error');
-        handleFirestoreError(err, 'write', 'projects/' + updatedProject.id);
       }
     }
   };
 
-  // Pipeline hook setup
-  const {
-    syncStatus,
-    setSyncStatus,
-    pipelineStatus,
-    setPipelineStatus,
-    pipelineLogs,
-    setPipelineLogs,
-    pipelineCurrentNodeId,
-    pipelineNodeResponse,
-    setPipelineNodeResponse,
-    pipelineInputs,
-    setPipelineInputs,
-    pipelineRoutingMode,
-    setPipelineRoutingMode,
-    pipelineKeyword,
-    setPipelineKeyword,
-    simProvider,
-    setSimProvider,
-    simModel,
-    setSimModel,
-    simTemp,
-    setSimTemp,
-    startPipelineExecution,
-    handleStopPipeline,
-    handleResumePipelineManual
-  } = useProjectPipeline(activeProject, setActiveProject, setProjects, saveActiveProject, user);
+  // Pipeline Controller Hook for Canvas
+  const pipeline = useProjectPipeline(
+    activeProject,
+    setActiveProject,
+    setProjects,
+    saveProjectState,
+    user
+  );
 
-  // --- 1. TẢI VÀ SYNC DỰ ÁN ---
+  // --- 1. TẢI DỮ LIỆU ---
   useEffect(() => {
     async function loadProjects() {
       let localProjects: PromptProject[] = [];
@@ -284,16 +197,18 @@ export default function ProjectChainTab({
               createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt || new Date().toISOString(),
               updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt || new Date().toISOString(),
               userId: data.userId,
-              testCases: data.testCases || []
+              testCases: data.testCases || [],
+              versions: data.versions || []
             });
           });
 
           if (dbProjects.length > 0) {
             setProjects(dbProjects);
-            setActiveProject(dbProjects[0]);
+            const activeId = localStorage.getItem('active_project_id');
+            const foundActive = dbProjects.find(p => p.id === activeId) || dbProjects[0];
+            setActiveProject(foundActive);
             setSyncStatus('synced');
           } else {
-            // Write defaults to firestore
             for (const p of localProjects) {
               const docRef = doc(db, 'projects', p.id);
               await setDoc(docRef, { ...p, userId: user.uid });
@@ -310,7 +225,9 @@ export default function ProjectChainTab({
         }
       } else {
         setProjects(localProjects);
-        setActiveProject(localProjects[0] || null);
+        const activeId = localStorage.getItem('active_project_id');
+        const foundActive = localProjects.find(p => p.id === activeId) || localProjects[0];
+        setActiveProject(foundActive || null);
         setSyncStatus('local');
       }
     }
@@ -318,140 +235,143 @@ export default function ProjectChainTab({
     loadProjects();
   }, [user]);
 
-  // Sync projects routing changes from builder
+  // Reset selectedNodeIndex when project ID changes
+  const prevProjectIdRef = React.useRef(activeProject?.id);
   useEffect(() => {
-    if (projects.length === 0) return;
+    if (activeProject?.id !== prevProjectIdRef.current) {
+      setSelectedNodeIndex(0);
+      prevProjectIdRef.current = activeProject?.id;
+    }
+  }, [activeProject?.id]);
+
+  // Sync state to local state variables when active project changes or selectedNodeIndex changes
+  useEffect(() => {
+    if (!activeProject) {
+      setBasePromptInput('');
+      setExtractedVars([]);
+      return;
+    }
+    localStorage.setItem('active_project_id', activeProject.id);
     
-    const targetProjId = localStorage.getItem('mentor_ai_active_project_id');
-    const targetNodeId = localStorage.getItem('mentor_ai_selected_node_id');
+    // Ensure selectedNodeIndex is within range
+    const idx = Math.min(selectedNodeIndex, (activeProject.nodes || []).length - 1);
+    const currentNode = activeProject.nodes?.[idx >= 0 ? idx : 0];
+    const mainContent = currentNode?.blocks?.[0]?.content || '';
+    setBasePromptInput(mainContent);
     
-    if (targetProjId) {
-      const proj = projects.find(p => p.id === targetProjId);
-      if (proj) {
-        setActiveProject(proj);
-        localStorage.removeItem('mentor_ai_active_project_id');
-        
-        if (targetNodeId) {
-          setSelectedNodeId(targetNodeId);
-          localStorage.removeItem('mentor_ai_selected_node_id');
-          
-          const node = proj.nodes.find(n => n.id === targetNodeId);
-          if (node) {
-            setCanvasOffset({
-              x: Math.max(50, 250 - node.position.x * zoom),
-              y: Math.max(50, 200 - node.position.y * zoom)
-            });
-          }
+    // Reset simulation output & eval for the new project context
+    setSimOutput('');
+    setNodeExecutionOutputs({});
+    setEvaluation(null);
+    setAppliedSuggestions({});
+    setSelectedVersionToCompare(null);
+  }, [activeProject, selectedNodeIndex]);
+
+  // Extract variables automatically from all nodes (excluding output_X references)
+  useEffect(() => {
+    if (!activeProject) {
+      setExtractedVars([]);
+      return;
+    }
+    const allVars = new Set<string>();
+    activeProject.nodes.forEach(node => {
+      const nodeText = node.blocks?.[0]?.content || '';
+      const vars = extractVariables(nodeText);
+      vars.forEach(v => {
+        if (!/^[oO]utput_\d+$/.test(v)) {
+          allVars.add(v);
         }
-      }
-    }
-  }, [projects]);
-
-  // Project management handlers
-  const handleCreateNewProject = () => {
-    const newProj: PromptProject = {
-      id: `proj-${Date.now()}`,
-      name: `Dự án Chuỗi mới ${projects.length + 1}`,
-      description: 'Mô tả chuỗi prompt...',
-      globalEvalCriteria: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      nodes: [
-        {
-          id: 'node-root',
-          parentId: null,
-          title: '1. Khởi động (Root)',
-          description: 'Cấu hình System Role & các tham số chung đầu vào.',
-          status: 'idle',
-          position: { x: 100, y: 220 },
-          blocks: [
-            {
-              id: 'block-root-1',
-              type: 'role',
-              title: 'Vai trò (Role)',
-              content: 'Bạn là một Mentor AI - chuyên gia phát triển nội dung giáo dục.'
-            }
-          ],
-          variables: []
-        }
-      ]
-    };
-
-    const nextProjects = [...projects, newProj];
-    setProjects(nextProjects);
-    setActiveProject(newProj);
-    setSelectedNodeId(newProj.nodes[0].id);
-    saveActiveProject(newProj);
-  };
-
-  const handleDeleteProject = async (projectId: string) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa dự án này?')) return;
+      });
+    });
+    const varsArray = Array.from(allVars);
+    setExtractedVars(varsArray);
     
-    const updated = projects.filter(p => p.id !== projectId);
-    setProjects(updated);
-    
-    if (activeProject?.id === projectId) {
-      setActiveProject(updated[0] || null);
-      setSelectedNodeId(updated[0]?.nodes[0]?.id || null);
-    }
+    // Sync variables to varValues map
+    setVarValues(prev => {
+      const next = { ...prev };
+      varsArray.forEach(v => {
+        if (next[v] === undefined) next[v] = '';
+      });
+      return next;
+    });
+  }, [activeProject?.nodes, basePromptInput]);
 
-    try {
-      localStorage.setItem('mentor_ai_prompt_projects', JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
-    }
+  // Debounced auto-save versions when user stops typing in Step 1
+  useEffect(() => {
+    if (!activeProject || !basePromptInput.trim()) return;
 
-    if (user) {
-      try {
-        await deleteDoc(doc(db, 'projects', projectId));
-      } catch (err) {
-        console.error(err);
+    const currentSavedText = activeProject.nodes?.[selectedNodeIndex]?.blocks?.[0]?.content || '';
+    if (basePromptInput === currentSavedText) return;
+
+    const timer = setTimeout(() => {
+      const now = Date.now();
+      const prevVersions = [...(activeProject.versions || [])];
+      const lastVer = prevVersions[0];
+      
+      const isRecentDraft = lastVer && 
+        lastVer.description === `Tự động lưu nháp (Bước ${selectedNodeIndex + 1})` && 
+        (now - new Date(lastVer.timestamp).getTime()) < 120000; // 2 minutes
+
+      const newVersion: PromptVersion = {
+        id: isRecentDraft ? lastVer.id : `ver-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        content: basePromptInput,
+        description: `Tự động lưu nháp (Bước ${selectedNodeIndex + 1})`
+      };
+
+      let updatedVersions;
+      if (isRecentDraft) {
+        prevVersions[0] = newVersion;
+        updatedVersions = prevVersions;
+      } else {
+        updatedVersions = [newVersion, ...prevVersions].slice(0, 50);
       }
-    }
-  };
 
-  const handleImportProjectJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const project = JSON.parse(event.target?.result as string) as PromptProject;
-        if (!project.name || !project.nodes || !Array.isArray(project.nodes)) {
-          alert('JSON không đúng định dạng Prompt Project.');
-          return;
-        }
-        
-        project.id = `proj-${Date.now()}`;
-        project.createdAt = new Date().toISOString();
-        project.updatedAt = new Date().toISOString();
-        
-        const nextProjects = [...projects, project];
-        setProjects(nextProjects);
-        setActiveProject(project);
-        setSelectedNodeId(project.nodes[0]?.id || null);
-        await saveActiveProject(project);
-        alert('Nhập dự án thành công!');
-      } catch (err) {
-        alert('Lỗi đọc tệp: ' + err);
+      const updatedNodes = [...(activeProject.nodes || [])];
+      if (updatedNodes.length > selectedNodeIndex) {
+        updatedNodes[selectedNodeIndex] = {
+          ...updatedNodes[selectedNodeIndex],
+          blocks: [{
+            ...(updatedNodes[selectedNodeIndex].blocks?.[0] || { 
+              id: `block-${Date.now()}-${selectedNodeIndex}`, 
+              type: 'task', 
+              title: updatedNodes[selectedNodeIndex].title 
+            }),
+            content: basePromptInput
+          }]
+        };
       }
-    };
-    reader.readAsText(file);
+
+      saveProjectState({
+        ...activeProject,
+        nodes: updatedNodes,
+        versions: updatedVersions
+      });
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [basePromptInput, activeProject, selectedNodeIndex]);
+
+  const extractVariables = (text: string): string[] => {
+    const regex = /\{\{([a-zA-Z0-9_]+)(?::[^}]+)?\}\}/g;
+    const matches = new Set<string>();
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      matches.add(match[1]);
+    }
+    return Array.from(matches);
   };
 
-  const handleExportProjectJSON = () => {
-    if (!activeProject) return;
-    const blob = new Blob([JSON.stringify(activeProject, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${activeProject.name.replace(/\s+/g, '_')}_project_chain.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const injectVariables = (text: string, values: Record<string, string>): string => {
+    let result = text;
+    Object.entries(values).forEach(([key, val]) => {
+      const regex = new RegExp(`\\{\\{${key}(?::[^}]+)?\\}\\}`, 'g');
+      result = result.replace(regex, val);
+    });
+    return result;
   };
 
-  // Node editing handlers
+  // --- CANVAS HANDLERS ---
   const activeNode = useMemo(() => {
     if (!activeProject || !selectedNodeId) return null;
     return activeProject.nodes.find(n => n.id === selectedNodeId) || null;
@@ -463,131 +383,9 @@ export default function ProjectChainTab({
       n.id === selectedNodeId ? { ...n, ...fields } : n
     );
     const updatedProj = { ...activeProject, nodes: updatedNodes, updatedAt: new Date().toISOString() };
-    saveActiveProject(updatedProj);
+    saveProjectState(updatedProj);
   };
 
-  const handleAddChildNode = (parentId: string) => {
-    if (!activeProject) return;
-    const parentNode = activeProject.nodes.find(n => n.id === parentId);
-    if (!parentNode) return;
-
-    const newChild: TreeNode = {
-      id: `node-${Date.now()}`,
-      parentId: parentId,
-      title: `Node phụ ${activeProject.nodes.length + 1}`,
-      description: 'Mô tả node mới...',
-      status: 'idle',
-      position: {
-        x: parentNode.position.x + 280,
-        y: parentNode.position.y
-      },
-      blocks: [
-        {
-          id: `block-${Date.now()}-1`,
-          type: 'context',
-          title: 'Ngữ cảnh (Context)',
-          content: 'Kết quả trước:\n{{parent.output}}'
-        },
-        {
-          id: `block-${Date.now()}-2`,
-          type: 'task',
-          title: 'Nhiệm vụ (Task)',
-          content: 'Hãy thực hiện...'
-        }
-      ],
-      variables: []
-    };
-
-    const updatedProj = {
-      ...activeProject,
-      nodes: [...activeProject.nodes, newChild],
-      updatedAt: new Date().toISOString()
-    };
-    const layoutedProj = applyAutoLayoutToProject(updatedProj);
-    saveActiveProject(layoutedProj);
-    setSelectedNodeId(newChild.id);
-  };
-
-  const handleDeleteNode = (nodeId: string) => {
-    if (!activeProject) return;
-    if (!confirm('Bạn có chắc chắn muốn xóa node này và các nhánh con của nó?')) return;
-
-    const idsToDelete = new Set<string>([nodeId]);
-    let prevSize = 0;
-    while (prevSize !== idsToDelete.size) {
-      prevSize = idsToDelete.size;
-      activeProject.nodes.forEach(n => {
-        if (n.parentId && idsToDelete.has(n.parentId)) {
-          idsToDelete.add(n.id);
-        }
-      });
-    }
-
-    const remainingNodes = activeProject.nodes.filter(n => !idsToDelete.has(n.id));
-    const updatedProj = {
-      ...activeProject,
-      nodes: remainingNodes,
-      updatedAt: new Date().toISOString()
-    };
-    
-    if (selectedNodeId && idsToDelete.has(selectedNodeId)) {
-      setSelectedNodeId(remainingNodes[0]?.id || null);
-    }
-    
-    const layoutedProj = applyAutoLayoutToProject(updatedProj);
-    saveActiveProject(layoutedProj);
-  };
-
-  const handleCreateBranchNode = (type: 'success' | 'failure') => {
-    if (!activeProject || !simulatorNode) return;
-    
-    const hasExisting = activeProject.nodes.some(n => n.parentId === simulatorNode.id && n.branchType === type);
-    if (hasExisting) {
-      alert(`Đã cấu hình nhánh "${type === 'success' ? 'Thành công (Success)' : 'Thất bại (Failure)'}" cho node này.`);
-      return;
-    }
-
-    const newChild: TreeNode = {
-      id: `node-branch-${Date.now()}`,
-      parentId: simulatorNode.id,
-      branchType: type,
-      title: type === 'success' ? `Nhánh Nâng Cao (Success)` : `Nhánh Sửa Lỗi (Failure)`,
-      description: type === 'success' ? 'Nhánh nâng cao khi prompt đạt hiệu quả.' : 'Nhánh khắc phục, bổ sung ràng buộc khi prompt chưa tốt.',
-      status: 'idle',
-      position: {
-        x: simulatorNode.position.x + 280,
-        y: type === 'success' ? simulatorNode.position.y - 120 : simulatorNode.position.y + 120
-      },
-      blocks: [
-        {
-          id: `block-${Date.now()}-1`,
-          type: 'context',
-          title: 'Ngữ cảnh (Context)',
-          content: 'Tham chiếu kết quả trước:\n{{parent.output}}'
-        },
-        {
-          id: `block-${Date.now()}-2`,
-          type: 'task',
-          title: 'Nhiệm vụ (Task)',
-          content: type === 'success' ? 'Tiếp tục phát triển nội dung...' : 'Hãy sửa lỗi hoặc định hướng lại...'
-        }
-      ],
-      variables: []
-    };
-
-    const updatedProj = {
-      ...activeProject,
-      nodes: [...activeProject.nodes, newChild],
-      updatedAt: new Date().toISOString()
-    };
-    
-    const layoutedProj = applyAutoLayoutToProject(updatedProj);
-    saveActiveProject(layoutedProj);
-    setSelectedNodeId(newChild.id);
-    setIsSimulatorOpen(false);
-  };
-
-  // Node block editing helpers
   const handleAddBlockToNode = (type: PromptBlock['type']) => {
     if (!activeNode) return;
     const typeTitles: Record<string, string> = {
@@ -680,55 +478,158 @@ export default function ProjectChainTab({
   };
 
   const handleSelectSystemRole = (roleId: string) => {
-    if (!activeProject || !selectedNodeId) return;
     const role = PRESET_SYSTEM_ROLES.find(r => r.id === roleId);
-    if (!role) return;
+    if (!role || !activeNode) return;
+    
+    const updatedBlocks = [...activeNode.blocks];
+    if (updatedBlocks[0] && updatedBlocks[0].type === 'role') {
+      updatedBlocks[0] = { ...updatedBlocks[0], content: role.rolePrompt };
+    } else {
+      updatedBlocks.unshift({
+        id: `block-role-${Date.now()}`,
+        type: 'role',
+        title: 'Vai trò (Role)',
+        content: role.rolePrompt
+      });
+    }
 
-    const updatedNodes = activeProject.nodes.map(n => {
-      if (n.id === selectedNodeId) {
-        return {
-          ...n,
-          blocks: [
-            {
-              id: `block-role-${Date.now()}`,
-              type: 'role' as const,
-              title: 'Vai trò Hệ thống (System Role)',
-              content: role.rolePrompt
-            }
-          ],
-          variables: role.variables.map(v => ({ ...v }))
-        };
-      }
-      return n;
+    handleUpdateNodeFields({
+      blocks: updatedBlocks,
+      variables: role.variables ? role.variables.map(v => ({ ...v })) : []
     });
-
-    const updatedProj = { ...activeProject, nodes: updatedNodes, updatedAt: new Date().toISOString() };
-    saveActiveProject(updatedProj);
   };
 
-  // Node position dragging
-  const updateNodePosition = (nodeId: string, pos: { x: number; y: number }) => {
+  const handleExportNodeAsTemplate = () => {
+    if (!activeNode || !onSaveTemplate) return;
+    const template: PromptTemplate = {
+      id: `tpl-${Date.now()}`,
+      title: activeNode.title,
+      description: activeNode.description,
+      blocks: activeNode.blocks,
+      variables: activeNode.variables
+    };
+    onSaveTemplate(template)
+      .then(() => alert('Đã lưu Node thành Template thư viện thành công!'))
+      .catch(err => alert('Không thể xuất template: ' + err.message));
+  };
+
+  const handleImportTemplateIntoNode = (template: PromptTemplate) => {
+    if (!activeNode) return;
+    if (!confirm(`Bạn có muốn thay thế các khối Prompt hiện tại của node "${activeNode.title}" bằng mẫu "${template.title}" không?`)) return;
+
+    handleUpdateNodeFields({
+      title: `${activeNode.title.split('.')[0] || 'Node'}. ${template.title}`,
+      description: template.description || activeNode.description,
+      blocks: template.blocks.map(b => ({
+        id: `block-${Date.now()}-${b.id}`,
+        type: b.type,
+        title: b.title,
+        content: b.content
+      })),
+      variables: template.variables ? template.variables.map(v => ({ ...v })) : []
+    });
+    setIsImportModalOpen(false);
+  };
+
+  // --- CANVAS STRUCTURAL HANDLERS ---
+  const handleAddChildNodeCanvas = (parentId: string) => {
+    if (!activeProject) return;
+    const parentNode = activeProject.nodes.find(n => n.id === parentId);
+    if (!parentNode) return;
+
+    const childrenCount = activeProject.nodes.filter(n => n.parentId === parentId).length;
+
+    const newChild: TreeNode = {
+      id: `node-${Date.now()}`,
+      parentId: parentId,
+      title: `${parentNode.title.split('.')[0] || 'Node'}.${childrenCount + 1} Tiếp theo`,
+      description: 'Nhánh con của ' + parentNode.title,
+      status: 'idle',
+      position: { 
+        x: parentNode.position.x + 280, 
+        y: parentNode.position.y + (childrenCount * 140) - (childrenCount > 0 ? 50 : 0) 
+      },
+      blocks: [
+        {
+          id: `b-${Date.now()}-1`,
+          type: 'context',
+          title: 'Ngữ cảnh (Context)',
+          content: `Tham khảo kết quả từ bước trước:\n\n{{${parentNode.title.replace(/\s+/g, '')}.output}}`
+        },
+        {
+          id: `b-${Date.now()}-2`,
+          type: 'task',
+          title: 'Nhiệm vụ (Task)',
+          content: 'Hãy thực hiện...'
+        }
+      ],
+      variables: []
+    };
+
+    const updatedNodes = [...activeProject.nodes, newChild];
+    const updatedProj = { ...activeProject, nodes: updatedNodes, updatedAt: new Date().toISOString() };
+    saveProjectState(updatedProj);
+    setSelectedNodeId(newChild.id);
+  };
+
+  const handleDeleteNodeCanvas = (nodeId: string) => {
+    if (!activeProject) return;
+    const node = activeProject.nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    
+    if (node.parentId === null) {
+      alert('Không thể xóa Node gốc!');
+      return;
+    }
+
+    if (!confirm(`Bạn có chắc chắn muốn xóa Node "${node.title}" và mọi node phụ thuộc?`)) return;
+
+    const idsToDelete = new Set<string>([nodeId]);
+    let checking = true;
+    while (checking) {
+      const sizeBefore = idsToDelete.size;
+      activeProject.nodes.forEach(n => {
+        if (n.parentId && idsToDelete.has(n.parentId)) {
+          idsToDelete.add(n.id);
+        }
+      });
+      if (idsToDelete.size === sizeBefore) {
+        checking = false;
+      }
+    }
+
+    const remainingNodes = activeProject.nodes.filter(n => !idsToDelete.has(n.id));
+    const updatedProj = { ...activeProject, nodes: remainingNodes, updatedAt: new Date().toISOString() };
+    saveProjectState(updatedProj);
+    
+    if (selectedNodeId && idsToDelete.has(selectedNodeId)) {
+      setSelectedNodeId(null);
+    }
+  };
+
+  const updateNodePositionCanvas = (nodeId: string, pos: { x: number; y: number }) => {
     if (!activeProject) return;
     const updatedNodes = activeProject.nodes.map(n => 
       n.id === nodeId ? { ...n, position: pos } : n
     );
     const updatedProj = { ...activeProject, nodes: updatedNodes };
+    
     setProjects(prev => prev.map(p => p.id === activeProject.id ? updatedProj : p));
     setActiveProject(updatedProj);
   };
 
-  const saveNodeDragEnd = () => {
+  const saveNodeDragEndCanvas = () => {
     if (activeProject) {
-      saveActiveProject(activeProject);
+      saveProjectState(activeProject);
     }
   };
 
-  const startDragNode = (e: React.MouseEvent, nodeId: string) => {
+  const startDragNodeCanvas = (e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation();
     e.preventDefault();
     if (!activeProject) return;
     const node = activeProject.nodes.find(n => n.id === nodeId);
-    if (!node || node.parentId === null) return; 
+    if (!node) return;
 
     const startX = e.clientX;
     const startY = e.clientY;
@@ -738,7 +639,7 @@ export default function ProjectChainTab({
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const dx = (moveEvent.clientX - startX) / zoom;
       const dy = (moveEvent.clientY - startY) / zoom;
-      updateNodePosition(nodeId, {
+      updateNodePositionCanvas(nodeId, {
         x: Math.round(initialX + dx),
         y: Math.round(initialY + dy)
       });
@@ -747,103 +648,22 @@ export default function ProjectChainTab({
     const handleMouseUp = () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
-      saveNodeDragEnd();
+      saveNodeDragEndCanvas();
     };
     
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
   };
 
-  // Auto layout trigger
-  const handleTriggerAutoLayout = () => {
-    if (!activeProject) return;
-    const updatedProj = applyAutoLayoutToProject(activeProject);
-    saveActiveProject(updatedProj);
-  };
-
-  // Global Criteria management
-  const handleAddCriteria = (criterion: string) => {
-    if (!activeProject || !criterion.trim()) return;
-    const updatedProj = {
-      ...activeProject,
-      globalEvalCriteria: [...(activeProject.globalEvalCriteria || []), criterion.trim()],
-      updatedAt: new Date().toISOString()
-    };
-    saveActiveProject(updatedProj);
-    setNewCriteriaText('');
-  };
-
-  const handleDeleteCriteria = (index: number) => {
-    if (!activeProject) return;
-    const list = [...(activeProject.globalEvalCriteria || [])];
-    list.splice(index, 1);
-    const updatedProj = {
-      ...activeProject,
-      globalEvalCriteria: list,
-      updatedAt: new Date().toISOString()
-    };
-    saveActiveProject(updatedProj);
-  };
-
-  // Template import/export
-  const filteredTemplates = useMemo(() => {
-    const list = [...TEMPLATES, ...customTemplates];
-    if (!searchTemplateQuery.trim()) return list;
-    return list.filter(t => 
-      t.title.toLowerCase().includes(searchTemplateQuery.toLowerCase()) ||
-      t.description.toLowerCase().includes(searchTemplateQuery.toLowerCase())
-    );
-  }, [searchTemplateQuery, customTemplates]);
-
-  const handleImportTemplateIntoNode = (template: PromptTemplate) => {
-    if (!activeNode || !activeProject) return;
-    const updatedNodes = activeProject.nodes.map(n => {
-      if (n.id === activeNode.id) {
-        return {
-          ...n,
-          blocks: template.blocks.map(b => ({ ...b, id: `block-${Date.now()}-${Math.random().toString().slice(-4)}` })),
-          variables: (template.variables || []).map(v => ({ ...v }))
-        };
-      }
-      return n;
-    });
-
-    const updatedProj = { ...activeProject, nodes: updatedNodes, updatedAt: new Date().toISOString() };
-    saveActiveProject(updatedProj);
-    setIsImportModalOpen(false);
-  };
-
-  const handleExportNodeAsTemplate = async () => {
-    if (!activeNode || !onSaveTemplate) return;
-    const newTemplate: PromptTemplate = {
-      id: `tmpl-${Date.now()}`,
-      title: `Bản sao từ Node "${activeNode.title}"`,
-      description: activeNode.description || 'Được xuất ra từ sơ đồ chuỗi nodes.',
-      blocks: activeNode.blocks,
-      variables: activeNode.variables,
-      category: 'My templates',
-      isPublic: false,
-      status: 'Published',
-      createdAt: new Date().toISOString()
-    };
-
-    try {
-      await onSaveTemplate(newTemplate);
-      alert('Đã xuất thành công mẫu prompt vào thư viện của bạn!');
-    } catch (e: any) {
-      alert('Không thể xuất mẫu: ' + e.message);
-    }
-  };
-
-  // --- 2. SIMULATOR EXECUTION ---
-  const handleOpenSimulator = (nodeId: string) => {
+  // --- SIMULATION & PIPELINE HANDLERS FOR CANVAS ---
+  const handleOpenSimulatorCanvas = (nodeId: string) => {
     if (!activeProject) return;
     const node = activeProject.nodes.find(n => n.id === nodeId);
     if (!node) return;
 
     setSimulatorNode(node);
     
-    const defaultInputs: Record<string, string> = { ...rootInputs };
+    const defaultInputs: Record<string, string> = { ...pipeline.pipelineInputs };
     activeProject.nodes.forEach(n => {
       n.variables?.forEach(v => {
         if (v.defaultValue && defaultInputs[v.name] === undefined) {
@@ -852,48 +672,72 @@ export default function ProjectChainTab({
       });
     });
 
-    setRootInputs(defaultInputs);
-    const preview = compileEvolutionPrompt(node, activeProject, defaultInputs);
+    pipeline.setPipelineInputs(defaultInputs);
+
+    // Compile preview
+    const preview = compilePromptTextCanvas(node, activeProject, defaultInputs);
     setCompiledPromptPreview(preview);
     setSimulationResponse(node.output || '');
     setIsSimulatorOpen(true);
   };
 
-  const handleVariableInputChange = (name: string, value: string) => {
-    if (!simulatorNode || !activeProject) return;
-    const updated = { ...rootInputs, [name]: value };
-    setRootInputs(updated);
-    const preview = compileEvolutionPrompt(simulatorNode, activeProject, updated);
-    setCompiledPromptPreview(preview);
+  const compilePromptTextCanvas = (node: TreeNode, project: PromptProject, inputs: Record<string, string>): string => {
+    let compiled = node.blocks.map(b => `[${b.title}]\n${b.content}`).join('\n\n');
+    const varRegex = /\{\{([^}]+)\}\}/g;
+    
+    const replacements: Record<string, string> = {};
+    const ancestors: TreeNode[] = [];
+    let currentParentId = node.parentId;
+    while (currentParentId) {
+      const parentNode = project.nodes.find(n => n.id === currentParentId);
+      if (parentNode) {
+        ancestors.push(parentNode);
+        currentParentId = parentNode.parentId;
+      } else {
+        break;
+      }
+    }
+
+    const directParent = ancestors[0];
+    if (directParent) {
+      replacements['parent.output'] = directParent.output || `[LƯU Ý: Đầu ra của Node "${directParent.title}" chưa được thực thi. Vui lòng chạy Node cha trước!]`;
+    }
+
+    ancestors.forEach(anc => {
+      const key = `${anc.title.replace(/\s+/g, '')}.output`;
+      replacements[key] = anc.output || `[LƯU Ý: Đầu ra của Node "${anc.title}" chưa được thực thi. Vui lòng chạy Node này trước!]`;
+    });
+
+    return compiled.replace(varRegex, (match, varName) => {
+      const cleanedName = varName.trim();
+      if (replacements[cleanedName] !== undefined) {
+        return replacements[cleanedName];
+      }
+      if (inputs[cleanedName] !== undefined && inputs[cleanedName] !== '') {
+        return inputs[cleanedName];
+      }
+      const defVar = project.nodes.flatMap(n => n.variables || []).find(v => v.name === cleanedName);
+      if (defVar && defVar.defaultValue) {
+        return defVar.defaultValue;
+      }
+      return match;
+    });
   };
 
-  const updateNodeOutputAndStatus = (nodeId: string, output: string, status: NodeExecutionStatus, draftOutput?: string) => {
-    if (!activeProject) return;
-    const updatedNodes = activeProject.nodes.map(n => {
-      if (n.id === nodeId) {
-        const upd: Partial<TreeNode> = { status, output };
-        if (draftOutput !== undefined) {
-          upd.draftOutput = draftOutput;
-        }
-        return { ...n, ...upd };
-      }
-      return n;
-    });
-    const updatedProj = { ...activeProject, nodes: updatedNodes, updatedAt: new Date().toISOString() };
-    saveActiveProject(updatedProj);
-    
-    if (simulatorNode?.id === nodeId) {
-      setSimulatorNode(prev => prev ? { ...prev, output, status, draftOutput: draftOutput || prev.draftOutput } : null);
+  const handleVariableInputChangeCanvas = (name: string, value: string) => {
+    const updated = { ...pipeline.pipelineInputs, [name]: value };
+    pipeline.setPipelineInputs(updated);
+    if (simulatorNode && activeProject) {
+      const preview = compilePromptTextCanvas(simulatorNode, activeProject, updated);
+      setCompiledPromptPreview(preview);
     }
   };
 
-  const handleRunSimulation = async () => {
+  const handleRunSimulationCanvas = async () => {
     if (!simulatorNode || !activeProject) return;
     
-    setIsSimulating(true);
-    setSimulationResponse('');
-    updateNodeOutputAndStatus(simulatorNode.id, '', 'running');
-
+    pipeline.setPipelineNodeResponse('');
+    
     const systemInstruction = `Bạn là Mentor AI - gia sư thân thiện, kiên nhẫn và khuyến khích cho học sinh trung học. Hãy tuân thủ nghiêm ngặt:
 1. Tuyệt đối KHÔNG giải hộ bài tập hay đưa ra đáp án trực tiếp. Sử dụng phương pháp Socratic để đặt câu hỏi khơi gợi tư duy, dẫn dắt từng bước để học sinh tự tìm ra câu trả lời.
 2. Giọng điệu thân thiện, kiên nhẫn, sử dụng emoji một cách ấm áp, khích lệ.
@@ -902,936 +746,1728 @@ export default function ProjectChainTab({
     const customKey = localStorage.getItem('mentor_ai_gemini_key') || '';
     const useSystemKey = localStorage.getItem('mentor_ai_use_system_key') !== 'false';
     const openaiKey = localStorage.getItem('mentor_ai_openai_key') || '';
-    const apiKey = simProvider === 'gemini' 
+    const apiKey = pipeline.simProvider === 'gemini' 
       ? (useSystemKey ? undefined : customKey)
       : openaiKey;
 
     let accumulatedOutput = '';
+    pipeline.setPipelineStatus('running');
+
     try {
       await runPlaygroundChatStream(
-        simProvider,
+        pipeline.simProvider,
         systemInstruction,
         [{ role: 'user', content: compiledPromptPreview }],
         {
           apiKey,
-          model: simModel,
-          temperature: simTemp
+          model: pipeline.simModel,
+          temperature: pipeline.simTemp
         },
         (chunk) => {
           accumulatedOutput += chunk;
           setSimulationResponse(accumulatedOutput);
         }
       );
-      updateNodeOutputAndStatus(simulatorNode.id, accumulatedOutput, 'success');
-    } catch (err: any) {
-      console.error(err);
-      updateNodeOutputAndStatus(simulatorNode.id, `Lỗi thực thi: ${err.message || err}`, 'error');
-    } finally {
-      setIsSimulating(false);
-    }
-  };
 
-  const handleRunDraft = async () => {
-    if (!simulatorNode || !activeProject) return;
-    
-    setIsSimulating(true);
-    setSimulationResponse('');
-    updateNodeOutputAndStatus(simulatorNode.id, '', 'drafting');
-
-    const criteriaList = activeProject.globalEvalCriteria && activeProject.globalEvalCriteria.length > 0
-      ? activeProject.globalEvalCriteria.map((c, i) => `- ${c}`).join('\n')
-      : '- Không có quy chuẩn cụ thể.';
-
-    const draftSystemInstruction = `Bạn là Mentor AI. Hãy sinh phản hồi nháp cực ngắn dựa trên prompt người dùng (tối đa 4 câu).
-Bắt buộc sau nội dung đó, tự viết 1 phần tự kiểm duyệt trong thẻ <evaluation>...</evaluation> liệt kê xem phản hồi có thỏa mãn các quy chuẩn sau hay không:
-${criteriaList}
-
-Quy chuẩn bất biến của Mentor AI:
-- Không giải bài tập hộ (chỉ gợi mở Socratic).
-- Sử dụng LaTeX.`;
-
-    const customKey = localStorage.getItem('mentor_ai_gemini_key') || '';
-    const useSystemKey = localStorage.getItem('mentor_ai_use_system_key') !== 'false';
-    const apiKey = useSystemKey ? undefined : customKey;
-
-    let accumulatedOutput = '';
-    try {
-      await runPlaygroundChatStream(
-        'gemini',
-        draftSystemInstruction,
-        [{ role: 'user', content: compiledPromptPreview }],
-        {
-          apiKey,
-          model: 'gemini-2.5-flash',
-          temperature: 0.2
-        },
-        (chunk) => {
-          accumulatedOutput += chunk;
-          setSimulationResponse(accumulatedOutput);
-        }
+      // Cập nhật output cho node và lưu dự án
+      const updatedNodes = activeProject.nodes.map(n => 
+        n.id === simulatorNode.id ? { ...n, output: accumulatedOutput, status: 'success' as const } : n
       );
-      updateNodeOutputAndStatus(simulatorNode.id, '', 'drafted', accumulatedOutput);
+      const updatedProj = { ...activeProject, nodes: updatedNodes, updatedAt: new Date().toISOString() };
+      saveProjectState(updatedProj);
+      setSimulatorNode(prev => prev ? { ...prev, output: accumulatedOutput, status: 'success' as const } : null);
+      
     } catch (err: any) {
       console.error(err);
-      updateNodeOutputAndStatus(simulatorNode.id, `Lỗi chạy nháp: ${err.message || err}`, 'error');
+      setSimulationResponse(`❌ Lỗi thực thi: ${err.message}`);
     } finally {
-      setIsSimulating(false);
+      pipeline.setPipelineStatus('idle');
     }
   };
 
-  const handleEvaluateDraft = (evaluation: 'effective' | 'ineffective') => {
+  const handleEvaluateDraftCanvas = (evalType: 'effective' | 'ineffective') => {
     if (!simulatorNode || !activeProject) return;
-    
-    const draftText = simulatorNode.draftOutput || simulationResponse;
-    const finalCleanText = draftText.replace(/<evaluation>[\s\S]*?<\/evaluation>/g, '').trim();
-
-    const updatedNodes = activeProject.nodes.map(n => {
-      if (n.id === simulatorNode.id) {
-        return {
-          ...n,
-          status: 'success' as const,
-          output: finalCleanText,
-          userEvaluation: evaluation
-        };
-      }
-      return n;
-    });
-
-    const updatedProj = { ...activeProject, nodes: updatedNodes, updatedAt: new Date().toISOString() };
-    saveActiveProject(updatedProj);
-    setSimulatorNode(prev => prev ? { ...prev, status: 'success', output: finalCleanText, userEvaluation: evaluation } : null);
-    setSimulationResponse(finalCleanText);
-
-    // Auto-create branching node
-    const branchType = evaluation === 'effective' ? 'success' : 'failure';
-    handleCreateBranchNode(branchType);
-  };
-
-  const handleSaveModifiedSimulatorOutput = (text: string) => {
-    if (!simulatorNode || !activeProject) return;
-    updateNodeOutputAndStatus(simulatorNode.id, text, 'success');
-  };
-
-  // --- 3. AUTOMATED UNIT TESTING & AI JUDGE ---
-  const handleAddTestCase = () => {
-    if (!activeProject) return;
-    
-    const rootNode = activeProject.nodes.find(n => n.parentId === null);
-    const initialInputs: Record<string, string> = {};
-    rootNode?.variables?.forEach(v => {
-      initialInputs[v.name] = v.defaultValue || '';
-    });
-
-    const newCase: TestCase = {
-      id: `tc-${Date.now()}`,
-      name: `Kiểm thử Case ${ (activeProject.testCases || []).length + 1 }`,
-      inputs: initialInputs,
-      expectedCriteria: [],
-      status: 'idle'
-    };
-
-    const updatedProj = {
-      ...activeProject,
-      testCases: [...(activeProject.testCases || []), newCase],
-      updatedAt: new Date().toISOString()
-    };
-    saveActiveProject(updatedProj);
-    setSelectedTestCaseId(newCase.id);
-  };
-
-  const handleDeleteTestCase = (testCaseId: string) => {
-    if (!activeProject) return;
-    const remaining = (activeProject.testCases || []).filter(c => c.id !== testCaseId);
-    const updatedProj = {
-      ...activeProject,
-      testCases: remaining,
-      updatedAt: new Date().toISOString()
-    };
-    saveActiveProject(updatedProj);
-    if (selectedTestCaseId === testCaseId) {
-      setSelectedTestCaseId(remaining[0]?.id || null);
-    }
-  };
-
-  const handleUpdateTestCase = (testCaseId: string, updates: Partial<TestCase>) => {
-    if (!activeProject) return;
-    const updatedCases = (activeProject.testCases || []).map(c => 
-      c.id === testCaseId ? { ...c, ...updates } : c
+    const updatedNodes = activeProject.nodes.map(n => 
+      n.id === simulatorNode.id ? { ...n, userEvaluation: evalType } : n
     );
-    const updatedProj = {
-      ...activeProject,
-      testCases: updatedCases,
-      updatedAt: new Date().toISOString()
-    };
-    saveActiveProject(updatedProj);
+    const updatedProj = { ...activeProject, nodes: updatedNodes, updatedAt: new Date().toISOString() };
+    saveProjectState(updatedProj);
+    setSimulatorNode(prev => prev ? { ...prev, userEvaluation: evalType } : null);
   };
 
-  const runSingleTestCase = async (testCase: TestCase, project: PromptProject): Promise<TestCase> => {
-    let testNodes: TreeNode[] = project.nodes.map(n => ({ ...n, output: undefined, status: 'idle' as NodeExecutionStatus }));
-    let testProject = { ...project, nodes: testNodes };
+  const handleCreateBranchNodeCanvas = (type: 'success' | 'failure') => {
+    if (!activeProject || !simulatorNode) return;
     
-    let currNode = testProject.nodes.find(n => n.parentId === null);
-    if (!currNode) {
-      return {
-        ...testCase,
-        status: 'failed',
-        feedback: 'Không tìm thấy Node gốc (Root Node) trong sơ đồ.',
-        score: 0
-      };
+    const siblingCount = activeProject.nodes.filter(
+      n => n.parentId === simulatorNode.id && n.branchType === type
+    ).length;
+    
+    const offsetSlot = siblingCount * 140;
+    const posX = simulatorNode.position.x + 280;
+    const posY = type === 'success' 
+      ? simulatorNode.position.y - 125 - offsetSlot
+      : simulatorNode.position.y + 125 + offsetSlot;
+
+    const newTitle = type === 'success'
+      ? `${simulatorNode.title.split('.')[0] || 'Node'}.A Nâng cao ${siblingCount + 1}`
+      : `${simulatorNode.title.split('.')[0] || 'Node'}.B Sửa lỗi ${siblingCount + 1}`;
+
+    const newDescription = type === 'success'
+      ? `Nhánh nâng cao khi prompt "${simulatorNode.title}" hoạt động hiệu quả.`
+      : `Nhánh khắc phục và sửa đổi lỗi khi prompt "${simulatorNode.title}" chưa được như ý.`;
+
+    const newChild: TreeNode = {
+      id: `node-${Date.now()}`,
+      parentId: simulatorNode.id,
+      title: newTitle,
+      description: newDescription,
+      status: 'idle',
+      branchType: type,
+      position: { x: posX, y: posY },
+      blocks: type === 'success' ? [
+        {
+          id: `b-${Date.now()}-1`,
+          type: 'context',
+          title: 'Kết quả bước trước',
+          content: `Kết quả từ bước trước:\n\n{{${simulatorNode.title.replace(/\s+/g, '')}.output}}`
+        },
+        {
+          id: `b-${Date.now()}-2`,
+          type: 'task',
+          title: 'Nhiệm vụ nâng cao',
+          content: 'Dựa trên kết quả hiệu quả phía trên, hãy thực hiện bước tiếp theo...'
+        }
+      ] : [
+        {
+          id: `b-${Date.now()}-1`,
+          type: 'context',
+          title: 'Kết quả lỗi',
+          content: `Kết quả chưa đạt từ bước trước:\n\n{{${simulatorNode.title.replace(/\s+/g, '')}.output}}`
+        },
+        {
+          id: `b-${Date.now()}-2`,
+          type: 'task',
+          title: 'Nhiệm vụ sửa đổi',
+          content: 'Hãy điều chỉnh lại prompt hoặc bổ sung các cấu trúc ràng buộc (Constraints) chặt chẽ hơn...'
+        }
+      ],
+      variables: []
+    };
+
+    const updatedNodes = [...activeProject.nodes, newChild];
+    const updatedProj = { ...activeProject, nodes: updatedNodes, updatedAt: new Date().toISOString() };
+    saveProjectState(updatedProj);
+    
+    setSelectedNodeId(newChild.id);
+    setIsSimulatorOpen(false);
+  };
+
+  const handleSaveModifiedSimulatorOutputCanvas = (text: string) => {
+    if (!simulatorNode || !activeProject) return;
+    const updatedNodes = activeProject.nodes.map(n => 
+      n.id === simulatorNode.id ? { ...n, output: text } : n
+    );
+    const updatedProj = { ...activeProject, nodes: updatedNodes, updatedAt: new Date().toISOString() };
+    saveProjectState(updatedProj);
+    setSimulatorNode(prev => prev ? { ...prev, output: text } : null);
+  };
+
+  const handleToggleViewMode = (mode: 'wizard' | 'canvas') => {
+    if (mode === 'canvas' && activeProject?.nodes) {
+      const currentWizardNode = activeProject.nodes[selectedNodeIndex];
+      if (currentWizardNode) {
+        setSelectedNodeId(currentWizardNode.id);
+      }
+    } else if (mode === 'wizard' && activeProject?.nodes && selectedNodeId) {
+      const idx = activeProject.nodes.findIndex(n => n.id === selectedNodeId);
+      if (idx !== -1) {
+        setSelectedNodeIndex(idx);
+        setBasePromptInput(activeProject.nodes[idx].blocks?.[0]?.content || '');
+      }
+    }
+    setViewMode(mode);
+  };
+
+  const allAvailableTemplates = useMemo(() => {
+    const presets = TEMPLATES;
+    const customs = customTemplates || [];
+    return [...presets, ...customs];
+  }, [customTemplates]);
+
+  const filteredTemplates = useMemo(() => {
+    if (!searchTemplateQuery) return allAvailableTemplates;
+    return allAvailableTemplates.filter(t => 
+      t.title.toLowerCase().includes(searchTemplateQuery.toLowerCase()) ||
+      t.description.toLowerCase().includes(searchTemplateQuery.toLowerCase())
+    );
+  }, [allAvailableTemplates, searchTemplateQuery]);
+
+  const PRESET_SYSTEM_ROLES = useMemo(() => {
+    return [
+      {
+        id: 'role-mentor-ai',
+        title: 'Mentor AI - Socratic Tutor',
+        rolePrompt: 'Bạn là Mentor AI - gia sư thân thiện, kiên nhẫn và khuyến khích cho học sinh trung học. Hãy tuân thủ nghiêm ngặt phương pháp Socratic, đặt câu hỏi khơi gợi và sử dụng LaTeX.',
+        variables: []
+      },
+      {
+        id: 'role-code-reviewer',
+        title: 'Senior Code Reviewer',
+        rolePrompt: 'Bạn là một lập trình viên cao cấp có vai trò review code. Hãy tập trung review tính đúng đắn, hiệu năng và phong cách viết code.',
+        variables: []
+      }
+    ];
+  }, []);
+
+  const handleUpdatePromptText = (text: string) => {
+    if (!activeProject) return;
+    setBasePromptInput(text);
+
+    const updatedNodes = [...(activeProject.nodes || [])];
+    // Ensure the array has enough nodes up to selectedNodeIndex
+    while (updatedNodes.length <= selectedNodeIndex) {
+      const idx = updatedNodes.length;
+      updatedNodes.push({
+        id: `node-${Date.now()}-${idx}`,
+        parentId: idx > 0 ? updatedNodes[idx - 1].id : null,
+        title: `Bước ${idx + 1}`,
+        description: `Mắt xích thứ ${idx + 1} của chuỗi`,
+        status: 'idle',
+        position: { x: 100 + idx * 150, y: 100 },
+        blocks: [{
+          id: `block-${Date.now()}-${idx}`,
+          type: 'task',
+          title: `Bước ${idx + 1}`,
+          content: ''
+        }],
+        variables: []
+      });
     }
 
-    const customKey = localStorage.getItem('mentor_ai_gemini_key') || '';
-    const useSystemKey = localStorage.getItem('mentor_ai_use_system_key') !== 'false';
-    const openaiKey = localStorage.getItem('mentor_ai_openai_key') || '';
-    const apiKey = simProvider === 'gemini' 
-      ? (useSystemKey ? undefined : customKey)
-      : openaiKey;
+    updatedNodes[selectedNodeIndex] = {
+      ...updatedNodes[selectedNodeIndex],
+      blocks: [{
+        ...(updatedNodes[selectedNodeIndex].blocks?.[0] || { 
+          id: `block-${Date.now()}-${selectedNodeIndex}`, 
+          type: 'task', 
+          title: updatedNodes[selectedNodeIndex].title || `Bước ${selectedNodeIndex + 1}` 
+        }),
+        content: text
+      }]
+    };
 
-    const systemInstruction = `Bạn là Mentor AI - gia sư thân thiện, kiên nhẫn và khuyến khích cho học sinh trung học. Hãy tuân thủ nghiêm ngặt:
-1. Tuyệt đối KHÔNG giải hộ bài tập hay đưa ra đáp án trực tiếp. Sử dụng phương pháp Socratic để đặt câu hỏi khơi gợi tư duy, dẫn dắt từng bước để học sinh tự tìm ra câu trả lời.
-2. Giọng điệu thân thiện, kiên nhẫn, sử dụng emoji một cách ấm áp, khích lệ.
-3. Khi viết các công thức toán học hoặc khoa học, hãy luôn sử dụng LaTeX (bọc bằng $ hoặc $$).`;
+    saveProjectState({
+      ...activeProject,
+      nodes: updatedNodes
+    });
+  };
 
-    let finalOutput = '';
+  const handleUpdateNodeTitle = (idx: number, newTitle: string) => {
+    if (!activeProject) return;
+    const updatedNodes = [...(activeProject.nodes || [])];
+    if (updatedNodes[idx]) {
+      updatedNodes[idx] = {
+        ...updatedNodes[idx],
+        title: newTitle,
+        blocks: [{
+          ...(updatedNodes[idx].blocks?.[0] || { 
+            id: `block-${Date.now()}-${idx}`, 
+            type: 'task', 
+            title: newTitle,
+            content: ''
+          }),
+          title: newTitle
+        }]
+      };
+      saveProjectState({
+        ...activeProject,
+        nodes: updatedNodes
+      });
+    }
+  };
+
+  const handleAddNode = () => {
+    if (!activeProject) return;
+    const updatedNodes = [...(activeProject.nodes || [])];
+    const newIdx = updatedNodes.length;
+    const parentId = newIdx > 0 ? updatedNodes[newIdx - 1].id : null;
+    
+    updatedNodes.push({
+      id: `node-${Date.now()}-${newIdx}`,
+      parentId: parentId,
+      title: `Bước ${newIdx + 1}`,
+      description: `Mắt xích thứ ${newIdx + 1} của chuỗi`,
+      status: 'idle',
+      position: { x: 100 + newIdx * 150, y: 100 },
+      blocks: [{
+        id: `block-${Date.now()}-${newIdx}`,
+        type: 'task',
+        title: `Bước ${newIdx + 1}`,
+        content: `Mô tả prompt cho bước ${newIdx + 1} tại đây. Bạn có thể sử dụng {{output_${newIdx}}} để tham chiếu kết quả bước trước.`
+      }],
+      variables: []
+    });
+
+    saveProjectState({
+      ...activeProject,
+      nodes: updatedNodes
+    });
+    setSelectedNodeIndex(newIdx);
+  };
+
+  const handleDeleteNode = (idx: number) => {
+    if (!activeProject || (activeProject.nodes || []).length <= 1) return;
+    if (!confirm('Bạn có chắc chắn muốn xóa bước này khỏi chuỗi prompt?')) return;
+
+    let updatedNodes = [...(activeProject.nodes || [])];
+    updatedNodes.splice(idx, 1);
+    
+    // Re-adjust node ids/parents and default titles
+    updatedNodes = updatedNodes.map((node, i) => {
+      return {
+        ...node,
+        parentId: i > 0 ? updatedNodes[i - 1].id : null,
+        title: node.title.startsWith('Bước ') ? `Bước ${i + 1}` : node.title
+      };
+    });
+
+    saveProjectState({
+      ...activeProject,
+      nodes: updatedNodes
+    });
+    
+    // Adjust selected index
+    if (selectedNodeIndex >= updatedNodes.length) {
+      setSelectedNodeIndex(updatedNodes.length - 1);
+    } else if (selectedNodeIndex === idx) {
+      setSelectedNodeIndex(Math.max(0, idx - 1));
+    }
+  };
+
+  const handleMoveNode = (idx: number, direction: 'up' | 'down') => {
+    if (!activeProject) return;
+    const updatedNodes = [...(activeProject.nodes || [])];
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    
+    if (targetIdx < 0 || targetIdx >= updatedNodes.length) return;
+    
+    // Swap
+    const temp = updatedNodes[idx];
+    updatedNodes[idx] = updatedNodes[targetIdx];
+    updatedNodes[targetIdx] = temp;
+    
+    // Update parents after swap
+    const finalNodes = updatedNodes.map((node, i) => ({
+      ...node,
+      parentId: i > 0 ? updatedNodes[i - 1].id : null,
+      title: node.title.startsWith('Bước ') ? `Bước ${i + 1}` : node.title
+    }));
+
+    saveProjectState({
+      ...activeProject,
+      nodes: finalNodes
+    });
+    setSelectedNodeIndex(targetIdx);
+  };
+
+  // --- 3. QUẢN LÝ DỰ ÁN (THÊM, XÓA) ---
+  const handleCreateProject = () => {
+    if (!newProjectName.trim()) return;
+
+    const newProj: PromptProject = {
+      id: `proj-${Date.now()}`,
+      name: newProjectName,
+      description: newProjectDesc,
+      globalEvalCriteria: [],
+      nodes: [{
+        id: 'node-root',
+        parentId: null,
+        title: 'Prompt Nền Móng',
+        description: 'Prompt chính của dự án',
+        status: 'idle',
+        position: { x: 100, y: 100 },
+        blocks: [{
+          id: 'block-root-main',
+          type: 'task',
+          title: 'Prompt Nền Móng',
+          content: ''
+        }],
+        variables: []
+      }],
+      testCases: [],
+      versions: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    const nextProjects = [...projects, newProj];
+    setProjects(nextProjects);
+    setActiveProject(newProj);
+    localStorage.setItem('mentor_ai_prompt_projects', JSON.stringify(nextProjects));
+
+    if (user) {
+      const docRef = doc(db, 'projects', newProj.id);
+      setDoc(docRef, { ...newProj, userId: user.uid }).then(() => {
+        setSyncStatus('synced');
+      }).catch(() => setSyncStatus('error'));
+    }
+
+    setIsNewProjectModalOpen(false);
+    setNewProjectName('');
+    setNewProjectDesc('');
+    setCurrentStep(1);
+  };
+
+  const handleDeleteProject = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('Bạn có chắc chắn muốn xóa dự án này?')) return;
+
+    const nextProjects = projects.filter(p => p.id !== id);
+    setProjects(nextProjects);
+
+    if (activeProject?.id === id) {
+      setActiveProject(nextProjects[0] || null);
+    }
+
+    localStorage.setItem('mentor_ai_prompt_projects', JSON.stringify(nextProjects));
+
+    if (user) {
+      const docRef = doc(db, 'projects', id);
+      deleteDoc(docRef).then(() => {
+        setSyncStatus('synced');
+      }).catch(() => setSyncStatus('error'));
+    }
+  };
+
+  // --- 4. BƯỚC 2: CHẠY GIẢ LẬP ---
+  const handleRunSimulation = async () => {
+    if (!activeProject || isSimulating) return;
+
+    setIsSimulating(true);
+    setNodeExecutionOutputs({});
+    setCurrentExecutingNodeIndex(0);
+    setExpandedSimNodeIndex(0);
+    setSimOutput('');
+
+    const outputs: Record<number, string> = {};
+    const chainVals: Record<string, string> = { ...varValues };
 
     try {
-      while (currNode) {
-        const compiledPrompt = compileEvolutionPrompt(currNode, testProject, testCase.inputs);
-        let nodeOutput = '';
+      const nodes = activeProject.nodes || [];
+      for (let k = 0; k < nodes.length; k++) {
+        setCurrentExecutingNodeIndex(k);
+        setExpandedSimNodeIndex(k);
+        
+        const node = nodes[k];
+        const rawPrompt = node.blocks?.[0]?.content || '';
+        
+        const compileVals = { ...chainVals };
+        for (let j = 0; j < k; j++) {
+          compileVals[`output_${j+1}`] = outputs[j] || '';
+          compileVals[`Output_${j+1}`] = outputs[j] || '';
+        }
+        
+        const injectedPrompt = injectVariables(rawPrompt, compileVals);
+        let accumulated = '';
+        outputs[k] = '';
         
         await runPlaygroundChatStream(
           simProvider,
-          systemInstruction,
-          [{ role: 'user', content: compiledPrompt }],
+          injectedPrompt,
+          [{ role: 'user', content: 'Hãy thực thi và phản hồi theo chỉ dẫn prompt hệ thống.' }],
           {
-            apiKey,
+            apiKey: undefined,
             model: simModel,
-            temperature: simTemp
+            temperature: simTemp,
+            maxTokens: simMaxTokens
           },
           (chunk) => {
-            nodeOutput += chunk;
+            accumulated += chunk;
+            outputs[k] = accumulated;
+            setNodeExecutionOutputs(prev => ({
+              ...prev,
+              [k]: accumulated
+            }));
+            if (k === nodes.length - 1) {
+              setSimOutput(accumulated);
+            }
           }
         );
-
-        if (!nodeOutput) {
-          throw new Error(`Node "${currNode.title}" trả về kết quả rỗng.`);
-        }
-
-        const nodeId = currNode.id;
-        testNodes = testNodes.map(n => n.id === nodeId ? { ...n, output: nodeOutput, status: 'success' as const } : n);
-        testProject = { ...testProject, nodes: testNodes };
-        finalOutput = nodeOutput;
-
-        const children = testNodes.filter(n => n.parentId === nodeId);
-        if (children.length === 0) {
-          break;
-        }
-
-        const hasBranches = children.some(c => c.branchType === 'success' || c.branchType === 'failure');
-        if (hasBranches) {
-          let routeDecision: 'success' | 'failure' = 'success';
-          
-          if (pipelineRoutingMode === 'keyword') {
-            const hasKeyword = nodeOutput.toLowerCase().includes(pipelineKeyword.toLowerCase());
-            routeDecision = hasKeyword ? 'success' : 'failure';
-          } else {
-            const evalResult = await evaluateOutputQualityWithAi(
-              nodeOutput,
-              testProject.globalEvalCriteria || [],
-              { apiKey: useSystemKey ? undefined : customKey, model: 'gemini-3.5-flash' }
-            );
-            routeDecision = evalResult === 'effective' ? 'success' : 'failure';
-          }
-
-          const nextNode = children.find(c => c.branchType === routeDecision);
-          if (nextNode) {
-            currNode = nextNode;
-          } else {
-            break;
-          }
-        } else {
-          currNode = children[0];
-        }
+        
+        chainVals[`output_${k+1}`] = outputs[k];
+        chainVals[`Output_${k+1}`] = outputs[k];
       }
 
-      const criteria = testCase.expectedCriteria && testCase.expectedCriteria.length > 0
-        ? testCase.expectedCriteria
-        : (testProject.globalEvalCriteria || []);
-
-      const evalResult = await runAutomatedTestEvaluation(
-        finalOutput,
-        criteria,
-        { apiKey: useSystemKey ? undefined : customKey, model: 'gemini-3.5-flash' }
-      );
-
-      return {
-        ...testCase,
-        status: evalResult.score >= 80 ? 'success' : 'failed',
-        score: evalResult.score,
-        feedback: evalResult.feedback,
+      const finalOutput = outputs[nodes.length - 1] || '';
+      const newRun: TestCase = {
+        id: `run-${Date.now()}`,
+        name: `Giả lập Chuỗi (${nodes.length} bước): ${new Date().toLocaleTimeString()}`,
+        inputs: { ...varValues },
+        status: 'success',
         outputText: finalOutput
       };
 
-    } catch (error: any) {
-      console.error(`Lỗi thực thi test case "${testCase.name}":`, error);
-      return {
-        ...testCase,
-        status: 'failed',
-        feedback: `Lỗi thực thi: ${error.message || error}`,
-        score: 0,
-        outputText: finalOutput || 'Chưa sinh được kết quả.'
-      };
+      const updatedTestCases = [newRun, ...(activeProject.testCases || [])].slice(0, 10);
+      saveProjectState({
+        ...activeProject,
+        testCases: updatedTestCases
+      });
+
+    } catch (err: any) {
+      console.error(err);
+      setSimOutput(`❌ Lỗi khi chạy giả lập: ${err.message}`);
+    } finally {
+      setIsSimulating(false);
+      setCurrentExecutingNodeIndex(null);
     }
   };
 
-  const runTestSuiteExecution = async () => {
-    if (!activeProject || isRunningAllTests) return;
-    setIsRunningAllTests(true);
-    setTestSuiteLogs([`[${new Date().toLocaleTimeString()}] Bắt đầu thực thi bộ kiểm thử cho dự án: ${activeProject.name}...`]);
+  const handleOpenExternalPlayground = (url: string) => {
+    if (!activeProject) return;
+    const rawPrompt = activeProject.nodes?.[selectedNodeIndex]?.blocks?.[0]?.content || '';
+    
+    const compileVals = { ...varValues };
+    Object.entries(nodeExecutionOutputs).forEach(([kStr, output]) => {
+      const k = parseInt(kStr);
+      compileVals[`output_${k+1}`] = output;
+      compileVals[`Output_${k+1}`] = output;
+    });
+    
+    const injectedPrompt = injectVariables(rawPrompt, compileVals);
+    navigator.clipboard.writeText(injectedPrompt);
+    alert('Đã điền các biến số và sao chép Prompt vào Clipboard thành công! Đang chuyển hướng bạn sang trang Playground ngoài...');
+    window.open(url, '_blank');
+  };
 
-    const cases = activeProject.testCases || [];
-    if (cases.length === 0) {
-      setTestSuiteLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Không có bộ kiểm thử nào được cấu hình.`]);
-      setIsRunningAllTests(false);
+  // --- 5. BƯỚC 3: ĐÁNH GIÁ & TỐI ƯU ---
+  const handleStartEvaluation = async () => {
+    const outputToEval = nodeExecutionOutputs[evalNodeIndex] || simOutput;
+    
+    if (!outputToEval || isEvaluating) {
+      alert(`Vui lòng chạy giả lập ở Bước 2 trước khi thẩm định Bước ${evalNodeIndex + 1}!`);
       return;
     }
 
-    let updatedCases = cases.map(c => ({ ...c, status: 'running' as const, score: undefined, feedback: undefined }));
-    let runningProj = { ...activeProject, testCases: updatedCases };
-    setActiveProject(runningProj);
+    setIsEvaluating(true);
+    setEvaluation(null);
+    setAppliedSuggestions({});
 
-    const finalCases: TestCase[] = [];
+    try {
+      const promptToEval = activeProject?.nodes[evalNodeIndex]?.blocks?.[0]?.content || '';
+      const res = await evaluateAndEnhancePrompt(promptToEval, outputToEval);
+      setEvaluation(res);
+    } catch (err: any) {
+      console.error(err);
+      alert('Đã xảy ra lỗi khi thẩm định AI: ' + err.message);
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
 
-    for (let i = 0; i < updatedCases.length; i++) {
-      const tc = updatedCases[i];
-      setTestSuiteLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Đang chạy kiểm thử: "${tc.name}"...`]);
-      
-      const result = await runSingleTestCase(tc, runningProj);
-      
-      setTestSuiteLogs(prev => [
-        ...prev,
-        `[${new Date().toLocaleTimeString()}] Hoàn thành: "${tc.name}" - Điểm số: ${result.score}/100 - Kết quả: ${result.status === 'success' ? 'ĐẠT ✓' : 'CHƯA ĐẠT ✗'}`
-      ]);
-      
-      finalCases.push(result);
-      
-      const tempProj = {
-        ...activeProject,
-        testCases: [
-          ...finalCases,
-          ...updatedCases.slice(i + 1)
-        ]
+  const handleApplySuggestion = (content: string, index: number) => {
+    if (appliedSuggestions[index] || !activeProject) return;
+
+    const targetNode = activeProject.nodes[evalNodeIndex];
+    if (!targetNode) return;
+
+    const currentPromptText = targetNode.blocks?.[0]?.content || '';
+    const newPromptText = currentPromptText.trim() + '\n' + content.trim();
+    
+    const newVersion: PromptVersion = {
+      id: `ver-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      content: newPromptText,
+      description: `Áp dụng gợi ý AI (Bước ${evalNodeIndex + 1}): ${evaluation?.suggestions[index].title || 'Tối ưu hóa'}`
+    };
+
+    const updatedVersions = [newVersion, ...(activeProject.versions || [])].slice(0, 50);
+    
+    if (evalNodeIndex === selectedNodeIndex) {
+      setBasePromptInput(newPromptText);
+    }
+    setAppliedSuggestions(prev => ({ ...prev, [index]: true }));
+
+    const updatedNodes = [...(activeProject.nodes || [])];
+    if (updatedNodes[evalNodeIndex]) {
+      updatedNodes[evalNodeIndex] = {
+        ...updatedNodes[evalNodeIndex],
+        blocks: [{
+          ...(updatedNodes[evalNodeIndex].blocks?.[0] || { 
+            id: `block-${Date.now()}-${evalNodeIndex}`, 
+            type: 'task', 
+            title: updatedNodes[evalNodeIndex].title 
+          }),
+          content: newPromptText
+        }]
       };
-      setActiveProject(tempProj);
     }
 
-    const finalProj = {
+    saveProjectState({
       ...activeProject,
-      testCases: finalCases
-    };
-    await saveActiveProject(finalProj);
-    setTestSuiteLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Hoàn thành thực thi toàn bộ ${finalCases.length} bộ kiểm thử.`]);
-    setIsRunningAllTests(false);
+      nodes: updatedNodes,
+      versions: updatedVersions
+    });
   };
 
-  const runIndividualTestCase = async (testCaseId: string) => {
-    if (!activeProject || isRunningAllTests) return;
-    const tc = (activeProject.testCases || []).find(t => t.id === testCaseId);
-    if (!tc) return;
+  // Restore previous version
+  const handleRestoreVersion = (ver: PromptVersion) => {
+    if (!activeProject) return;
+    if (!confirm(`Bạn có chắc chắn muốn khôi phục về phiên bản ngày ${new Date(ver.timestamp).toLocaleString()}?`)) return;
 
-    const updatedCases = (activeProject.testCases || []).map(c => 
-      c.id === testCaseId ? { ...c, status: 'running' as const, score: undefined, feedback: undefined } : c
-    );
-    const runningProj = { ...activeProject, testCases: updatedCases };
-    setActiveProject(runningProj);
-
-    setTestSuiteLogs([`[${new Date().toLocaleTimeString()}] Bắt đầu chạy riêng lẻ kiểm thử: "${tc.name}"...`]);
-    
-    const result = await runSingleTestCase(tc, runningProj);
-    
-    setTestSuiteLogs(prev => [
-      ...prev,
-      `[${new Date().toLocaleTimeString()}] Hoàn thành: "${tc.name}" - Điểm số: ${result.score}/100 - Kết quả: ${result.status === 'success' ? 'ĐẠT ✓' : 'CHƯA ĐẠT ✗'}`,
-      `[Nhận xét từ AI]: ${result.feedback || 'Không có phản hồi.'}`
-    ]);
-
-    const finalCases = updatedCases.map(c => c.id === testCaseId ? result : c);
-    const finalProj = {
-      ...activeProject,
-      testCases: finalCases
+    const backupVersion: PromptVersion = {
+      id: `ver-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      content: basePromptInput,
+      description: `Lưu nháp trước khi khôi phục (Bước ${selectedNodeIndex + 1})`
     };
-    await saveActiveProject(finalProj);
+
+    const updatedVersions = [backupVersion, ...(activeProject.versions || [])].slice(0, 50);
+    setBasePromptInput(ver.content);
+
+    const updatedNodes = [...(activeProject.nodes || [])];
+    if (updatedNodes[selectedNodeIndex]) {
+      updatedNodes[selectedNodeIndex] = {
+        ...updatedNodes[selectedNodeIndex],
+        blocks: [{
+          ...(updatedNodes[selectedNodeIndex].blocks?.[0] || { 
+            id: `block-${Date.now()}-${selectedNodeIndex}`, 
+            type: 'task', 
+            title: updatedNodes[selectedNodeIndex].title 
+          }),
+          content: ver.content
+        }]
+      };
+    }
+
+    saveProjectState({
+      ...activeProject,
+      nodes: updatedNodes,
+      versions: updatedVersions
+    });
+
+    setSelectedVersionToCompare(null);
+    alert('Khôi phục phiên bản thành công!');
   };
+
+  // Compute text diff (line by line unified diff helper)
+  const computeUnifiedDiff = (oldText: string, newText: string) => {
+    const oldLines = oldText.split('\n');
+    const newLines = newText.split('\n');
+    const diffResult: { type: 'added' | 'removed' | 'unchanged'; text: string }[] = [];
+    
+    let i = 0, j = 0;
+    while (i < oldLines.length || j < newLines.length) {
+      if (i < oldLines.length && j < newLines.length) {
+        if (oldLines[i] === newLines[j]) {
+          diffResult.push({ type: 'unchanged', text: oldLines[i] });
+          i++;
+          j++;
+        } else {
+          let foundMatch = false;
+          for (let k = 1; k < 5; k++) {
+            if (i + k < oldLines.length && oldLines[i + k] === newLines[j]) {
+              for (let m = 0; m < k; m++) {
+                diffResult.push({ type: 'removed', text: oldLines[i + m] });
+              }
+              i += k;
+              foundMatch = true;
+              break;
+            }
+            if (j + k < newLines.length && oldLines[i] === newLines[j + k]) {
+              for (let m = 0; m < k; m++) {
+                diffResult.push({ type: 'added', text: newLines[j + m] });
+              }
+              j += k;
+              foundMatch = true;
+              break;
+            }
+          }
+          if (!foundMatch) {
+            diffResult.push({ type: 'removed', text: oldLines[i] });
+            diffResult.push({ type: 'added', text: newLines[j] });
+            i++;
+            j++;
+          }
+        }
+      } else if (i < oldLines.length) {
+        diffResult.push({ type: 'removed', text: oldLines[i] });
+        i++;
+      } else if (j < newLines.length) {
+        diffResult.push({ type: 'added', text: newLines[j] });
+        j++;
+      }
+    }
+    return diffResult;
+  };
+
+  // Preset Template loader
+  const handleLoadTemplate = (content: string) => {
+    handleUpdatePromptText(content);
+    setShowTemplatePicker(false);
+  };
+
+  const allTemplates = [...(customTemplates || []), ...TEMPLATES];
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-slate-50 text-slate-800 dark:bg-slate-955 dark:text-slate-200">
+    <div className="flex-1 flex overflow-hidden w-full h-full relative md:flex-row flex-col bg-slate-955 text-slate-100 font-sans">
       
-      {/* 1. CANVAS VIEWPORT AND HEADER */}
-      <div className="relative flex flex-1 flex-col overflow-hidden border-r border-slate-200/50 dark:border-slate-800/50">
-        
-        {/* HEADER PANEL */}
-        <header className="z-20 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/50 bg-white/85 p-4 backdrop-blur-md dark:border-slate-850/50 dark:bg-slate-900/85">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-cyan-500/10 p-2 text-cyan-500 dark:bg-cyan-500/20">
-              <Workflow size={20} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <select
-                  value={activeProject?.id || ''}
-                  onChange={(e) => {
-                    const proj = projects.find(p => p.id === e.target.value);
-                    if (proj) {
-                      setActiveProject(proj);
-                      setSelectedNodeId(proj.nodes[0]?.id || null);
-                    }
-                  }}
-                  className="bg-transparent text-sm font-bold text-slate-900 focus:outline-none dark:text-white cursor-pointer py-0.5 pr-8 border border-slate-200 rounded-lg px-2 dark:border-slate-855 bg-slate-55 dark:bg-slate-950 text-[13px]"
-                >
-                  {projects.map(p => (
-                    <option key={p.id} value={p.id} className="dark:bg-slate-900">{p.name}</option>
-                  ))}
-                </select>
-                <button 
-                  onClick={handleCreateNewProject}
-                  className="rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-slate-850 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
-                  title="Tạo dự án mới"
-                >
-                  <Plus size={16} />
-                </button>
-              </div>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500 max-w-xs truncate">
-                {activeProject?.description || 'Không có mô tả'}
-              </p>
-            </div>
-          </div>
-
+      {/* 1. LEFT SIDEBAR - PROJECT LIST */}
+      <div className="w-full md:w-80 shrink-0 border-r border-slate-205/10 dark:border-slate-900 bg-slate-100 dark:bg-slate-900/10 backdrop-blur-md flex flex-col h-full overflow-hidden">
+        <div className="p-4 border-b border-slate-205/10 dark:border-slate-900 flex justify-between items-center bg-slate-50 dark:bg-slate-950/20">
           <div className="flex items-center gap-2">
-            
-            {/* Sync status */}
-            <div className="flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-850 px-2 py-1.5 rounded-lg border border-slate-200/50 dark:border-slate-800/50">
-              {syncStatus === 'synced' && (
-                <>
-                  <Cloud size={14} className="text-emerald-505 animate-pulse" />
-                  <span>Đồng bộ</span>
-                </>
-              )}
-              {syncStatus === 'saving' && (
-                <>
-                  <RefreshCw size={14} className="animate-spin text-cyan-500" />
-                  <span>Đang lưu...</span>
-                </>
-              )}
-              {syncStatus === 'local' && (
-                <>
-                  <Database size={14} className="text-slate-400" />
-                  <span>Ngoại tuyến</span>
-                </>
-              )}
-              {syncStatus === 'error' && (
-                <>
-                  <CloudOff size={14} className="text-rose-500" />
-                  <span>Lỗi đồng bộ</span>
-                </>
-              )}
-            </div>
-
-            {/* Global Eval Criteria */}
-            {activeProject && (
-              <button 
-                onClick={() => setIsEvalCriteriaModalOpen(true)}
-                className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-purple-650 hover:bg-purple-50 dark:border-slate-800 dark:bg-slate-900 dark:text-purple-400 dark:hover:bg-purple-955/20 cursor-pointer transition-colors text-[11px]"
-                title="Quản lý quy chuẩn đánh giá toàn cục"
-              >
-                <Settings size={13} />
-                <span>Quy chuẩn ({activeProject.globalEvalCriteria?.length || 0})</span>
-              </button>
-            )}
-
-            {/* Run Whole Chain (Pipeline) */}
-            {activeProject && (
-              <button 
-                onClick={() => {
-                  const defaultInputs: Record<string, string> = { ...rootInputs };
-                  activeProject.nodes.forEach(n => {
-                    n.variables?.forEach(v => {
-                      if (v.defaultValue && defaultInputs[v.name] === undefined) {
-                        defaultInputs[v.name] = v.defaultValue;
-                      }
-                    });
-                  });
-                  setPipelineInputs(defaultInputs);
-                  setIsPipelineOpen(true);
-                }}
-                className="flex items-center gap-1 rounded-lg border border-cyan-200 bg-cyan-55/50 px-3 py-1.5 text-xs font-semibold text-cyan-600 hover:bg-cyan-100 dark:border-cyan-900/50 dark:bg-cyan-955/20 dark:text-cyan-400 dark:hover:bg-cyan-905/30 cursor-pointer transition-colors text-[11px]"
-                title="Chạy tự động toàn bộ chuỗi"
-              >
-                <Play size={13} fill="currentColor" />
-                <span>Chạy toàn chuỗi (Pipeline)</span>
-              </button>
-            )}
-
-            {/* Unit Tests Trigger */}
-            {activeProject && (
-              <button 
-                onClick={() => {
-                  if (!activeProject.testCases) {
-                    activeProject.testCases = [];
-                  }
-                  if (activeProject.testCases.length > 0 && !selectedTestCaseId) {
-                    setSelectedTestCaseId(activeProject.testCases[0].id);
-                  }
-                  setIsUnitTestOpen(true);
-                }}
-                className="flex items-center gap-1 rounded-lg border border-purple-200 bg-purple-55/50 px-3 py-1.5 text-xs font-semibold text-purple-650 hover:bg-purple-100 dark:border-purple-900/50 dark:bg-purple-955/20 dark:text-purple-400 dark:hover:bg-purple-900/30 cursor-pointer transition-colors text-[11px]"
-                title="Quản lý và chạy bộ kiểm thử tự động"
-              >
-                <Wrench size={13} />
-                <span>Bộ Kiểm Thử (Unit Tests)</span>
-              </button>
-            )}
-
-            {/* Delete project */}
-            {activeProject && (
-              <button 
-                onClick={() => handleDeleteProject(activeProject.id)}
-                className="flex items-center gap-1 rounded-lg border border-slate-200/60 bg-white px-3 py-1.5 text-xs font-semibold text-rose-500 hover:bg-rose-50 dark:border-slate-850 dark:bg-slate-900 dark:hover:bg-rose-955/20 cursor-pointer transition-colors text-[11px]"
-                title="Xóa dự án hiện tại"
-              >
-                <Trash2 size={13} />
-                <span className="hidden sm:inline">Xóa</span>
-              </button>
-            )}
-
-            {/* Import JSON */}
-            <label className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold hover:bg-slate-50 dark:border-slate-805 dark:bg-slate-900 dark:hover:bg-slate-850 cursor-pointer transition-colors text-[11px]">
-              <Upload size={13} className="text-slate-450" />
-              <span className="hidden sm:inline">Nhập JSON</span>
-              <input type="file" accept=".json" onChange={handleImportProjectJSON} className="hidden" />
-            </label>
-
-            {/* Export JSON */}
-            <button 
-              onClick={handleExportProjectJSON}
-              className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-850 cursor-pointer transition-colors text-[11px]"
-            >
-              <Download size={13} className="text-slate-450" />
-              <span className="hidden sm:inline">Xuất JSON</span>
-            </button>
-
-            {/* Help button */}
-            <button
-              onClick={() => setShowHelp(prev => !prev)}
-              className={`rounded-lg p-1.5 border transition-all cursor-pointer ${showHelp ? 'bg-indigo-50 border-indigo-200 text-indigo-600 dark:bg-indigo-950/30 dark:border-indigo-900/50 dark:text-indigo-400' : 'bg-white border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800'}`}
-              title="Hướng dẫn liên kết biến"
-            >
-              <HelpCircle size={16} />
-            </button>
+            <Layers size={18} className="text-violet-500" />
+            <span className="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">Danh Sách Dự Án</span>
           </div>
-        </header>
-
-        {/* CANVAS FLOATING CONTROLS */}
-        <div className="absolute bottom-5 left-5 z-20 flex flex-col gap-1.5 rounded-xl border border-slate-200/80 bg-white/90 p-1.5 shadow-lg backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/90">
-          <button 
-            onClick={() => setZoom(prev => Math.min(1.5, prev + 0.1))} 
-            className="rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-slate-600 dark:text-slate-300"
-            title="Phóng to"
+          <button
+            onClick={() => setIsNewProjectModalOpen(true)}
+            className="p-1.5 bg-violet-600 hover:bg-violet-500 dark:bg-violet-650 text-white rounded-xl transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-lg shadow-violet-900/10 flex items-center justify-center"
+            title="Tạo dự án mới"
           >
-            <ZoomIn size={16} />
-          </button>
-          <button 
-            onClick={() => setZoom(prev => Math.max(0.5, prev - 0.1))} 
-            className="rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-slate-600 dark:text-slate-300"
-            title="Thu nhỏ"
-          >
-            <ZoomOut size={16} />
-          </button>
-          <button 
-            onClick={resetCanvasView} 
-            className="rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-slate-600 dark:text-slate-300 border-t border-slate-105 dark:border-slate-850"
-            title="Góc nhìn mặc định"
-          >
-            <Maximize2 size={16} />
-          </button>
-          <button 
-            onClick={handleTriggerAutoLayout} 
-            className="rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-slate-600 dark:text-slate-300 border-t border-slate-100 dark:border-slate-850"
-            title="Dàn trang tự động"
-          >
-            <Network size={16} />
+            <Plus size={14} />
           </button>
         </div>
 
-        {/* FLOATING HELP PANEL */}
-        {showHelp && (
-          <div className="absolute top-20 right-5 z-20 max-w-xs rounded-xl border border-indigo-150/40 bg-indigo-50/95 dark:bg-indigo-950/90 dark:border-indigo-900/40 p-4 shadow-xl backdrop-blur-md text-xs text-slate-700 dark:text-slate-300">
-            <button 
-              onClick={() => setShowHelp(false)}
-              className="absolute top-2 right-2 text-slate-450 hover:text-slate-700 dark:hover:text-white cursor-pointer"
-            >
-              <X size={14} />
-            </button>
-            <h4 className="font-bold text-indigo-700 dark:text-indigo-400 flex items-center gap-1 mb-2">
-              <Sparkles size={14} />
-              Liên kết Prompt xuyên suốt
-            </h4>
-            <ul className="space-y-1.5 list-disc list-inside">
-              <li>Mỗi node cha khi chạy simulator sẽ lưu lại <b>Đầu ra (output)</b>.</li>
-              <li>Tại node con, tham chiếu đầu ra của cha trực tiếp bằng: <code>{"{{parent.output}}"}</code>.</li>
-              <li>Tham chiếu tổ tiên cụ thể bằng tên của họ: <code>{"{{TenNodeKhôngDấuKhoảngTrắng.output}}"}</code>. Ví dụ: <code>{"{{1.PhântíchChủđề.output}}"}</code>.</li>
-              <li>Các biến toàn cục khai báo ở Node gốc (vd: <code>{"{{subject}}"}</code>) có thể dùng ở mọi node con.</li>
-            </ul>
-          </div>
-        )}
+        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2.5 custom-scrollbar bg-slate-50/50 dark:bg-transparent text-left">
+          {projects.map((proj) => {
+            const isActive = activeProject?.id === proj.id;
+            return (
+              <div
+                key={proj.id}
+                onClick={() => {
+                  setActiveProject(proj);
+                  setCurrentStep(1);
+                }}
+                className={`p-3.5 rounded-2xl border text-left cursor-pointer transition-all duration-200 group relative
+                  ${isActive 
+                    ? 'bg-white dark:bg-gradient-to-r dark:from-violet-955/20 dark:to-indigo-955/20 border-violet-500/30 shadow-md shadow-violet-900/5 dark:shadow-none' 
+                    : 'bg-white dark:bg-slate-900/30 border-slate-200 dark:border-slate-900/50 hover:border-slate-350 dark:hover:border-slate-800'}`}
+              >
+                <div className="flex justify-between items-start gap-2">
+                  <h4 className={`text-xs font-bold transition-colors ${isActive ? 'text-violet-600 dark:text-violet-400' : 'text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-200'}`}>
+                    {proj.name}
+                  </h4>
+                  <button
+                    onClick={(e) => handleDeleteProject(proj.id, e)}
+                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-455 hover:bg-rose-500/10 rounded-lg transition-all cursor-pointer"
+                    title="Xóa dự án"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1.5 line-clamp-2 leading-relaxed">
+                  {proj.description || 'Không có mô tả.'}
+                </p>
+                
+                {isActive && (
+                  <div className="absolute right-3 bottom-3 flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-violet-500"></span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
 
-        {/* CANVAS VIEWPORT */}
-        {activeProject && (
-          <CanvasView
-            activeProject={activeProject}
-            selectedNodeId={selectedNodeId}
-            setSelectedNodeId={setSelectedNodeId}
-            theme={theme}
-            canvasOffset={canvasOffset}
-            zoom={zoom}
-            startPanning={startPanning}
-            handleWheel={handleWheel}
-            startDragNode={startDragNode}
-            handleOpenSimulator={handleOpenSimulator}
-            handleDeleteNode={handleDeleteNode}
-            handleAddChildNode={handleAddChildNode}
-            canvasRef={canvasRef}
-          />
-        )}
+        {/* Sync Status bar */}
+        <div className="p-3 bg-slate-100 dark:bg-slate-950/40 border-t border-slate-205/10 dark:border-slate-900 flex justify-between items-center text-[10px] text-slate-500">
+          <div className="flex items-center gap-1.5">
+            <span className={`w-1.5 h-1.5 rounded-full ${
+              syncStatus === 'synced' ? 'bg-emerald-500' : 
+              syncStatus === 'saving' ? 'bg-amber-500 animate-pulse' : 
+              syncStatus === 'error' ? 'bg-rose-500' : 'bg-slate-500'
+            }`} />
+            <span className="font-medium uppercase tracking-wider text-[8px] text-slate-555 dark:text-slate-400">
+              {syncStatus === 'synced' ? 'Đã đồng bộ Cloud' :
+               syncStatus === 'saving' ? 'Đang sao lưu...' :
+               syncStatus === 'error' ? 'Lỗi Firestore' : 'Chế độ ngoại tuyến'}
+            </span>
+          </div>
+          <span className="text-slate-400 dark:text-slate-500">v2.0 (Simplified)</span>
+        </div>
       </div>
 
-      {/* 2. SIDEBAR EDITOR */}
-      <NodeDetailSidebar
-        activeNode={activeNode}
-        activeProject={activeProject}
-        selectedNodeId={selectedNodeId}
-        theme={theme}
-        rootInputs={rootInputs}
-        isImportModalOpen={isImportModalOpen}
-        setIsImportModalOpen={setIsImportModalOpen}
-        handleExportNodeAsTemplate={handleExportNodeAsTemplate}
-        handleUpdateNodeFields={handleUpdateNodeFields}
-        handleAddBlockToNode={handleAddBlockToNode}
-        handleUpdateBlockContent={handleUpdateBlockContent}
-        handleUpdateBlockTitle={handleUpdateBlockTitle}
-        handleDeleteBlockFromNode={handleDeleteBlockFromNode}
-        handleAddPresetBlock={handleAddPresetBlock}
-        handleAddVariableToNode={handleAddVariableToNode}
-        handleUpdateVariableField={handleUpdateVariableField}
-        handleDeleteVariable={handleDeleteVariable}
-        handleSelectSystemRole={handleSelectSystemRole}
-        handleOpenSimulator={handleOpenSimulator}
-      />
-
-      {/* --- MODAL 0: GLOBAL EVALUATION CRITERIA --- */}
-      <GlobalEvalCriteriaModal
-        isOpen={isEvalCriteriaModalOpen}
-        onClose={() => setIsEvalCriteriaModalOpen(false)}
-        activeProject={activeProject}
-        newCriteriaText={newCriteriaText}
-        setNewCriteriaText={setNewCriteriaText}
-        handleAddCriteria={handleAddCriteria}
-        handleDeleteCriteria={handleDeleteCriteria}
-      />
-
-      {/* --- MODAL 1: LIBRARY IMPORT PICKER --- */}
-      <LibraryImportPickerModal
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-        searchTemplateQuery={searchTemplateQuery}
-        setSearchTemplateQuery={setSearchTemplateQuery}
-        filteredTemplates={filteredTemplates}
-        handleImportTemplateIntoNode={handleImportTemplateIntoNode}
-      />
-
-      {/* --- MODAL 2: INTERACTIVE STEP-BY-STEP SIMULATOR --- */}
-      <SimulatorPanel
-        isOpen={isSimulatorOpen}
-        onClose={() => {
-          if (!isSimulating) setIsSimulatorOpen(false);
-        }}
-        simulatorNode={simulatorNode}
-        activeProject={activeProject}
-        simProvider={simProvider}
-        setSimProvider={setSimProvider}
-        simModel={simModel}
-        setSimModel={setSimModel}
-        isSimulating={isSimulating}
-        compiledPromptPreview={compiledPromptPreview}
-        simulationResponse={simulationResponse}
-        rootInputs={rootInputs}
-        handleVariableInputChange={handleVariableInputChange}
-        handleRunDraft={handleRunDraft}
-        handleRunSimulation={handleRunSimulation}
-        handleEvaluateDraft={handleEvaluateDraft}
-        handleCreateBranchNode={handleCreateBranchNode}
-        handleSaveModifiedSimulatorOutput={handleSaveModifiedSimulatorOutput}
-        theme={theme}
-      />
-
-      {/* --- MODAL 3: PIPELINE ORCHESTRATION RUNNER --- */}
-      <AnimatePresence>
-        {isPipelineOpen && activeProject && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => {
-                if (pipelineStatus !== 'running') setIsPipelineOpen(false);
-              }}
-              className="absolute inset-0 bg-slate-950/60 backdrop-blur-xs animate-fade-in"
-            />
-
-            <motion.div
-              initial={{ scale: 0.96, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.96, opacity: 0 }}
-              className="relative z-10 w-full max-w-5xl h-[80vh] rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 flex flex-col overflow-hidden"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between border-b border-slate-150 p-4 dark:border-slate-800 shrink-0">
-                <div className="flex items-center gap-2">
-                  <div className="rounded-lg bg-cyan-500/10 p-1.5 text-cyan-500">
-                    <Play size={16} fill="currentColor" />
+      {/* 2. MAIN WORKSPACE */}
+      <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-slate-950 overflow-hidden relative">
+        {!activeProject ? (
+          <div className="m-auto text-center flex flex-col items-center justify-center p-8 max-w-sm gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-violet-100 dark:bg-violet-950/30 flex items-center justify-center mx-auto">
+              <Layers size={24} className="text-violet-500" />
+            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Chọn hoặc tạo một dự án từ sidebar để bắt đầu.</p>
+          </div>
+        ) : (
+          <>
+            {/* Main Header / Wizard Progress bar */}
+            <div className="p-4 border-b border-slate-205/60 dark:border-slate-900 bg-slate-50/50 dark:bg-slate-955/20 flex flex-col gap-4 shrink-0">
+              <div className="flex justify-between items-start gap-4">
+                <div className="text-left">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200">{activeProject.name}</h2>
+                    <span className="text-[9px] bg-slate-100 dark:bg-slate-805 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded border border-slate-250 dark:border-slate-800 font-bold uppercase tracking-wider">Project Chain v2</span>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                      Chạy tự động toàn chuỗi (Pipeline Orchestration)
-                    </h3>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-550">
-                      Chạy tuần tự toàn bộ các node prompt trong dự án và tự động phân nhánh/định tuyến.
-                    </p>
-                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">{activeProject.description || 'Không có mô tả.'}</p>
                 </div>
 
-                <button 
-                  disabled={pipelineStatus === 'running'}
-                  onClick={() => setIsPipelineOpen(false)}
-                  className="rounded-lg p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white disabled:opacity-30 cursor-pointer transition-colors"
-                >
-                  <X size={18} />
-                </button>
+                {/* View Mode Switcher */}
+                <div className="flex items-center bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-1 shrink-0 select-none">
+                  <button
+                    onClick={() => handleToggleViewMode('wizard')}
+                    className={`py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      viewMode === 'wizard'
+                        ? 'bg-white dark:bg-slate-800 text-violet-650 dark:text-violet-400 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-750 dark:hover:text-slate-350'
+                    }`}
+                  >
+                    Tuyến tính (Wizard)
+                  </button>
+                  <button
+                    onClick={() => handleToggleViewMode('canvas')}
+                    className={`py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      viewMode === 'canvas'
+                        ? 'bg-white dark:bg-slate-800 text-violet-650 dark:text-violet-400 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-750 dark:hover:text-slate-350'
+                    }`}
+                  >
+                    Sơ đồ cây (Canvas)
+                  </button>
+                </div>
               </div>
 
-              {/* Body */}
-              <div className="flex-1 flex overflow-hidden min-h-0">
-                {/* Left Panel */}
-                <div className="w-96 border-r border-slate-155 p-4 dark:border-slate-800 flex flex-col space-y-4 overflow-y-auto shrink-0">
-                  <div>
-                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-550 mb-3">Biến đầu vào của Root</h4>
-                    {activeProject.nodes.find(n => n.parentId === null)?.variables?.length === 0 ? (
-                      <p className="text-[11px] italic text-slate-400 dark:text-slate-500">Không có biến đầu vào.</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {activeProject.nodes.find(n => n.parentId === null)?.variables?.map((v) => (
-                          <div key={v.name} className="flex flex-col gap-1">
-                            <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 flex items-center justify-between">
-                              <span>{v.name}</span>
-                              {v.required && <span className="text-[9px] text-rose-505 font-bold">Bắt buộc</span>}
-                            </label>
-                            <input
-                              type="text"
-                              disabled={pipelineStatus === 'running'}
-                              value={pipelineInputs[v.name] || ''}
-                              onChange={(e) => setPipelineInputs(prev => ({ ...prev, [v.name]: e.target.value }))}
-                              className="w-full rounded-lg border border-slate-250 bg-white px-2.5 py-1.5 text-xs focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 disabled:opacity-50"
-                              placeholder={v.description || `Nhập giá trị cho {{${v.name}}}`}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
+              {/* Step indicator */}
+              {viewMode === 'wizard' && (
+                <div className="flex justify-between items-center max-w-xl mx-auto w-full px-4 relative mt-1">
+                  {/* Connecting Line */}
+                  <div className="absolute top-4 left-8 right-8 h-0.5 bg-slate-200 dark:bg-slate-800 -z-10">
+                    <div 
+                      className="h-full bg-gradient-to-r from-violet-500 to-indigo-655 transition-all duration-300"
+                      style={{ width: `${((currentStep - 1) / 2) * 100}%` }}
+                    />
                   </div>
 
-                  <div className="border-t border-slate-100 pt-3 dark:border-slate-800/40">
-                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-550 mb-3">Cấu hình rẽ nhánh / Định tuyến</h4>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block mb-1">Chế độ định tuyến</label>
-                        <select
-                          disabled={pipelineStatus === 'running'}
-                          value={pipelineRoutingMode}
-                          onChange={(e) => setPipelineRoutingMode(e.target.value as any)}
-                          className="w-full rounded-lg border border-slate-202 bg-white px-2.5 py-1.5 text-xs focus:outline-none dark:border-slate-800 dark:bg-slate-955 dark:text-slate-300 disabled:opacity-50 cursor-pointer"
+                  {[
+                    { num: 1, label: '1. Prompt Nền Móng' },
+                    { num: 2, label: '2. Chạy Giả Lập' },
+                    { num: 3, label: '3. Đánh Giá & Tối Ưu' }
+                  ].map((step) => {
+                    const isCompleted = step.num < currentStep;
+                    const isActive = step.num === currentStep;
+                    return (
+                      <button
+                        key={step.num}
+                        onClick={() => {
+                          if (step.num <= currentStep || (step.num === 2 && basePromptInput.trim()) || (step.num === 3 && simOutput)) {
+                            setCurrentStep(step.num as 1 | 2 | 3);
+                          }
+                        }}
+                        className="flex flex-col items-center gap-1.5 focus:outline-none cursor-pointer"
+                      >
+                        <div className={`w-8.5 h-8.5 rounded-full flex items-center justify-center text-xs font-bold border transition-all duration-300
+                          ${isActive 
+                            ? 'bg-gradient-to-r from-violet-600 to-indigo-600 border-violet-500 text-white shadow-lg shadow-violet-900/20 scale-105' 
+                            : isCompleted 
+                              ? 'bg-emerald-100 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400' 
+                              : 'bg-white dark:bg-slate-900 border-slate-250 dark:border-slate-850 text-slate-400 dark:text-slate-505'}`}
                         >
-                          <option value="ai">AI Auto Evaluation (Thẩm định toàn cục)</option>
-                          <option value="keyword">Keyword Matching (Khớp từ khóa)</option>
-                          <option value="manual">Manual Routing (Duyệt thủ công)</option>
+                          {isCompleted ? <Check size={14} /> : step.num}
+                        </div>
+                        <span className={`text-[10px] font-bold tracking-wide transition-colors duration-300
+                          ${isActive ? 'text-slate-800 dark:text-slate-200' : isCompleted ? 'text-emerald-600 dark:text-emerald-555' : 'text-slate-400 dark:text-slate-500'}`}>
+                          {step.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Stepper Views */}
+            <div className="flex-1 overflow-hidden relative bg-slate-50/10 dark:bg-slate-955/5">
+              <AnimatePresence mode="wait">
+                
+                {/* STEP 1: MULTI-NODE PIPELINE DESIGNER */}
+                {currentStep === 1 && (
+                  <motion.div
+                    key="step-1"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="absolute inset-0 flex flex-col p-4 md:p-6 overflow-y-auto custom-scrollbar"
+                  >
+                    <div className="flex-1 max-w-5xl w-full mx-auto flex flex-col gap-4">
+                      
+                      <div className="flex justify-between items-center shrink-0">
+                        <div className="flex items-center gap-1.5 text-left">
+                          <Layers size={15} className="text-violet-500" />
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-350">Thiết kế Chuỗi Prompt Liên Kết</h3>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setShowVersionDrawer(true)}
+                            className="py-1.5 px-3 bg-white dark:bg-slate-900 border border-slate-250 dark:border-slate-850 hover:border-slate-400 dark:hover:border-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-955 dark:hover:text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                          >
+                            <Clock size={11} className="text-violet-555 dark:text-violet-400" />
+                            Lịch sử phiên bản
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 2-Column Multi-node layout */}
+                      <div className="flex-1 flex flex-col md:flex-row gap-5 items-stretch min-h-[420px]">
+                        
+                        {/* Column Left: Pipeline Steps Sidebar */}
+                        <div className="w-full md:w-64 flex flex-col gap-3 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-850 pb-4 md:pb-0 md:pr-4 text-left shrink-0">
+                          <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                            <span>Quy trình liên kết ({activeProject?.nodes?.length || 1} bước)</span>
+                          </div>
+                          
+                          <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-2.5 max-h-[300px] md:max-h-none">
+                            {activeProject?.nodes?.map((node, idx) => {
+                              const isSelected = selectedNodeIndex === idx;
+                              return (
+                                <div
+                                  key={node.id}
+                                  onClick={() => setSelectedNodeIndex(idx)}
+                                  className={`p-3 rounded-2xl border transition-all cursor-pointer relative group flex flex-col gap-1.5 ${
+                                    isSelected 
+                                      ? 'bg-violet-500/10 border-violet-500/40 text-violet-955 dark:text-violet-300 shadow-sm' 
+                                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-850 hover:border-slate-350 dark:hover:border-slate-800'
+                                  }`}
+                                >
+                                  {/* Index Badge & Shift Actions */}
+                                  <div className="flex justify-between items-center">
+                                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                                      isSelected 
+                                        ? 'bg-violet-500 text-white' 
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-550'
+                                    }`}>
+                                      Bước {idx + 1}
+                                    </span>
+                                    
+                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                                      <button
+                                        disabled={idx === 0}
+                                        onClick={(e) => { e.stopPropagation(); handleMoveNode(idx, 'up'); }}
+                                        className="p-1 hover:bg-slate-200 dark:hover:bg-slate-850 rounded disabled:opacity-30 cursor-pointer"
+                                        title="Di chuyển lên"
+                                      >
+                                        <ArrowRight size={10} className="-rotate-90 text-slate-500" />
+                                      </button>
+                                      <button
+                                        disabled={idx === (activeProject?.nodes?.length || 1) - 1}
+                                        onClick={(e) => { e.stopPropagation(); handleMoveNode(idx, 'down'); }}
+                                        className="p-1 hover:bg-slate-200 dark:hover:bg-slate-850 rounded disabled:opacity-30 cursor-pointer"
+                                        title="Di chuyển xuống"
+                                      >
+                                        <ArrowRight size={10} className="rotate-90 text-slate-500" />
+                                      </button>
+                                      <button
+                                        disabled={(activeProject?.nodes?.length || 1) <= 1}
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteNode(idx); }}
+                                        className="p-1 text-rose-500 hover:bg-rose-500/10 rounded disabled:opacity-30 cursor-pointer"
+                                        title="Xóa bước này"
+                                      >
+                                        <Trash2 size={10} />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Editable title input */}
+                                  <input
+                                    type="text"
+                                    value={node.title}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onChange={(e) => handleUpdateNodeTitle(idx, e.target.value)}
+                                    className="font-bold text-[11px] bg-transparent border-b border-transparent hover:border-slate-355 dark:hover:border-slate-800 focus:border-violet-500 text-slate-800 dark:text-slate-200 focus:outline-none w-full"
+                                    placeholder="Tên bước..."
+                                  />
+                                  
+                                  {idx > 0 && (
+                                    <div className="text-[8.5px] text-slate-400 dark:text-slate-500 italic mt-0.5 flex items-center gap-1">
+                                      <Layers size={8} /> Sử dụng kết quả Bước {idx}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Add node button */}
+                          <button
+                            onClick={handleAddNode}
+                            className="py-2.5 px-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-md shadow-violet-900/10"
+                          >
+                            <Plus size={12} />
+                            Thêm bước tiếp theo
+                          </button>
+                        </div>
+
+                        {/* Column Right: Prompt Editor */}
+                        <div className="flex-1 flex flex-col gap-4 text-left">
+                          
+                          <div className="flex justify-between items-center shrink-0">
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                              Nội dung Prompt: {activeProject?.nodes?.[selectedNodeIndex]?.title || `Bước ${selectedNodeIndex + 1}`}
+                            </span>
+
+                            <div className="relative">
+                              <button
+                                onClick={() => setShowTemplatePicker(!showTemplatePicker)}
+                                className="py-1 px-2.5 bg-white dark:bg-slate-900 border border-slate-250 dark:border-slate-855 hover:border-slate-400 dark:hover:border-slate-800 text-slate-700 dark:text-slate-350 hover:text-slate-955 dark:hover:text-white rounded-xl text-[10.5px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                              >
+                                <Sparkles size={11} className="text-violet-555 dark:text-violet-400" />
+                                Chọn Prompt mẫu
+                              </button>
+                              
+                              {showTemplatePicker && (
+                                <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 border border-slate-250 dark:border-slate-880 rounded-2xl shadow-xl z-30 p-2 text-left animate-in fade-in duration-100">
+                                  <div className="p-2 border-b border-slate-150 dark:border-slate-850 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                    Chọn một mẫu từ thư viện
+                                  </div>
+                                  <div className="max-h-60 overflow-y-auto custom-scrollbar p-1 flex flex-col gap-1">
+                                    {allTemplates.map((t, idx) => (
+                                      <button
+                                        key={idx}
+                                        onClick={() => {
+                                          handleLoadTemplate(t.blocks?.map(b => `[${b.title}]\n${b.content}`).join('\n\n') || '');
+                                          setShowTemplatePicker(false);
+                                        }}
+                                        className="w-full text-left p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-[11px] text-slate-755 dark:text-slate-300 hover:text-slate-955 dark:hover:text-white transition-colors"
+                                      >
+                                        <div className="font-bold line-clamp-1">{t.title}</div>
+                                        <div className="text-[9px] text-slate-500 line-clamp-1 mt-0.5">{t.description || 'Không có mô tả.'}</div>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Editor Panel */}
+                          <div className="flex-1 min-h-[250px] relative bg-white dark:bg-slate-900/30 border border-slate-255 dark:border-slate-900 focus-within:border-violet-500/50 rounded-2xl overflow-hidden flex flex-col transition-all">
+                            <textarea
+                              value={basePromptInput}
+                              onChange={(e) => handleUpdatePromptText(e.target.value)}
+                              placeholder={`Nhập hoặc dán prompt cho bước này.
+Sử dụng {{tên_biến}} để khai báo biến.
+Nếu là bước thứ 2 trở đi, sử dụng {{output_${selectedNodeIndex}}} để tham chiếu kết quả của bước trước đó.`}
+                              className="flex-1 p-4 bg-transparent text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-655 text-xs leading-relaxed focus:outline-none resize-none custom-scrollbar font-mono text-left"
+                            />
+                            <div className="px-4 py-2 border-t border-slate-150 dark:border-slate-900 bg-slate-50 dark:bg-slate-950/20 flex justify-between items-center text-[10px] text-slate-500">
+                              <span>Ký tự: {basePromptInput.length}</span>
+                              <span className="italic">Nhấn để soạn thảo trực tiếp</span>
+                            </div>
+                          </div>
+
+                          {/* Variables Info */}
+                          {selectedNodeIndex > 0 && (
+                            <div className="p-3 bg-violet-500/5 dark:bg-violet-955/10 border border-violet-500/10 rounded-2xl text-[10px] leading-relaxed text-slate-600 dark:text-slate-400">
+                              💡 **Kết nối chuỗi:** Dùng biến số <code className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-1.5 py-0.5 rounded font-mono font-bold text-violet-650 dark:text-violet-400">{`{{output_${selectedNodeIndex}}}`}</code> để chèn kết quả đầu ra của **{activeProject?.nodes?.[selectedNodeIndex - 1]?.title || `Bước ${selectedNodeIndex}`}** vào prompt bước này.
+                            </div>
+                          )}
+                        </div>
+
+                      </div>
+
+                      <div className="flex justify-end mt-2 shrink-0">
+                        <button
+                          onClick={() => setCurrentStep(2)}
+                          disabled={!basePromptInput.trim()}
+                          className="py-3 px-6 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl shadow-lg cursor-pointer transition-all active:scale-95 flex items-center gap-1.5 shadow-violet-900/10"
+                        >
+                          Chạy Giả Lập <ArrowRight size={14} />
+                        </button>
+                      </div>
+
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* STEP 2: SIMULATION PLAYGROUND */}
+                {currentStep === 2 && (
+                  <motion.div
+                    key="step-2"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="absolute inset-0 flex flex-col p-4 md:p-6 overflow-y-auto custom-scrollbar"
+                  >
+                    <div className="flex-1 max-w-5xl w-full mx-auto flex flex-col md:flex-row gap-5">
+                      
+                      {/* Left configuration panel */}
+                      <div className="flex-[3] flex flex-col gap-4.5">
+                        
+                        {/* Variables Input panel */}
+                        <div className="p-4 bg-white dark:bg-slate-900/30 border border-slate-200 dark:border-slate-900 rounded-2xl flex flex-col gap-3 text-left">
+                          <h4 className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tham Số Đầu Vào Gốc</h4>
+                          
+                          {extractedVars.length === 0 ? (
+                            <p className="text-[10.5px] text-slate-500 italic">Không phát hiện biến số nào cần nhập. Chuỗi prompt sẽ được thực thi trực tiếp.</p>
+                          ) : (
+                            <div className="flex flex-col gap-2.5">
+                              {extractedVars.map(v => (
+                                <div key={v} className="flex flex-col gap-1">
+                                  <label className="text-[9.5px] font-bold text-slate-500 dark:text-slate-400 uppercase font-mono">{`{{${v}}}`}</label>
+                                  <input
+                                    type="text"
+                                    value={varValues[v] || ''}
+                                    onChange={(e) => setVarValues(prev => ({ ...prev, [v]: e.target.value }))}
+                                    placeholder={`Nhập giá trị cho ${v}...`}
+                                    className="text-xs px-3 py-2 border border-slate-200 dark:border-slate-880 bg-slate-50 dark:bg-slate-955 text-slate-800 dark:text-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-violet-500 transition-colors"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Model Config Panel */}
+                        <div className="p-4 bg-white dark:bg-slate-900/30 border border-slate-200 dark:border-slate-900 rounded-2xl flex flex-col gap-3 text-left">
+                          <h4 className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cấu HÌnh Mô Hình AI</h4>
+                          
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[9px] font-bold text-slate-505 uppercase">Provider</label>
+                              <select
+                                value={simProvider}
+                                onChange={(e) => {
+                                  const prov = e.target.value as 'gemini' | 'openai';
+                                  setSimProvider(prov);
+                                  setSimModel(prov === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4o-mini');
+                                }}
+                                className="text-xs px-2.5 py-1.5 border border-slate-200 dark:border-slate-880 bg-slate-50 dark:bg-slate-955 rounded-xl text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-500 font-semibold cursor-pointer"
+                              >
+                                <option value="gemini">Google Gemini</option>
+                                <option value="openai">OpenAI</option>
+                              </select>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[9px] font-bold text-slate-555 uppercase">Model</label>
+                              <select
+                                value={simModel}
+                                onChange={(e) => setSimModel(e.target.value)}
+                                className="text-xs px-2.5 py-1.5 border border-slate-200 dark:border-slate-880 bg-slate-50 dark:bg-slate-955 rounded-xl text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-500 font-semibold cursor-pointer"
+                              >
+                                {simProvider === 'gemini' ? (
+                                  <>
+                                    <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                                    <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                                    <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                                  </>
+                                ) : (
+                                  <>
+                                    <option value="gpt-4o-mini">gpt-4o-mini</option>
+                                    <option value="gpt-4o">gpt-4o</option>
+                                    <option value="o1-mini">o1-mini</option>
+                                  </>
+                                )}
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 mt-1">
+                            <div>
+                              <div className="flex justify-between text-[9px] font-bold text-slate-500 uppercase mb-0.5">
+                                <span>Temperature</span>
+                                <span className="text-violet-650 dark:text-violet-400 font-bold">{simTemp}</span>
+                              </div>
+                              <input
+                                type="range"
+                                min="0" max="1.5" step="0.1"
+                                value={simTemp}
+                                onChange={(e) => setSimTemp(Number(e.target.value))}
+                                className="w-full accent-violet-550 h-1 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                              />
+                            </div>
+                            <div>
+                              <div className="flex justify-between text-[9px] font-bold text-slate-500 uppercase mb-0.5">
+                                <span>Max Tokens</span>
+                                <span className="text-violet-650 dark:text-violet-400 font-bold">{simMaxTokens}</span>
+                              </div>
+                              <input
+                                type="number"
+                                value={simMaxTokens}
+                                onChange={(e) => setSimMaxTokens(Number(e.target.value))}
+                                className="w-full text-xs px-2 py-0.5 border border-slate-200 dark:border-slate-880 bg-slate-50 dark:bg-slate-955 rounded-lg text-slate-705 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-500 font-mono"
+                              />
+                            </div>
+                          </div>
+
+                        </div>
+
+                        {/* External links paths */}
+                        <div className="p-4 bg-white dark:bg-slate-900/30 border border-slate-200 dark:border-slate-900 rounded-2xl flex flex-col gap-2.5 text-left">
+                          <h4 className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Đường Dẫn Ráp Nối Mô Hình Ngoài</h4>
+                          <p className="text-[10px] text-slate-555 leading-relaxed">
+                            Mở và chạy kiểm thử prompt của bước đang soạn thảo trong các IDE chính thức.
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                            <button
+                              onClick={() => handleOpenExternalPlayground('https://aistudio.google.com/')}
+                              className="py-2.5 px-3 bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-850 border border-slate-250 dark:border-slate-800 rounded-xl text-[11px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                            >
+                              <ExternalLink size={12} /> Google AI Studio
+                            </button>
+                            <button
+                              onClick={() => handleOpenExternalPlayground('https://platform.openai.com/playground')}
+                              className="py-2.5 px-3 bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-855 border border-slate-255 dark:border-slate-800 rounded-xl text-[11px] font-bold text-violet-650 dark:text-violet-400 flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                            >
+                              <ExternalLink size={12} /> OpenAI Playground
+                            </button>
+                          </div>
+                        </div>
+
+                      </div>
+
+                      {/* Right inline output preview panel: Sequence timelines */}
+                      <div className="flex-[4] flex flex-col gap-3 min-h-[300px] bg-slate-50/30 dark:bg-slate-955 border border-slate-202 dark:border-slate-900 rounded-2xl overflow-hidden shadow-xl text-left">
+                        <div className="px-4 py-3 border-b border-slate-250 dark:border-slate-900 bg-white dark:bg-slate-950 flex justify-between items-center">
+                          <div className="flex items-center gap-1.5">
+                            <RefreshCw size={13} className={`text-violet-555 dark:text-violet-400 ${isSimulating ? 'animate-spin' : ''}`} />
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-355">Tiến Trình Thực Thi Chuỗi</span>
+                          </div>
+                          
+                          <button
+                            onClick={handleRunSimulation}
+                            disabled={isSimulating}
+                            className="py-1.5 px-3.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 text-white font-bold text-[10.5px] rounded-xl flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-md shadow-violet-900/10"
+                          >
+                            <Play size={10} /> {isSimulating ? 'Đang chạy chuỗi...' : 'Chạy Giả Lập'}
+                          </button>
+                        </div>
+
+                        <div className="flex-1 p-4 overflow-y-auto custom-scrollbar bg-white/20 dark:bg-slate-900/10 flex flex-col gap-3.5 select-text">
+                          {activeProject?.nodes?.map((node, idx) => {
+                            const hasOutput = nodeExecutionOutputs[idx] !== undefined;
+                            const outputText = nodeExecutionOutputs[idx] || '';
+                            const isNodeExecuting = currentExecutingNodeIndex === idx;
+                            const isExpanded = expandedSimNodeIndex === idx;
+                            
+                            return (
+                              <div 
+                                key={node.id} 
+                                className={`border rounded-2xl overflow-hidden transition-all ${
+                                  isNodeExecuting 
+                                    ? 'border-violet-500/50 bg-violet-500/5 ring-1 ring-violet-500/10' 
+                                    : hasOutput 
+                                      ? 'border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-900/50' 
+                                      : 'border-slate-150 dark:border-slate-880/40 bg-slate-50/50 dark:bg-slate-955/20 opacity-60'
+                                }`}
+                              >
+                                {/* Step Header */}
+                                <div 
+                                  onClick={() => setExpandedSimNodeIndex(isExpanded ? null : idx)}
+                                  className="px-4 py-2.5 flex justify-between items-center cursor-pointer select-none bg-slate-50/50 dark:bg-slate-900/80 border-b border-slate-150 dark:border-slate-855"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded ${
+                                      isNodeExecuting
+                                        ? 'bg-violet-650 text-white animate-pulse'
+                                        : hasOutput
+                                          ? 'bg-emerald-600 text-white'
+                                          : 'bg-slate-200 dark:bg-slate-850 text-slate-500'
+                                    }`}>
+                                      {idx + 1}
+                                    </span>
+                                    <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                                      {node.title}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    {isNodeExecuting && (
+                                      <span className="text-[10px] text-violet-555 dark:text-violet-400 font-bold animate-pulse flex items-center gap-1">
+                                        <RefreshCw size={10} className="animate-spin" /> Đang chạy...
+                                      </span>
+                                    )}
+                                    {hasOutput && !isNodeExecuting && (
+                                      <span className="text-[9.5px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                                        Hoàn thành
+                                      </span>
+                                    )}
+                                    {!hasOutput && !isNodeExecuting && (
+                                      <span className="text-[9.5px] text-slate-400 dark:text-slate-600">
+                                        Đang chờ...
+                                      </span>
+                                    )}
+                                    <ChevronRight size={13} className={`text-slate-400 dark:text-slate-500 transform transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                  </div>
+                                </div>
+
+                                {/* Step Content (injected prompt and output) */}
+                                {isExpanded && (
+                                  <div className="p-3 flex flex-col gap-2.5 border-t border-slate-100 dark:border-slate-880/50 bg-white/50 dark:bg-slate-900/20 text-xs">
+                                    {/* Compiled Prompt Preview */}
+                                    <div className="flex flex-col gap-1">
+                                      <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Prompt đã biên dịch</span>
+                                      <pre className="p-2 bg-slate-50 dark:bg-slate-955 rounded-lg text-[10px] font-mono whitespace-pre-wrap overflow-x-auto text-slate-700 dark:text-slate-355 border border-slate-150 dark:border-slate-900 max-h-24 overflow-y-auto custom-scrollbar">
+                                        {(() => {
+                                          const rawPrompt = node.blocks?.[0]?.content || '';
+                                          const compileVals = { ...varValues };
+                                          for (let j = 0; j < idx; j++) {
+                                            compileVals[`output_${j+1}`] = nodeExecutionOutputs[j] || '';
+                                            compileVals[`Output_${j+1}`] = nodeExecutionOutputs[j] || '';
+                                          }
+                                          return injectVariables(rawPrompt, compileVals);
+                                        })()}
+                                      </pre>
+                                    </div>
+
+                                    {/* Output Preview */}
+                                    <div className="flex flex-col gap-1">
+                                      <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Kết quả đầu ra (Output)</span>
+                                      <div className="p-2 bg-slate-50/50 dark:bg-slate-955/40 rounded-lg border border-slate-150 dark:border-slate-900 min-h-[50px] select-text">
+                                        {outputText ? (
+                                          <AIResponseRenderer content={outputText} className="dark:prose-invert text-[11px] text-slate-800 dark:text-slate-200" />
+                                        ) : isNodeExecuting ? (
+                                          <div className="flex items-center gap-2 text-slate-400 py-2">
+                                            <RefreshCw size={12} className="animate-spin text-violet-555" />
+                                            <span className="text-[10px] animate-pulse">Đang đợi phản hồi từ mô hình...</span>
+                                          </div>
+                                        ) : (
+                                          <span className="text-[10px] text-slate-400 italic">Chưa thực thi.</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                          
+                          {(!activeProject?.nodes || activeProject.nodes.length === 0) && (
+                            <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 dark:text-slate-605 gap-2 my-auto py-12">
+                              <Play size={20} className="opacity-40" />
+                              <span className="text-[11px]">Chưa cấu hình các bước trong chuỗi.</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* Navigation bar */}
+                    <div className="flex justify-between items-center max-w-5xl w-full mx-auto mt-4 shrink-0">
+                      <button
+                        onClick={() => setCurrentStep(1)}
+                        className="py-2.5 px-4 bg-white dark:bg-slate-900 border border-slate-250 dark:border-slate-850 hover:border-slate-400 dark:hover:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+                      >
+                        <ArrowLeft size={14} /> Quay lại Bước 1
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setCurrentStep(3);
+                          const defaultIdx = Math.min(selectedNodeIndex, (activeProject?.nodes || []).length - 1);
+                          setEvalNodeIndex(defaultIdx >= 0 ? defaultIdx : 0);
+                          
+                          // Run evaluation automatically if output exists
+                          setTimeout(() => {
+                            const outputToEval = nodeExecutionOutputs[defaultIdx >= 0 ? defaultIdx : 0];
+                            if (outputToEval) {
+                              setIsEvaluating(true);
+                              setEvaluation(null);
+                              setAppliedSuggestions({});
+                              
+                              const promptToEval = activeProject?.nodes[defaultIdx >= 0 ? defaultIdx : 0]?.blocks?.[0]?.content || '';
+                              evaluateAndEnhancePrompt(promptToEval, outputToEval)
+                                .then(res => setEvaluation(res))
+                                .catch(err => console.error(err))
+                                .finally(() => setIsEvaluating(false));
+                            }
+                          }, 50);
+                        }}
+                        disabled={Object.keys(nodeExecutionOutputs).length === 0 || isSimulating}
+                        className="py-2.5 px-5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-lg transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-violet-900/10"
+                      >
+                        Tiến Hành Đánh Giá <ArrowRight size={14} />
+                      </button>
+                    </div>
+
+                  </motion.div>
+                )}
+
+                {/* STEP 3: EVALUATION & ENHANCEMENT */}
+                {currentStep === 3 && (
+                  <motion.div
+                    key="step-3"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="absolute inset-0 flex flex-col p-4 md:p-6 overflow-y-auto custom-scrollbar"
+                  >
+                    <div className="flex-1 max-w-4xl w-full mx-auto flex flex-col gap-5">
+                      
+                      {/* Step node selector */}
+                      <div className="p-4 bg-white dark:bg-slate-900/30 border border-slate-200 dark:border-slate-900 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 text-left">
+                        <div className="flex flex-col gap-1">
+                          <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Chọn mắt xích cần AI đánh giá</h4>
+                          <p className="text-[10px] text-slate-505">Hệ thống sẽ thẩm định prompt của bước đã chọn với kết quả giả lập tương ứng.</p>
+                        </div>
+                        
+                        <select
+                          value={evalNodeIndex}
+                          onChange={(e) => {
+                            const idx = Number(e.target.value);
+                            setEvalNodeIndex(idx);
+                            setEvaluation(null);
+                            setAppliedSuggestions({});
+                          }}
+                          className="text-xs px-3 py-2 border border-slate-200 dark:border-slate-880 bg-slate-50 dark:bg-slate-955 rounded-xl text-slate-755 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-500 font-semibold cursor-pointer w-full sm:w-64"
+                        >
+                          {activeProject?.nodes?.map((node, idx) => (
+                            <option key={node.id} value={idx}>
+                              Bước {idx + 1}: {node.title}
+                            </option>
+                          ))}
                         </select>
                       </div>
 
-                      {pipelineRoutingMode === 'keyword' && (
-                        <div>
-                          <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block mb-1">Từ khóa đi tiếp nhánh Success</label>
-                          <input
-                            type="text"
-                            disabled={pipelineStatus === 'running'}
-                            value={pipelineKeyword}
-                            onChange={(e) => setPipelineKeyword(e.target.value)}
-                            className="w-full rounded-lg border border-slate-250 bg-white px-2.5 py-1.5 text-xs focus:outline-none dark:border-slate-800 dark:bg-slate-955 dark:text-slate-300 disabled:opacity-50"
-                            placeholder="Nhập từ khóa (vd: thành công, đạt...)"
-                          />
+                      {isEvaluating ? (
+                        <div className="m-auto text-center flex flex-col items-center justify-center p-12 gap-3">
+                          <RefreshCw size={36} className="animate-spin text-violet-500" />
+                          <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">AI Đang Thẩm Định Mắt Xích {evalNodeIndex + 1}...</h4>
+                          <p className="text-[11px] text-slate-500 max-w-xs leading-relaxed">
+                            Mô hình đang đối chiếu kết quả giả lập và prompt của bước này để tìm lỗi logic, tối ưu hóa từ ngữ và soạn gợi ý nâng cấp.
+                          </p>
                         </div>
-                      )}
-
-                      {pipelineRoutingMode === 'ai' && (
-                        <p className="text-[10px] text-slate-400 leading-normal">
-                          💡 AI sẽ tự động chấm điểm output của cha đối chiếu với **Bộ quy chuẩn toàn cục** ({activeProject.globalEvalCriteria?.length || 0} quy chuẩn) để tự rẽ nhánh.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="border-t border-slate-100 pt-4 dark:border-slate-800/40 flex flex-col gap-2 mt-auto">
-                    {pipelineStatus === 'running' || pipelineStatus === 'paused' ? (
-                      <button
-                        onClick={handleStopPipeline}
-                        className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-rose-650 hover:bg-rose-600 px-4 py-2.5 text-xs font-bold text-white shadow-md cursor-pointer transition-all active:scale-95 animate-pulse text-[11px]"
-                      >
-                        <span>Dừng thực thi chuỗi</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={startPipelineExecution}
-                        className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 px-4 py-2.5 text-xs font-bold text-white shadow-md cursor-pointer transition-all active:scale-95 text-[11px]"
-                      >
-                        <Play size={14} fill="currentColor" />
-                        <span>Kích hoạt chạy chuỗi</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Right Panel */}
-                <div className="flex-1 flex flex-col p-4 overflow-hidden min-h-0 bg-slate-50/50 dark:bg-slate-950/20">
-                  <div className="flex items-center justify-between mb-3 shrink-0">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-550">
-                      Đầu ra của Node hiện tại
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      {pipelineStatus === 'running' && (
-                        <span className="flex items-center gap-1 text-xs text-cyan-600 dark:text-cyan-400 font-semibold animate-pulse">
-                          <RefreshCw size={12} className="animate-spin" />
-                          Đang thực thi chuỗi...
-                        </span>
-                      )}
-                      {pipelineStatus === 'paused' && (
-                        <span className="flex items-center gap-1 text-xs text-amber-605 dark:text-amber-400 font-semibold animate-pulse">
-                          ⚠️ Tạm dừng (Chờ duyệt nhánh)
-                        </span>
-                      )}
-                      {pipelineStatus === 'completed' && (
-                        <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-bold animate-bounce">
-                          ✓ Hoàn thành toàn chuỗi
-                        </span>
-                      )}
-                      {pipelineStatus === 'error' && (
-                        <span className="flex items-center gap-1 text-xs text-rose-600 dark:text-rose-400 font-semibold animate-shake">
-                          ✗ Gặp lỗi hệ thống
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex-1 border border-slate-200/80 rounded-2xl bg-white dark:border-slate-800 dark:bg-slate-900 p-4 overflow-y-auto mb-4 select-text relative">
-                    {pipelineCurrentNodeId ? (
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-2 text-[10px] font-bold text-cyan-605 dark:text-cyan-400">
-                          <RefreshCw size={12} className="animate-spin" />
-                          <span>VĂN BẢN ĐANG SINH TỪ NODE: {activeProject.nodes.find(n => n.id === pipelineCurrentNodeId)?.title}</span>
-                        </div>
-                        <AIResponseRenderer content={pipelineNodeResponse || 'Đang phản hồi...'} />
-                      </div>
-                    ) : pipelineStatus === 'completed' ? (
-                      <div className="flex h-full flex-col items-center justify-center text-center text-slate-400 dark:text-slate-500">
-                        <Check size={36} className="text-emerald-505 mb-2 animate-bounce" />
-                        <h4 className="font-bold text-slate-850 dark:text-slate-200 mb-1">Toàn bộ chuỗi đã được thực thi hoàn chỉnh!</h4>
-                        <p className="text-xs max-w-sm">Tất cả các kết quả đầu ra đã được lưu trực tiếp vào từng Node tương ứng trên Sơ đồ Canvas của bạn.</p>
-                      </div>
-                    ) : (
-                      <div className="flex h-full flex-col items-center justify-center text-slate-400 dark:text-slate-550 text-center">
-                        <Play size={24} className="mb-2 text-slate-350 dark:text-slate-750" />
-                        <p className="text-xs">Đầu ra của Node đang chạy sẽ hiển thị tại đây.</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {pipelineStatus === 'paused' && (
-                    <div className="mb-4 flex flex-col gap-2 rounded-2xl bg-amber-500/5 dark:bg-amber-955/20 p-4 border border-amber-500/25 shrink-0">
-                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                        <div className="flex flex-col">
-                          <span className="text-xs font-bold text-amber-700 dark:text-amber-400">
-                            Thẩm định & Rẽ nhánh thủ công:
-                          </span>
-                          <span className="text-[10px] text-slate-450 dark:text-slate-500">
-                            Hãy xem kết quả sinh ra ở trên và nhấn chọn nhánh tiếp theo:
-                          </span>
-                        </div>
-                        <div className="flex gap-2 shrink-0">
-                          <button
-                            onClick={() => handleResumePipelineManual('success')}
-                            className="flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition-all cursor-pointer shadow-sm active:scale-95 text-[11px]"
-                          >
-                            <Check size={14} />
-                            👍 Đi nhánh Nâng Cao
-                          </button>
-                          <button
-                            onClick={() => handleResumePipelineManual('failure')}
-                            className="flex items-center gap-1 rounded-xl bg-orange-650 px-3 py-2 text-xs font-bold text-white hover:bg-orange-600 transition-all cursor-pointer shadow-sm active:scale-95 text-[11px]"
-                          >
-                            <AlertCircle size={14} />
-                            👎 Đi nhánh Sửa Lỗi
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Live Logs Terminal */}
-                  <div className="h-44 border border-slate-200/80 rounded-2xl bg-slate-950 p-3 flex flex-col font-mono text-[10px] text-slate-300 shrink-0">
-                    <span className="text-[9px] uppercase font-bold text-slate-500 mb-1.5 pb-1.5 border-b border-slate-900 shrink-0">
-                      Bảng theo dõi nhật ký thực thi (Execution Logs)
-                    </span>
-                    <div className="flex-1 overflow-y-auto space-y-1 scrollbar-thin">
-                      {pipelineLogs.length === 0 ? (
-                        <span className="text-slate-650 italic">Chưa có nhật ký hoạt động. Hãy kích hoạt chuỗi để bắt đầu.</span>
                       ) : (
-                        pipelineLogs.map((log, idx) => (
-                          <div key={idx} className="leading-relaxed whitespace-pre-wrap select-text">{log}</div>
-                        ))
-                      )}
+                        <>
+                          {/* Scoring Banner */}
+                          {evaluation ? (
+                            <div className="p-4 bg-white dark:bg-slate-900/30 border border-slate-200 dark:border-slate-900 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 text-left animate-in fade-in duration-200">
+                              <div className="flex items-center gap-4">
+                                {/* Quality Score Badge */}
+                                <div className={`w-16 h-16 rounded-full border-2 flex flex-col items-center justify-center font-bold relative shrink-0
+                                  ${evaluation.score >= 85 ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5' : 
+                                    evaluation.score >= 60 ? 'border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/5' : 
+                                    'border-rose-500/40 text-rose-600 dark:text-rose-400 bg-rose-500/5'}`}
+                                >
+                                  <span className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-505 font-bold">Điểm số</span>
+                                  <span className="text-xl -mt-1 font-mono">{evaluation.score}</span>
+                                </div>
+                                
+                                <div>
+                                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Đánh giá chất lượng của {activeProject?.nodes?.[evalNodeIndex]?.title || `Bước ${evalNodeIndex + 1}`}</h4>
+                                  <p className="text-[10.5px] text-slate-555 dark:text-slate-400 mt-1 leading-relaxed font-medium">
+                                    {evaluation.score >= 85 ? 'Prompt hoạt động tốt và tạo phản hồi đầu ra rất tối ưu.' : 
+                                     evaluation.score >= 60 ? 'Đạt yêu cầu nhưng còn nhiều từ ngữ, logic có thể tối ưu thêm.' : 
+                                     'Phản hồi bị lỗi logic hoặc sai định dạng. Cần bổ sung nâng cấp bổ khuyết ngay.'}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <button
+                                onClick={handleStartEvaluation}
+                                className="py-2 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-850 border border-slate-250 dark:border-slate-800 text-slate-700 dark:text-slate-350 hover:text-slate-955 dark:hover:text-white rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+                              >
+                                <RefreshCw size={12} /> Đánh giá lại
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="p-8 bg-white dark:bg-slate-900/30 border border-slate-200 dark:border-slate-900 rounded-2xl text-center flex flex-col items-center justify-center gap-3">
+                              <Sparkles size={24} className="text-violet-550 animate-pulse" />
+                              <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Mắt xích chưa được thẩm định</h4>
+                              <p className="text-[10.5px] text-slate-500 max-w-xs">
+                                Hãy bấm nút dưới đây để AI phân tích chất lượng của prompt **{activeProject?.nodes?.[evalNodeIndex]?.title || `Bước ${evalNodeIndex + 1}`}**.
+                              </p>
+                              <button
+                                onClick={handleStartEvaluation}
+                                className="py-2 px-4 bg-violet-650 hover:bg-violet-600 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md shadow-violet-900/10 active:scale-95"
+                              >
+                                Thẩm định mắt xích này
+                              </button>
+                            </div>
+                          )}
+
+                          {evaluation && (
+                            /* Detail analyses split panel */
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-left animate-in slide-in-from-bottom-3 duration-250">
+                              
+                              {/* Weaknesses List */}
+                              <div className="p-4 bg-white dark:bg-slate-900/30 border border-slate-200 dark:border-slate-900 rounded-2xl flex flex-col gap-3">
+                                <div className="flex items-center gap-1.5 text-amber-550 dark:text-amber-500">
+                                  <AlertTriangle size={15} />
+                                  <span className="text-[10px] font-bold uppercase tracking-wider">Nhược Điểm Cần Khắc Phục</span>
+                                </div>
+                                
+                                {evaluation.weaknesses && evaluation.weaknesses.length > 0 ? (
+                                  <ul className="flex flex-col gap-2.5 pl-1.5 mt-1">
+                                    {evaluation.weaknesses.map((w, idx) => (
+                                      <li key={idx} className="text-[11px] text-slate-600 dark:text-slate-400 flex items-start gap-2 leading-relaxed font-medium">
+                                        <span className="text-amber-555 dark:text-amber-500 font-bold text-[10px] shrink-0 mt-0.5">•</span>
+                                        <span>{w}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p className="text-[10.5px] text-slate-500 italic my-auto py-4 text-center">
+                                    🎉 Tuyệt vời! AI không phát hiện nhược điểm lớn nào.
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Suggestions List */}
+                              <div className="p-4 bg-white dark:bg-slate-900/30 border border-slate-200 dark:border-slate-900 rounded-2xl flex flex-col gap-3">
+                                <div className="flex items-center gap-1.5 text-violet-600 dark:text-violet-400">
+                                  <Sparkles size={15} />
+                                  <span className="text-[10px] font-bold uppercase tracking-wider">Gợi Ý Nâng Cấp Từ AI</span>
+                                </div>
+
+                                {evaluation.suggestions && evaluation.suggestions.length > 0 ? (
+                                  <div className="flex flex-col gap-3.5 mt-1 overflow-y-auto max-h-80 custom-scrollbar pr-1">
+                                    {evaluation.suggestions.map((s, idx) => {
+                                      const isApplied = appliedSuggestions[idx];
+                                      return (
+                                        <div key={idx} className="p-3 bg-slate-50 dark:bg-slate-955/40 border border-slate-200 dark:border-slate-850 rounded-xl flex flex-col gap-2.5">
+                                          <div>
+                                            <div className="flex justify-between items-start gap-2">
+                                              <span className="text-[11.5px] font-bold text-slate-800 dark:text-slate-200 leading-normal">{s.title}</span>
+                                              {isApplied && (
+                                                <span className="text-[8px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Đã ráp nối</span>
+                                              )}
+                                            </div>
+                                            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{s.description}</p>
+                                          </div>
+
+                                          <div className="p-2 bg-white dark:bg-slate-900/60 rounded-lg text-[9.5px] font-mono text-slate-650 dark:text-slate-400 border border-slate-200 dark:border-slate-900 max-h-24 overflow-y-auto custom-scrollbar select-text whitespace-pre-wrap">
+                                            {s.content}
+                                          </div>
+
+                                          {!isApplied && (
+                                            <button
+                                              onClick={() => handleApplySuggestion(s.content, idx)}
+                                              className="w-full mt-0.5 py-2 px-3 bg-violet-500/10 dark:bg-violet-955/35 hover:bg-violet-600 dark:hover:bg-violet-950/50 border border-violet-500/20 dark:border-violet-500/30 hover:border-violet-500/50 text-[10px] font-bold text-violet-600 dark:text-violet-300 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 active:scale-98"
+                                          >
+                                            <Sparkles size={10} className="text-violet-500" />
+                                            Nối vào Prompt gốc
+                                          </button>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <p className="text-[10.5px] text-slate-555 italic my-auto py-4 text-center">
+                                  {evaluation ? 'Không có đề xuất thêm.' : 'Chưa có phân tích.'}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                      {/* Navigation bar */}
+                      <div className="flex justify-between items-center mt-4 shrink-0">
+                        <button
+                          onClick={() => setCurrentStep(2)}
+                          className="py-2.5 px-4 bg-white dark:bg-slate-900 border border-slate-250 dark:border-slate-850 hover:border-slate-400 dark:hover:border-slate-800 text-slate-505 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+                        >
+                          <ArrowLeft size={14} /> Quay lại Bước 2
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setCurrentStep(1);
+                          }}
+                          className="py-2.5 px-5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-violet-900/10"
+                        >
+                          Hoàn tất & Về Bước 1 <Check size={14} />
+                        </button>
+                      </div>
+
                     </div>
-                  </div>
-                </div>
+                  </motion.div>
+                )}
+
+              </AnimatePresence>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* 3. NEW PROJECT MODAL */}
+      {isNewProjectModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-250 dark:border-slate-800 rounded-3xl overflow-hidden shadow-2xl animate-in scale-in duration-250 flex flex-col text-left text-slate-800 dark:text-slate-100"
+          >
+            <div className="px-5 py-4 border-b border-slate-250 dark:border-slate-855 bg-slate-50 dark:bg-slate-950 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Layers size={16} className="text-violet-555 dark:text-violet-500" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-350">Tạo dự án mới</h3>
               </div>
-            </motion.div>
+              <button
+                onClick={() => setIsNewProjectModalOpen(false)}
+                className="text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-5 flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-slate-555 dark:text-slate-400 uppercase tracking-wide">Tên dự án <span className="text-rose-500">*</span></label>
+                <input
+                  type="text"
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  placeholder="Ví dụ: Chatbot dịch thuật..."
+                  className="text-xs px-3.5 py-2.5 border border-slate-250 dark:border-slate-850 focus:border-violet-555 dark:focus:border-violet-500 bg-slate-50 dark:bg-slate-955 text-slate-800 dark:text-slate-200 rounded-xl focus:outline-none transition-colors"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-slate-555 dark:text-slate-400 uppercase tracking-wide">Mô tả dự án</label>
+                <textarea
+                  value={newProjectDesc}
+                  onChange={(e) => setNewProjectDesc(e.target.value)}
+                  placeholder="Mô tả mục tiêu của dự án này..."
+                  className="text-xs px-3.5 py-2.5 border border-slate-250 dark:border-slate-850 focus:border-violet-555 dark:focus:border-violet-500 bg-slate-50 dark:bg-slate-955 text-slate-800 dark:text-slate-200 rounded-xl focus:outline-none resize-none h-20 transition-colors custom-scrollbar"
+                />
+              </div>
+            </div>
+
+            <div className="px-5 py-4 border-t border-slate-250 dark:border-slate-850 bg-slate-50 dark:bg-slate-950/40 flex justify-end gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsNewProjectModalOpen(false)}
+                className="py-2 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-850 border border-slate-250 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-850 dark:hover:text-slate-255 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateProject}
+                disabled={!newProjectName.trim()}
+                className="py-2 px-4 bg-violet-600 dark:bg-violet-650 hover:bg-violet-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md transition-colors cursor-pointer"
+              >
+                Tạo dự án
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VERSION DRAWER PANEL */}
+      <AnimatePresence>
+        {showVersionDrawer && (
+          <div 
+            onClick={() => {
+              setShowVersionDrawer(false);
+              setSelectedVersionToCompare(null);
+            }}
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs flex justify-end animate-in fade-in duration-200"
+          >
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-850 h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-250 text-slate-800 dark:text-slate-100"
+            >
+              <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-855 bg-slate-50 dark:bg-slate-950 flex justify-between items-center shrink-0">
+                <div className="flex items-center gap-2">
+                  <Clock size={16} className="text-violet-600 dark:text-violet-400" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-355">Lịch sử phiên bản</h3>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowVersionDrawer(false);
+                    setSelectedVersionToCompare(null);
+                  }}
+                  className="text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 custom-scrollbar">
+                {(!activeProject?.versions || activeProject.versions.length === 0) ? (
+                  <div className="m-auto text-center py-12 text-slate-400 my-auto">
+                    <Clock size={24} className="mx-auto opacity-30 mb-2" />
+                    <p className="text-xs">Chưa có lịch sử phiên bản nào được ghi nhận.</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Version List */}
+                    <div className="flex flex-col gap-2 shrink-0">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left">Danh sách phiên bản ({activeProject.versions.length})</span>
+                      <div className="flex flex-col gap-2 max-h-56 overflow-y-auto custom-scrollbar p-0.5">
+                        {activeProject.versions.map((ver) => {
+                          const isSelected = selectedVersionToCompare?.id === ver.id;
+                          return (
+                            <div 
+                              key={ver.id}
+                              onClick={() => setSelectedVersionToCompare(ver)}
+                              className={`p-3 rounded-xl border text-left cursor-pointer transition-all duration-200 relative group
+                                ${isSelected 
+                                  ? 'bg-violet-50 dark:bg-violet-955/15 border-violet-400 dark:border-violet-500/50' 
+                                  : 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-850 hover:border-slate-300 dark:hover:border-slate-800'}`}
+                            >
+                              <div className="flex justify-between items-start gap-2">
+                                <span className="text-[10.5px] font-bold text-slate-800 dark:text-slate-200">
+                                  {new Date(ver.timestamp).toLocaleString()}
+                                </span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRestoreVersion(ver);
+                                  }}
+                                  className="py-1 px-2.5 bg-violet-600 dark:bg-violet-650 hover:bg-violet-500 text-white text-[9.5px] font-bold rounded-lg transition-colors cursor-pointer"
+                                >
+                                  Khôi phục
+                                </button>
+                              </div>
+                              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed font-semibold">
+                                {ver.description}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Diff Viewer panel */}
+                    {selectedVersionToCompare && (
+                      <div className="flex-1 flex flex-col gap-2 min-h-[250px]">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left">
+                          So sánh khác biệt (So với Hiện tại)
+                        </span>
+                        <div className="flex-1 p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-900 rounded-2xl overflow-y-auto custom-scrollbar font-mono text-[10px] text-left select-text whitespace-pre-wrap leading-relaxed">
+                          {computeUnifiedDiff(selectedVersionToCompare.content, basePromptInput).map((line, idx) => {
+                            if (line.type === 'added') {
+                              return (
+                                <div key={idx} className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1 border-l-2 border-emerald-500/50">
+                                  + {line.text}
+                                </div>
+                              );
+                            } else if (line.type === 'removed') {
+                              return (
+                                <div key={idx} className="bg-rose-500/10 text-rose-600 dark:text-rose-400 px-1 border-l-2 border-rose-500/50 line-through">
+                                  - {line.text}
+                                </div>
+                              );
+                            } else {
+                              return (
+                                <div key={idx} className="text-slate-500 dark:text-slate-400 px-1">
+                                  &nbsp;&nbsp;{line.text}
+                                </div>
+                              );
+                            }
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </AnimatePresence>
-
-      {/* --- MODAL 4: AUTOMATED UNIT TESTING & AI JUDGE --- */}
-      <TestCasesPanel
-        isOpen={isUnitTestOpen}
-        onClose={() => {
-          if (!isRunningAllTests) setIsUnitTestOpen(false);
-        }}
-        activeProject={activeProject}
-        selectedTestCaseId={selectedTestCaseId}
-        setSelectedTestCaseId={setSelectedTestCaseId}
-        isRunningAllTests={isRunningAllTests}
-        testSuiteLogs={testSuiteLogs}
-        handleAddTestCase={handleAddTestCase}
-        handleDeleteTestCase={handleDeleteTestCase}
-        handleUpdateTestCase={handleUpdateTestCase}
-        runIndividualTestCase={runIndividualTestCase}
-        runTestSuiteExecution={runTestSuiteExecution}
-        theme={theme}
-      />
 
     </div>
   );

@@ -93,6 +93,55 @@ export const usePlaygroundSession = () => {
     }
   };
 
+  const handleGenerateSampleResult = async (systemInstruction: string) => {
+    setIsChatGenerating(true);
+    setPlaygroundMessages([
+      { role: 'assistant', content: '' }
+    ]);
+
+    try {
+      const finalSystemInstruction = systemInstruction + 
+        `\n\n[HƯỚNG DẪN BẮT BUỘC CHO MENTOR AI]\n` +
+        `Bạn là Mentor AI - gia sư thân thiện, kiên nhẫn và khuyến khích cho học sinh trung học. Hãy tuân thủ nghiêm ngặt:\n` +
+        `1. Tuyệt đối KHÔNG giải hộ bài tập hay đưa ra đáp án trực tiếp. Sử dụng phương pháp Socratic để đặt câu hỏi khơi gợi tư duy, dẫn dắt từng bước để học sinh tự tìm ra câu trả lời.\n` +
+        `2. Giọng điệu thân thiện, kiên nhẫn, sử dụng emoji một cách ấm áp, khích lệ.\n` +
+        `3. Khi viết các công thức toán học hoặc khoa học, hãy luôn sử dụng LaTeX (bọc bằng $ hoặc $$).`;
+      
+      const apiMessages = [{
+        role: 'user' as const,
+        content: 'Hãy tạo một phản hồi mẫu ngắn gọn, súc tích (khoảng 2-3 câu) thể hiện đúng vai trò, tính cách và định hướng nhiệm vụ mà bạn được cấu hình ở trên để minh họa cách bạn sẽ trả lời học sinh.'
+      }];
+
+      let accumulatedResponse = '';
+      
+      const apiKey = playgroundProvider === 'gemini' 
+        ? (useSystemGeminiKey ? undefined : geminiApiKey)
+        : openaiApiKey;
+
+      await runPlaygroundChatStream(
+        playgroundProvider,
+        finalSystemInstruction,
+        apiMessages,
+        {
+          apiKey,
+          model: playgroundModel,
+          temperature: playgroundTemp,
+          maxTokens: 300
+        },
+        (chunk) => {
+          accumulatedResponse += chunk;
+          setPlaygroundMessages([{ role: 'assistant', content: accumulatedResponse }]);
+        }
+      );
+    } catch (err: any) {
+      console.error(err);
+      const errorMessage = err.message || 'Đã xảy ra lỗi khi tạo kết quả mẫu.';
+      setPlaygroundMessages([{ role: 'assistant', content: `❌ Lỗi: ${errorMessage}` }]);
+    } finally {
+      setIsChatGenerating(false);
+    }
+  };
+
   const handleResetPlayground = () => {
     setPlaygroundMessages([]);
   };
@@ -114,6 +163,7 @@ export const usePlaygroundSession = () => {
     showPlaygroundConfig,
     setShowPlaygroundConfig,
     handleSendPlaygroundMessage,
+    handleGenerateSampleResult,
     handleResetPlayground,
   };
 };

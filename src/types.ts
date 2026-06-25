@@ -169,6 +169,13 @@ export interface TreeNode {
   contextLimit?: number;                          // Số cấp cha giới hạn kế thừa
 }
 
+export interface PromptVersion {
+  id: string;
+  timestamp: string;
+  content: string;
+  description: string;
+}
+
 export interface PromptProject {
   id: string;
   name: string;
@@ -179,6 +186,7 @@ export interface PromptProject {
   updatedAt: string;
   userId?: string;
   testCases?: TestCase[]; // Bộ kiểm thử tự động
+  versions?: PromptVersion[]; // Lịch sử phiên bản prompt
 }
 
 export interface TestCase {
