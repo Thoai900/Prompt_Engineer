@@ -5,7 +5,7 @@ import {
   ChevronDown, ChevronRight, AlignLeft, Minimize2, Briefcase, 
   Menu, User, Pin, Send, Clock, Undo, Redo, Shield, AlertCircle, Brain,
   Download, FileText, FileJson, Printer, ScrollText, Workflow,
-  Wrench, ImageIcon, Settings, Loader2
+  Wrench, Settings, Loader2
 } from 'lucide-react';
 import { AVAILABLE_BLOCKS, BLOCK_SUGGESTIONS } from '../../data';
 import { PromptBlock, PromptTemplate, AiPersona, AiRule, AiSkill, TabType, PromptVariable, BlockType } from '../../types';
@@ -18,11 +18,10 @@ import { PlaygroundPanel } from '../builder/PlaygroundPanel';
 import { SaveTemplateModal } from '../builder/modals/SaveTemplateModal';
 import { QuickPromptModal } from '../builder/modals/QuickPromptModal';
 import { UserProfileModal } from '../builder/modals/UserProfileModal';
-import { ImagePromptModal } from '../builder/modals/ImagePromptModal';
 import AddToProjectModal from '../modals/AddToProjectModal';
 import { 
-  generateAutoBlockStream, autoFillVariables, generateContentForExistingBlocks, 
-  generatePromptFromImage, type AiActionType 
+  generateAutoBlockStream, autoFillVariables, generateContentForExistingBlocks,
+  type AiActionType
 } from '../../services/aiService';
 import { PRESET_RULES, PRESET_SKILLS } from '../../presets';
 import { DEFAULT_FRAMEWORKS } from '../../utils/builderUtils';
@@ -166,11 +165,6 @@ export default function BuilderTab({
   const [quickPromptFramework, setQuickPromptFramework] = useState('claude_xmd');
   const [isGeneratingQuickPrompt, setIsGeneratingQuickPrompt] = useState(false);
 
-  // Image to prompt states
-  const [isImagePromptModalOpen, setIsImagePromptModalOpen] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [selectedImageMime, setSelectedImageMime] = useState<string | null>(null);
-  const [isGeneratingFromImage, setIsGeneratingFromImage] = useState(false);
 
   // Auto-fill and profile states
   const [isAutoFilling, setIsAutoFilling] = useState(false);
@@ -359,53 +353,6 @@ export default function BuilderTab({
       alert("Đã có lỗi xảy ra trong quá trình sinh tự động.");
     } finally {
       setIsGeneratingQuickPrompt(false);
-    }
-  };
-
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Dung lượng ảnh vượt quá 5MB. Vui lòng chọn ảnh nhỏ hơn.");
-      return;
-    }
-
-    setSelectedImageMime(file.type);
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        const base64 = reader.result.split(',')[1];
-        setSelectedImage(base64);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleGenerateFromImage = async () => {
-    if (!selectedImage || blocks.length === 0) return;
-    setIsGeneratingFromImage(true);
-    try {
-      const resultBlocks = await generatePromptFromImage(
-        selectedImage,
-        selectedImageMime || 'image/jpeg',
-        blocks.map(b => ({ id: b.id, type: b.type, title: b.title })),
-        { model: 'gemini-2.5-flash' }
-      );
-
-      if (resultBlocks) {
-        Object.entries(resultBlocks).forEach(([id, content]) => {
-          updateBlockContent(id, content);
-        });
-      }
-      setIsImagePromptModalOpen(false);
-      setSelectedImage(null);
-      setSelectedImageMime(null);
-    } catch (err) {
-      console.error(err);
-      alert("Đã có lỗi xảy ra trong quá trình phân tích ảnh.");
-    } finally {
-      setIsGeneratingFromImage(false);
     }
   };
 
@@ -809,14 +756,6 @@ export default function BuilderTab({
                  <span className="hidden sm:inline">Hoàn thiện AI</span>
                </button>
                
-               <button 
-                 onClick={() => setIsImagePromptModalOpen(true)}
-                 className="touch-manipulation flex items-center justify-center p-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 border border-slate-200 dark:border-slate-800 text-slate-200 text-xs font-bold gap-1 cursor-pointer active:scale-95 h-9 shadow-sm"
-                 title="Bóc tách từ ảnh"
-               >
-                 <ImageIcon size={13} />
-                 <span className="hidden sm:inline">Bóc từ ảnh</span>
-               </button>
 
                <button 
                  onClick={handleOpenAddToProject}
@@ -1179,20 +1118,6 @@ export default function BuilderTab({
         hasBlocks={blocks.length > 0}
       />
 
-      <ImagePromptModal
-        isOpen={isImagePromptModalOpen}
-        onClose={() => {
-          setIsImagePromptModalOpen(false);
-          setSelectedImage(null);
-          setSelectedImageMime(null);
-        }}
-        selectedImage={selectedImage}
-        selectedImageMime={selectedImageMime}
-        isGeneratingFromImage={isGeneratingFromImage}
-        onImageSelect={handleImageSelect}
-        onConfirmGenerate={handleGenerateFromImage}
-        hasBlocks={blocks.length > 0}
-      />
 
       <UserProfileModal
         isOpen={isProfileModalOpen}
