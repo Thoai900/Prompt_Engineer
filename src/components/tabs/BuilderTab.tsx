@@ -19,10 +19,8 @@ import { SaveTemplateModal } from '../builder/modals/SaveTemplateModal';
 import { QuickPromptModal } from '../builder/modals/QuickPromptModal';
 import { UserProfileModal } from '../builder/modals/UserProfileModal';
 import AddToProjectModal from '../modals/AddToProjectModal';
-import { 
-  generateAutoBlockStream, autoFillVariables, generateContentForExistingBlocks,
-  type AiActionType
-} from '../../services/aiService';
+import { autoFillVariables, type AiActionType } from '../../services/aiService';
+import { routeQuickFill, routeAutoBlock } from '../../services/promptRouter';
 import { PRESET_RULES, PRESET_SKILLS } from '../../presets';
 import { DEFAULT_FRAMEWORKS } from '../../utils/builderUtils';
 
@@ -296,17 +294,17 @@ export default function BuilderTab({
     let isFirstChunk = true;
 
     try {
-      await generateAutoBlockStream(
-        block.type, 
-        block.title, 
-        block.content, 
+      await routeAutoBlock(
+        block.type,
+        block.title,
+        block.content,
         contextBlocks,
         actionType,
         detailLevel,
         (chunk) => {
           if (isFirstChunk) {
             isFirstChunk = false;
-            accumulatedText = chunk; // Override whatever was there
+            accumulatedText = chunk;
           } else {
             accumulatedText += chunk;
           }
@@ -330,7 +328,7 @@ export default function BuilderTab({
     if (!quickPromptTopic.trim() || blocks.length === 0) return;
     setIsGeneratingQuickPrompt(true);
     try {
-      const resultBlocks = await generateContentForExistingBlocks(
+      const resultBlocks = await routeQuickFill(
         quickPromptTopic,
         blocks.map(b => ({ id: b.id, type: b.type, title: b.title })),
         {
@@ -369,13 +367,13 @@ export default function BuilderTab({
     let isFirstChunk = true;
 
     try {
-      await generateAutoBlockStream(
-        type, 
-        blockDef.title, 
-        '', 
+      await routeAutoBlock(
+        type,
+        blockDef.title,
+        '',
         contextBlocks,
         'auto',
-        1, // Hạn chế độ chi tiết ở mức ngắn nhất (detailLevel = 1 / RẤT NGẮN GỌN) để tối ưu token
+        1,
         (chunk) => {
           if (isFirstChunk) {
             isFirstChunk = false;
