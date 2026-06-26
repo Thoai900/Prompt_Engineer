@@ -159,7 +159,8 @@ export interface TreeNode {
   status: NodeExecutionStatus;
   position: { x: number; y: number };
   branchType?: 'success' | 'failure' | null;
-  
+  isStale?: boolean;                              // Output đã lỗi thời do node cha (tổ tiên) được chạy/sửa lại
+
   // Các thuộc tính bổ sung cho tính năng Tiến hóa
   draftOutput?: string;                            // Kết quả nháp ngắn gọn từ LLM nhỏ
   userEvaluation?: 'effective' | 'ineffective' | null; // Đánh giá của người dùng

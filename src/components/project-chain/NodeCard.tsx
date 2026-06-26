@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Wrench, Play, Trash2, Plus, Check } from 'lucide-react';
+import { Sparkles, Wrench, Play, Trash2, Plus, Check, AlertTriangle } from 'lucide-react';
 import { TreeNode } from '../../types';
 
 interface NodeCardProps {
@@ -31,11 +31,13 @@ export const NodeCard: React.FC<NodeCardProps> = ({
       style={{ 
         left: node.position.x, 
         top: node.position.y,
-        borderColor: isSelected 
-          ? '#06b6d4' 
+        borderColor: isSelected
+          ? '#06b6d4'
           : node.status === 'running'
             ? '#06b6d4'
-            : node.status === 'drafting'
+            : node.isStale
+              ? '#f59e0b' // amber: output lỗi thời, cần chạy lại
+              : node.status === 'drafting'
               ? '#a855f7' // purple border for drafting
               : node.status === 'drafted'
                 ? '#6366f1' // indigo border for drafted
@@ -48,9 +50,11 @@ export const NodeCard: React.FC<NodeCardProps> = ({
                       : node.status === 'error' 
                         ? '#f43f5e' 
                         : theme === 'dark' ? '#1e293b' : '#e2e8f0',
-        boxShadow: isSelected 
-          ? '0 10px 25px -5px rgba(6, 182, 212, 0.15), 0 8px 10px -6px rgba(6, 182, 212, 0.15)' 
-          : 'none'
+        boxShadow: isSelected
+          ? '0 10px 25px -5px rgba(6, 182, 212, 0.15), 0 8px 10px -6px rgba(6, 182, 212, 0.15)'
+          : node.isStale
+            ? '0 0 0 1px rgba(245, 158, 11, 0.35), 0 6px 16px -8px rgba(245, 158, 11, 0.4)'
+            : 'none'
       }}
     >
       {/* Header Node - Drag Handle */}
@@ -67,7 +71,9 @@ export const NodeCard: React.FC<NodeCardProps> = ({
         className={`flex ${node.parentId === null ? 'cursor-default' : 'cursor-move'} items-center justify-between border-b border-slate-100 px-3.5 py-2.5 dark:border-slate-800/50`}
       >
         <div className="flex items-center gap-1.5 truncate">
-          {node.branchType === 'success' ? (
+          {node.isStale ? (
+            <AlertTriangle size={13} className="text-amber-500 shrink-0 animate-pulse" />
+          ) : node.branchType === 'success' ? (
             <Sparkles size={13} className="text-emerald-500 shrink-0" />
           ) : node.branchType === 'failure' ? (
             <Wrench size={13} className="text-orange-500 shrink-0 animate-pulse" />
@@ -130,7 +136,11 @@ export const NodeCard: React.FC<NodeCardProps> = ({
             {node.blocks ? node.blocks.length : 0} khối Prompt
           </span>
           
-          {node.output ? (
+          {node.isStale && node.output ? (
+            <span className="flex items-center gap-1 font-bold text-amber-600 dark:text-amber-400" title="Node cha đã đổi output — kết quả này có thể đã lỗi thời">
+              <AlertTriangle size={11} /> Cần chạy lại
+            </span>
+          ) : node.output ? (
             <span className="flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400">
               <Check size={11} /> Đã có đầu ra
             </span>

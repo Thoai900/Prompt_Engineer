@@ -19,6 +19,7 @@ import { NodeDetailSidebar } from '../project-chain/NodeDetailSidebar';
 import { SimulatorPanel } from '../project-chain/SimulatorPanel';
 import { useCanvasInteraction } from '../../hooks/useCanvasInteraction';
 import { useProjectPipeline } from '../../hooks/useProjectPipeline';
+import { markDescendantsStale } from '../../utils/chainUtils';
 
 interface ProjectChainTabProps {
   theme?: 'light' | 'dark';
@@ -769,13 +770,16 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
         }
       );
 
-      // Cập nhật output cho node và lưu dự án
-      const updatedNodes = activeProject.nodes.map(n => 
-        n.id === simulatorNode.id ? { ...n, output: accumulatedOutput, status: 'success' as const } : n
+      // Cập nhật output cho node và lưu dự án.
+      // Node vừa chạy: hết lỗi thời (isStale: false). Mọi node con cháu kế thừa output cũ
+      // trở nên lỗi thời -> đánh dấu để người dùng biết cần chạy lại.
+      let updatedNodes = activeProject.nodes.map(n =>
+        n.id === simulatorNode.id ? { ...n, output: accumulatedOutput, status: 'success' as const, isStale: false } : n
       );
+      updatedNodes = markDescendantsStale(updatedNodes, simulatorNode.id);
       const updatedProj = { ...activeProject, nodes: updatedNodes, updatedAt: new Date().toISOString() };
       saveProjectState(updatedProj);
-      setSimulatorNode(prev => prev ? { ...prev, output: accumulatedOutput, status: 'success' as const } : null);
+      setSimulatorNode(prev => prev ? { ...prev, output: accumulatedOutput, status: 'success' as const, isStale: false } : null);
       
     } catch (err: any) {
       console.error(err);
@@ -785,14 +789,63 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
     }
   };
 
+  // Chạy nháp nhanh bằng model rẻ để người dùng đánh giá sơ bộ trước khi chạy chính thức.
+  const handleRunDraftCanvas = async () => {
+    if (!simulatorNode || !activeProject) return;
+
+    const systemInstruction = `Bạn là Mentor AI - gia sư thân thiện, kiên nhẫn và khuyến khích cho học sinh trung học. Hãy tuân thủ nghiêm ngặt:
+1. Tuyệt đối KHÔNG giải hộ bài tập hay đưa ra đáp án trực tiếp. Sử dụng phương pháp Socratic để đặt câu hỏi khơi gợi tư duy, dẫn dắt từng bước để học sinh tự tìm ra câu trả lời.
+2. Giọng điệu thân thiện, kiên nhẫn, sử dụng emoji một cách ấm áp, khích lệ.
+3. Khi viết các công thức toán học hoặc khoa học, hãy luôn sử dụng LaTeX (bọc bằng $ hoặc $$).`;
+
+    const customKey = localStorage.getItem('mentor_ai_gemini_key') || '';
+    const useSystemKey = localStorage.getItem('mentor_ai_use_system_key') !== 'false';
+    const apiKey = useSystemKey ? undefined : customKey;
+
+    // Đặt trạng thái drafting cho node
+    setSimulationResponse('');
+    setSimulatorNode(prev => prev ? { ...prev, status: 'drafting' as const } : null);
+    const draftingNodes = activeProject.nodes.map(n =>
+      n.id === simulatorNode.id ? { ...n, status: 'drafting' as const } : n
+    );
+    setActiveProject({ ...activeProject, nodes: draftingNodes });
+
+    let accumulated = '';
+    try {
+      await runPlaygroundChatStream(
+        'gemini',
+        systemInstruction,
+        [{ role: 'user', content: compiledPromptPreview }],
+        { apiKey, model: 'gemini-2.5-flash', temperature: pipeline.simTemp },
+        (chunk) => {
+          accumulated += chunk;
+          setSimulationResponse(accumulated);
+        }
+      );
+
+      const draftedNodes = activeProject.nodes.map(n =>
+        n.id === simulatorNode.id ? { ...n, draftOutput: accumulated, status: 'drafted' as const } : n
+      );
+      saveProjectState({ ...activeProject, nodes: draftedNodes, updatedAt: new Date().toISOString() });
+      setSimulatorNode(prev => prev ? { ...prev, draftOutput: accumulated, status: 'drafted' as const } : null);
+    } catch (err: any) {
+      console.error(err);
+      setSimulationResponse(`❌ Lỗi chạy nháp: ${err.message}`);
+      setSimulatorNode(prev => prev ? { ...prev, status: 'idle' as const } : null);
+    }
+  };
+
   const handleEvaluateDraftCanvas = (evalType: 'effective' | 'ineffective') => {
     if (!simulatorNode || !activeProject) return;
-    const updatedNodes = activeProject.nodes.map(n => 
-      n.id === simulatorNode.id ? { ...n, userEvaluation: evalType } : n
+    // Ghi nhận đánh giá nháp, đưa node về trạng thái success rồi tạo nhánh tương ứng
+    // (effective -> nhánh Nâng cao, ineffective -> nhánh Sửa lỗi) để không bị kẹt ở trạng thái nháp.
+    const updatedNodes = activeProject.nodes.map(n =>
+      n.id === simulatorNode.id ? { ...n, userEvaluation: evalType, status: 'success' as const } : n
     );
     const updatedProj = { ...activeProject, nodes: updatedNodes, updatedAt: new Date().toISOString() };
     saveProjectState(updatedProj);
-    setSimulatorNode(prev => prev ? { ...prev, userEvaluation: evalType } : null);
+    setSimulatorNode(prev => prev ? { ...prev, userEvaluation: evalType, status: 'success' as const } : null);
+    handleCreateBranchNodeCanvas(evalType === 'effective' ? 'success' : 'failure');
   };
 
   const handleCreateBranchNodeCanvas = (type: 'success' | 'failure') => {
@@ -864,12 +917,14 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
 
   const handleSaveModifiedSimulatorOutputCanvas = (text: string) => {
     if (!simulatorNode || !activeProject) return;
-    const updatedNodes = activeProject.nodes.map(n => 
-      n.id === simulatorNode.id ? { ...n, output: text } : n
+    // Sửa output thủ công cũng làm con cháu lỗi thời như khi chạy lại.
+    let updatedNodes = activeProject.nodes.map(n =>
+      n.id === simulatorNode.id ? { ...n, output: text, isStale: false } : n
     );
+    updatedNodes = markDescendantsStale(updatedNodes, simulatorNode.id);
     const updatedProj = { ...activeProject, nodes: updatedNodes, updatedAt: new Date().toISOString() };
     saveProjectState(updatedProj);
-    setSimulatorNode(prev => prev ? { ...prev, output: text } : null);
+    setSimulatorNode(prev => prev ? { ...prev, output: text, isStale: false } : null);
   };
 
   const handleToggleViewMode = (mode: 'wizard' | 'canvas') => {
@@ -1582,7 +1637,50 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
               )}
             </div>
 
-            {/* Stepper Views */}
+            {/* CANVAS VIEW: sơ đồ cây tương tác */}
+            {viewMode === 'canvas' && (
+              <div className="flex-1 flex min-h-0 overflow-hidden">
+                <CanvasView
+                  activeProject={activeProject}
+                  selectedNodeId={selectedNodeId}
+                  setSelectedNodeId={setSelectedNodeId}
+                  theme={theme}
+                  canvasOffset={canvasOffset}
+                  zoom={zoom}
+                  startPanning={startPanning}
+                  handleWheel={handleWheel}
+                  startDragNode={startDragNodeCanvas}
+                  handleOpenSimulator={handleOpenSimulatorCanvas}
+                  handleDeleteNode={handleDeleteNodeCanvas}
+                  handleAddChildNode={handleAddChildNodeCanvas}
+                  canvasRef={canvasRef}
+                />
+                <NodeDetailSidebar
+                  activeNode={activeNode}
+                  activeProject={activeProject}
+                  selectedNodeId={selectedNodeId}
+                  theme={theme}
+                  rootInputs={pipeline.pipelineInputs}
+                  isImportModalOpen={isImportModalOpen}
+                  setIsImportModalOpen={setIsImportModalOpen}
+                  handleExportNodeAsTemplate={handleExportNodeAsTemplate}
+                  handleUpdateNodeFields={handleUpdateNodeFields}
+                  handleAddBlockToNode={handleAddBlockToNode}
+                  handleUpdateBlockContent={handleUpdateBlockContent}
+                  handleUpdateBlockTitle={handleUpdateBlockTitle}
+                  handleDeleteBlockFromNode={handleDeleteBlockFromNode}
+                  handleAddPresetBlock={handleAddPresetBlock}
+                  handleAddVariableToNode={handleAddVariableToNode}
+                  handleUpdateVariableField={handleUpdateVariableField}
+                  handleDeleteVariable={handleDeleteVariable}
+                  handleSelectSystemRole={handleSelectSystemRole}
+                  handleOpenSimulator={handleOpenSimulatorCanvas}
+                />
+              </div>
+            )}
+
+            {/* Stepper Views (Wizard) */}
+            {viewMode === 'wizard' && (
             <div className="flex-1 overflow-hidden relative bg-slate-50/10 dark:bg-slate-955/5">
               <AnimatePresence mode="wait">
                 
@@ -2286,9 +2384,81 @@ Nếu là bước thứ 2 trở đi, sử dụng {{output_${selectedNodeIndex}}}
 
               </AnimatePresence>
             </div>
+            )}
+
+            {/* SIMULATOR PANEL (modal cho Canvas) */}
+            <SimulatorPanel
+              isOpen={isSimulatorOpen}
+              onClose={() => setIsSimulatorOpen(false)}
+              simulatorNode={simulatorNode}
+              activeProject={activeProject}
+              simProvider={pipeline.simProvider}
+              setSimProvider={pipeline.setSimProvider}
+              simModel={pipeline.simModel}
+              setSimModel={pipeline.setSimModel}
+              isSimulating={pipeline.pipelineStatus === 'running'}
+              compiledPromptPreview={compiledPromptPreview}
+              simulationResponse={simulationResponse}
+              rootInputs={pipeline.pipelineInputs}
+              handleVariableInputChange={handleVariableInputChangeCanvas}
+              handleRunDraft={handleRunDraftCanvas}
+              handleRunSimulation={handleRunSimulationCanvas}
+              handleEvaluateDraft={handleEvaluateDraftCanvas}
+              handleCreateBranchNode={handleCreateBranchNodeCanvas}
+              handleSaveModifiedSimulatorOutput={handleSaveModifiedSimulatorOutputCanvas}
+              theme={theme}
+            />
           </>
         )}
       </div>
+
+      {/* IMPORT TEMPLATE INTO NODE MODAL */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-250 dark:border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col text-left max-h-[80vh]"
+          >
+            <div className="px-5 py-4 border-b border-slate-250 dark:border-slate-855 bg-slate-50 dark:bg-slate-950 flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-2">
+                <Upload size={16} className="text-cyan-500" />
+                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Nạp mẫu Prompt vào Node</h3>
+              </div>
+              <button
+                onClick={() => setIsImportModalOpen(false)}
+                className="rounded-lg p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-4 shrink-0">
+              <input
+                type="text"
+                value={searchTemplateQuery}
+                onChange={(e) => setSearchTemplateQuery(e.target.value)}
+                placeholder="Tìm mẫu theo tên hoặc mô tả..."
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
+              />
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2">
+              {filteredTemplates.length === 0 ? (
+                <p className="text-xs italic text-slate-400 text-center py-8">Không tìm thấy mẫu phù hợp.</p>
+              ) : (
+                filteredTemplates.map((tpl) => (
+                  <button
+                    key={tpl.id}
+                    onClick={() => handleImportTemplateIntoNode(tpl)}
+                    className="w-full text-left rounded-xl border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-950/40 hover:border-cyan-400 dark:hover:border-cyan-600 p-3 transition-colors cursor-pointer"
+                  >
+                    <span className="block text-xs font-bold text-slate-800 dark:text-slate-200">{tpl.title}</span>
+                    <span className="block text-[10.5px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{tpl.description}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 3. NEW PROJECT MODAL */}
       {isNewProjectModalOpen && (

@@ -84,17 +84,20 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
                 d={pathD}
                 fill="none"
                 stroke={
-                  selectedNodeId === node.id 
-                    ? '#14b8a6' 
-                    : node.branchType === 'success'
-                      ? '#10b981'
-                      : node.branchType === 'failure'
-                        ? '#f97316'
-                        : theme === 'dark' 
-                          ? '#334155' 
-                          : '#cbd5e1'
+                  selectedNodeId === node.id
+                    ? '#14b8a6'
+                    : node.isStale
+                      ? '#f59e0b'
+                      : node.branchType === 'success'
+                        ? '#10b981'
+                        : node.branchType === 'failure'
+                          ? '#f97316'
+                          : theme === 'dark'
+                            ? '#334155'
+                            : '#cbd5e1'
                 }
                 strokeWidth={selectedNodeId === node.id ? 2.5 : 2}
+                strokeDasharray={node.isStale ? '6 4' : undefined}
                 className="transition-colors duration-150"
               />
               <circle
@@ -102,15 +105,17 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
                 cy={circleY}
                 r={3}
                 fill={
-                  selectedNodeId === node.id 
-                    ? '#14b8a6' 
-                    : node.branchType === 'success'
-                      ? '#10b981'
-                      : node.branchType === 'failure'
-                        ? '#f97316'
-                        : theme === 'dark' 
-                          ? '#475569' 
-                          : '#94a3b8'
+                  selectedNodeId === node.id
+                    ? '#14b8a6'
+                    : node.isStale
+                      ? '#f59e0b'
+                      : node.branchType === 'success'
+                        ? '#10b981'
+                        : node.branchType === 'failure'
+                          ? '#f97316'
+                          : theme === 'dark'
+                            ? '#475569'
+                            : '#94a3b8'
                 }
               />
             </g>

@@ -246,6 +246,34 @@ export const compileEvolutionPrompt = (node: TreeNode, project: PromptProject, i
   });
 };
 
+/**
+ * Khi output của một node thay đổi (chạy lại hoặc sửa thủ công), mọi node con cháu
+ * đang kế thừa output đó trở nên lỗi thời. Hàm này đánh dấu toàn bộ hậu duệ là `isStale`.
+ * Bản thân node vừa thay đổi KHÔNG được đánh dấu ở đây (nơi gọi tự đặt isStale: false cho nó).
+ */
+export const markDescendantsStale = (nodes: TreeNode[], changedNodeId: string): TreeNode[] => {
+  const childrenMap = new Map<string, string[]>();
+  nodes.forEach(n => {
+    if (n.parentId) {
+      const arr = childrenMap.get(n.parentId) || [];
+      arr.push(n.id);
+      childrenMap.set(n.parentId, arr);
+    }
+  });
+
+  const staleIds = new Set<string>();
+  const stack = [...(childrenMap.get(changedNodeId) || [])];
+  while (stack.length) {
+    const id = stack.pop() as string;
+    if (staleIds.has(id)) continue;
+    staleIds.add(id);
+    (childrenMap.get(id) || []).forEach(c => stack.push(c));
+  }
+
+  if (staleIds.size === 0) return nodes;
+  return nodes.map(n => (staleIds.has(n.id) ? { ...n, isStale: true } : n));
+};
+
 export const extractVariablesInNode = (node: TreeNode): string[] => {
   const varRegex = /\{\{([^}]+)\}\}/g;
   const foundVars = new Set<string>();

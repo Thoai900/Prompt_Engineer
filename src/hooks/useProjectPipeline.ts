@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { PromptProject, TreeNode } from '../types';
 import { runPlaygroundChatStream, evaluateOutputQualityWithAi } from '../services/aiService';
-import { compileEvolutionPrompt } from '../utils/chainUtils';
+import { compileEvolutionPrompt, markDescendantsStale } from '../utils/chainUtils';
 
 export const useProjectPipeline = (
   activeProject: PromptProject | null,
@@ -93,9 +93,10 @@ export const useProjectPipeline = (
 
       addPipelineLog(`Hoàn thành chạy node: "${node.title}".`);
       
-      const successNodes = runningProj.nodes.map(n => 
-        n.id === nodeId ? { ...n, output: accumulatedOutput, status: 'success' as const } : n
+      let successNodes = runningProj.nodes.map(n =>
+        n.id === nodeId ? { ...n, output: accumulatedOutput, status: 'success' as const, isStale: false } : n
       );
+      successNodes = markDescendantsStale(successNodes, nodeId);
       const nextProj = { ...runningProj, nodes: successNodes, updatedAt: new Date().toISOString() };
       
       await saveActiveProject(nextProj);
@@ -169,7 +170,8 @@ export const useProjectPipeline = (
     const resetNodes = activeProject.nodes.map(n => ({
       ...n,
       status: 'idle' as const,
-      output: ''
+      output: '',
+      isStale: false
     }));
     const freshProj = { ...activeProject, nodes: resetNodes };
     
