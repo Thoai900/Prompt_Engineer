@@ -3,7 +3,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Play, X, Sparkles, RefreshCw, Check, AlertCircle, Edit2, HelpCircle } from 'lucide-react';
 import { TreeNode, PromptProject } from '../../types';
 import AIResponseRenderer from '../common/AIResponseRenderer';
+import StepNarrator from '../common/StepNarrator';
 import { getRequiredInputsForNode } from '../../utils/chainUtils';
+import { GhostTextInput } from '../common/GhostTextInput';
 
 interface SimulatorPanelProps {
   isOpen: boolean;
@@ -151,10 +153,13 @@ export const SimulatorPanel: React.FC<SimulatorPanelProps> = ({
                               <span>{varName}</span>
                               {varInfo?.required && <span className="text-[9px] text-rose-500 font-bold">Bắt buộc</span>}
                             </label>
-                            <input
+                            <GhostTextInput
                               type="text"
+                              ghostMode="variable"
+                              varName={varName}
+                              defaultGhostValue={varInfo?.defaultValue}
                               value={rootInputs[varName] || ''}
-                              onChange={(e) => handleVariableInputChange(varName, e.target.value)}
+                              onValueChange={(next) => handleVariableInputChange(varName, next)}
                               className="w-full rounded-lg border border-slate-250 bg-white px-2.5 py-1.5 text-xs focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
                               placeholder={varInfo?.description || `Nhập giá trị cho {{${varName}}}`}
                             />
@@ -224,7 +229,11 @@ export const SimulatorPanel: React.FC<SimulatorPanelProps> = ({
 
                 <div className="flex-1 flex flex-col min-h-0 space-y-4">
                   <div className="flex-1 border border-slate-200/80 rounded-2xl bg-white dark:border-slate-800 dark:bg-slate-900 p-4 overflow-y-auto select-text">
-                    {simulatorNode.status === 'drafting' || simulatorNode.status === 'drafted' ? (
+                    {isSimulating && !simulationResponse && !simulatorNode.draftOutput && !simulatorNode.output ? (
+                      <div className="flex h-full items-center justify-center">
+                        <StepNarrator flowKey="chain-sim" isActive placement="overlay" className="w-72 max-w-[90%]" />
+                      </div>
+                    ) : simulatorNode.status === 'drafting' || simulatorNode.status === 'drafted' ? (
                       <div>
                         <div className="flex items-center gap-1.5 mb-2 text-[10px] font-bold text-purple-600 dark:text-purple-400">
                           <Sparkles size={12} className="animate-pulse text-purple-500" />

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Plus, X, Trash2, Play, Check, AlertCircle, Database, HelpCircle, RefreshCw } from 'lucide-react';
 import { TestCase, PromptProject } from '../../types';
 import AIResponseRenderer from '../common/AIResponseRenderer';
+import { GhostTextInput } from '../common/GhostTextInput';
 
 interface TestCasesPanelProps {
   isOpen: boolean;
@@ -224,12 +225,15 @@ export const TestCasesPanel: React.FC<TestCasesPanelProps> = ({
                                     <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
                                       {v.name} {v.required && <span className="text-[9px] text-rose-500 font-bold">*</span>}
                                     </label>
-                                    <input
+                                    <GhostTextInput
                                       type="text"
+                                      ghostMode="variable"
+                                      varName={v.name}
+                                      defaultGhostValue={v.defaultValue}
                                       disabled={isRunningAllTests}
                                       value={tc.inputs[v.name] || ''}
-                                      onChange={(e) => {
-                                        const newInputs = { ...tc.inputs, [v.name]: e.target.value };
+                                      onValueChange={(next) => {
+                                        const newInputs = { ...tc.inputs, [v.name]: next };
                                         handleUpdateTestCase(tc.id, { inputs: newInputs });
                                       }}
                                       className="w-full rounded-lg border border-slate-250 bg-white px-2.5 py-1.5 text-xs focus:outline-none dark:border-slate-800 dark:bg-slate-955 dark:text-slate-305 disabled:opacity-50"

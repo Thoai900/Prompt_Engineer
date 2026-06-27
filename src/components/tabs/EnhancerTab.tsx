@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Sparkles, ArrowRight, Loader2, Copy, Check, ExternalLink, Settings } from 'lucide-react';
 import { PromptBlock, PromptTemplate } from '../../types';
 import { enhancePromptWithAi } from '../../services/aiService';
+import StepNarrator from '../common/StepNarrator';
+import { GhostTextArea } from '../common/GhostTextArea';
 
 interface EnhancerTabProps {
   onApplyTemplate?: (template: PromptTemplate) => void;
@@ -90,11 +92,11 @@ export default function EnhancerTab({ onApplyTemplate }: EnhancerTabProps) {
              <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Ý tưởng ban đầu</h3>
           </div>
           <div className="flex-1 p-0 relative min-h-[220px]">
-            <textarea
+            <GhostTextArea
               className="w-full h-full min-h-[220px] p-6 resize-none focus:outline-none text-sm text-slate-700 leading-relaxed placeholder-slate-300"
               placeholder="Nhập prompt cơ bản của bạn tại đây...&#10;Ví dụ: Viết một bài đăng Facebook bán áo phông trẻ em mùa hè."
               value={inputPrompt}
-              onChange={(e) => setInputPrompt(e.target.value)}
+              onValueChange={(next) => setInputPrompt(next)}
             />
           </div>
 
@@ -188,7 +190,11 @@ export default function EnhancerTab({ onApplyTemplate }: EnhancerTabProps) {
           </div>
           
           <div className="flex-1 bg-white border border-slate-200 rounded-lg p-4 overflow-y-auto custom-scrollbar">
-             {errorMsg ? (
+             {isLoading ? (
+               <div className="h-full flex items-center justify-center">
+                 <StepNarrator flowKey="enhancer" isActive={isLoading} placement="overlay" className="w-72 max-w-[90%]" />
+               </div>
+             ) : errorMsg ? (
                <div className="text-sm text-rose-500 font-medium p-4 bg-rose-50 rounded text-center">
                  {errorMsg}
                </div>

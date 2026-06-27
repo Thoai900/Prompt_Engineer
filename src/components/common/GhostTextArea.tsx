@@ -28,7 +28,7 @@ export const GhostTextArea: React.FC<GhostTextAreaProps> = ({
   };
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full h-full">
       <div
         ref={mirrorRef}
         aria-hidden

@@ -10,6 +10,7 @@ import { ExtractedVar } from '../../hooks/usePromptBlocks';
 import StepNarrator from '../common/StepNarrator';
 import type { GenerationFlowKey } from '../../utils/generationNarratives';
 import { GhostTextInput } from '../common/GhostTextInput';
+import { GhostTextArea } from '../common/GhostTextArea';
 
 interface PromptBlockCardProps {
   block: PromptBlock;
@@ -401,9 +402,9 @@ export const PromptBlockCard: React.FC<PromptBlockCardProps> = ({
                   streamStarted={streamStarted}
                   placement="inline"
                 />
-                <textarea
+                <GhostTextArea
                   value={block.content}
-                  onChange={(e) => updateBlockContent(block.id, e.target.value)}
+                  onValueChange={(next) => updateBlockContent(block.id, next)}
                   onFocus={() => { focusContentsRef.current[block.id] = block.content; }}
                   onBlur={() => {
                     const initialVal = focusContentsRef.current[block.id];

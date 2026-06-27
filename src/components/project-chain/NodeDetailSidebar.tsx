@@ -3,6 +3,7 @@ import { Upload, Download, Plus, X, Play, Settings, Sparkles, Wrench } from 'luc
 import { TreeNode, PromptProject, PromptBlock, PromptVariable, EvolutionType } from '../../types';
 import { PRESET_SYSTEM_ROLES } from '../../presets';
 import { compileEvolutionPrompt } from '../../utils/chainUtils';
+import { GhostTextArea } from '../common/GhostTextArea';
 
 interface NodeDetailSidebarProps {
   activeNode: TreeNode | null;
@@ -156,9 +157,9 @@ export const NodeDetailSidebar: React.FC<NodeDetailSidebarProps> = ({
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-550 block mb-1.5">
                   Chỉ thị tiến hóa (evolutionInstruction)
                 </label>
-                <textarea
+                <GhostTextArea
                   value={activeNode.evolutionInstruction || ''}
-                  onChange={(e) => handleUpdateNodeFields({ evolutionInstruction: e.target.value })}
+                  onValueChange={(next) => handleUpdateNodeFields({ evolutionInstruction: next })}
                   className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none dark:text-slate-300 min-h-[100px] leading-relaxed"
                   placeholder="Nhập hướng dẫn tối ưu/ràng buộc cho prompt..."
                 />
