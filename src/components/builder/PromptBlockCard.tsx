@@ -7,6 +7,9 @@ import {
 import { PromptBlock } from '../../types';
 import { TYPE_STYLES, BLOCK_ICONS, SMART_PRESETS, DEFAULT_SMART_PRESETS } from '../../utils/builderUtils';
 import { ExtractedVar } from '../../hooks/usePromptBlocks';
+import StepNarrator from '../common/StepNarrator';
+import type { GenerationFlowKey } from '../../utils/generationNarratives';
+import { GhostTextInput } from '../common/GhostTextInput';
 
 interface PromptBlockCardProps {
   block: PromptBlock;
@@ -30,6 +33,8 @@ interface PromptBlockCardProps {
   activeHistoryMenuId: string | null;
   setActiveHistoryMenuId: (id: string | null) => void;
   isGenerating: boolean;
+  streamStarted?: boolean;
+  narrationFlow?: GenerationFlowKey;
   openAiMenuId: string | null;
   setOpenAiMenuId: (id: string | null) => void;
   customInstructions: Record<string, string>;
@@ -62,6 +67,8 @@ export const PromptBlockCard: React.FC<PromptBlockCardProps> = ({
   activeHistoryMenuId,
   setActiveHistoryMenuId,
   isGenerating,
+  streamStarted = false,
+  narrationFlow = 'block-assist',
   openAiMenuId,
   setOpenAiMenuId,
   customInstructions,
@@ -387,6 +394,13 @@ export const PromptBlockCard: React.FC<PromptBlockCardProps> = ({
             
             {isExpanded && (
               <div className="flex flex-col gap-2.5 mt-2">
+                {/* Tường thuật bước khi AI đang xử lý, trước khi chunk đầu về */}
+                <StepNarrator
+                  flowKey={narrationFlow}
+                  isActive={isGenerating}
+                  streamStarted={streamStarted}
+                  placement="inline"
+                />
                 <textarea
                   value={block.content}
                   onChange={(e) => updateBlockContent(block.id, e.target.value)}
@@ -424,12 +438,14 @@ export const PromptBlockCard: React.FC<PromptBlockCardProps> = ({
                               {v.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                             </select>
                           ) : (
-                            <input 
+                            <GhostTextInput
                               type="text"
+                              ghostMode="variable"
+                              varName={v.name}
                               className="w-full text-xs px-2.5 py-1 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl focus:outline-none focus:ring-1 focus:ring-violet-500 focus:border-violet-500 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600"
                               placeholder={`Thông tin cho ${v.name}...`}
                               value={variableValues[v.name] || ''}
-                              onChange={e => setVariableValues(prev => ({...prev, [v.name]: e.target.value}))}
+                              onValueChange={(next) => setVariableValues(prev => ({...prev, [v.name]: next}))}
                             />
                           )}
                         </div>
