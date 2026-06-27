@@ -15,6 +15,8 @@ interface WorkspaceContextType {
   activeWorkspaceId: string;
   setActiveWorkspaceId: (id: string) => void;
   workspaces: Workspace[];
+  ghostTextEnabled: boolean;
+  setGhostTextEnabled: (v: boolean) => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
@@ -26,6 +28,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [openaiApiKey, setOpenaiApiKeyState] = useState(() => localStorage.getItem('mentor_ai_openai_key') || '');
   const [useSystemGeminiKey, setUseSystemGeminiKeyState] = useState(() => localStorage.getItem('mentor_ai_use_system_key') !== 'false'); // Mặc định là true nếu không set
   const [activeWorkspaceId, setActiveWorkspaceId] = useState('w1');
+  const [ghostTextEnabled, setGhostTextEnabledState] = useState(() => localStorage.getItem('ghost_text_enabled') !== 'false'); // Mặc định bật
 
   const workspaces: Workspace[] = [
     { id: 'w1', name: 'Dự án chính' },
@@ -55,6 +58,11 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     localStorage.setItem('mentor_ai_use_system_key', String(use));
   };
 
+  const setGhostTextEnabled = (v: boolean) => {
+    setGhostTextEnabledState(v);
+    localStorage.setItem('ghost_text_enabled', String(v));
+  };
+
   return (
     <WorkspaceContext.Provider
       value={{
@@ -69,6 +77,8 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         activeWorkspaceId,
         setActiveWorkspaceId,
         workspaces,
+        ghostTextEnabled,
+        setGhostTextEnabled,
       }}
     >
       {children}
