@@ -18,7 +18,10 @@ import LibraryTab from './components/tabs/LibraryTab';
 import UtilityBeltTab from './components/tabs/UtilityBeltTab';
 import RulesSkillsTab from './components/tabs/RulesSkillsTab';
 import ProjectChainTab from './components/tabs/ProjectChainTab';
+import AuroraBackground from './components/common/AuroraBackground';
+import GrainOverlay from './components/common/GrainOverlay';
 import { auth, db, handleFirestoreError, loginWithGoogle, logoutUser } from './firebase';
+import { initSuggestionSync } from './services/suggestionSync';
 
 export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -34,6 +37,11 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('mentor_ai_sidebar_collapsed', String(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
+
+  useEffect(() => {
+    const cleanup = initSuggestionSync();
+    return cleanup;
+  }, []);
 
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -204,14 +212,16 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-full w-full flex-1 flex-col overflow-hidden bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100 md:flex-row">
-      {/* Header tĩnh trên Mobile */}
-      <header className="z-50 flex w-full items-center justify-between border-b border-slate-200/50 bg-white/70 p-3.5 backdrop-blur-md dark:border-slate-800/50 dark:bg-slate-950/70 md:hidden shrink-0">
+    <div className="flex h-full w-full flex-1 flex-col overflow-hidden bg-surface font-sans text-ink md:flex-row">
+      <GrainOverlay />
+      {/* Header tĩnh trên Mobile — ẩn ở trang chủ để landing page chiếm trọn màn hình */}
+      {activeTab !== 'home' && (
+      <header className="z-50 flex w-full items-center justify-between border-b border-line/50 bg-glass/70 p-3.5 backdrop-blur-md md:hidden shrink-0">
         <div className="flex cursor-pointer items-center space-x-2.5" onClick={() => setActiveTab('home')}>
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500 text-lg font-bold text-white shadow-sm">
             <span className="text-sm">P</span>
           </div>
-          <h1 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">Prompt<span className="text-emerald-500">Builder</span></h1>
+          <h1 className="text-base font-bold tracking-tight text-ink">Prompt<span className="text-emerald-500">Builder</span></h1>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -230,6 +240,7 @@ export default function App() {
           </button>
         </div>
       </header>
+      )}
 
       {/* Drawer trượt trên Mobile */}
       <AnimatePresence>
@@ -249,7 +260,7 @@ export default function App() {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="fixed bottom-0 left-0 top-0 z-[80] flex w-72 flex-col bg-white/95 p-5 shadow-2xl backdrop-blur-lg dark:bg-slate-900/95 border-r border-slate-200/50 dark:border-slate-800/50 md:hidden"
+              className="fixed bottom-0 left-0 top-0 z-[80] flex w-72 flex-col bg-panel/95 p-5 shadow-2xl backdrop-blur-lg border-r border-line/50 md:hidden"
             >
               {/* Header Drawer */}
               <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
@@ -257,7 +268,7 @@ export default function App() {
                   <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500 text-lg font-bold text-white shadow-sm">
                     <span className="text-sm">P</span>
                   </div>
-                  <h1 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">Prompt<span className="text-emerald-500">Builder</span></h1>
+                  <h1 className="text-base font-bold tracking-tight text-ink">Prompt<span className="text-emerald-500">Builder</span></h1>
                 </div>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
@@ -294,7 +305,7 @@ export default function App() {
                     className={`flex w-full items-center space-x-3.5 rounded-xl border border-transparent px-3.5 py-3 text-sm font-semibold transition-all cursor-pointer ${
                       activeTab === item.tab
                         ? `${item.active} font-bold shadow-sm`
-                        : 'text-slate-650 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-950'
+                        : 'text-muted hover:bg-hover'
                     }`}
                   >
                     <span className={activeTab === item.tab ? 'scale-110' : item.iconColor}>{item.icon}</span>
@@ -332,8 +343,9 @@ export default function App() {
         )}
       </AnimatePresence>
 
-       {/* Sidebar trên Desktop */}
-      <nav className={`hidden md:flex md:flex-col md:items-stretch md:justify-start md:border-r md:p-4 z-[60] border-slate-200/50 bg-white/70 backdrop-blur-md transition-all duration-300 ease-in-out dark:border-slate-850/50 dark:bg-slate-950/70 shrink-0 ${
+       {/* Sidebar trên Desktop — ẩn ở trang chủ để người dùng tập trung vào landing page */}
+      {activeTab !== 'home' && (
+      <nav className={`hidden md:flex md:flex-col md:items-stretch md:justify-start md:border-r md:p-4 z-[60] border-line/50 bg-glass/70 backdrop-blur-md transition-all duration-300 ease-in-out shrink-0 ${
         isSidebarCollapsed ? 'md:w-20' : 'md:w-64'
       }`}>
         <div className={`flex md:mb-6 md:px-2 shrink-0 ${
@@ -450,12 +462,21 @@ export default function App() {
           {!isSidebarCollapsed && <p className="mt-4 px-1 text-[10px] font-semibold text-slate-400 dark:text-slate-550">V2.4 INTERNATIONAL STD</p>}
         </div>
       </nav>
+      )}
 
-      <main className="relative flex h-full w-full flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-slate-955">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.08),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.07),transparent_32%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.12),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(20,184,166,0.08),transparent_32%)]" />
+      <main className="relative flex h-full w-full flex-1 flex-col overflow-hidden bg-surface">
+        <AuroraBackground />
 
         <TabPanel isActive={activeTab === 'home'}>
-          <HomeTab onSelectTemplate={handleSelectTemplate} onSaveTemplate={handleSaveTemplate} user={user} onNavigateToBuilder={() => setActiveTab('builder')} />
+          <HomeTab
+            onSelectTemplate={handleSelectTemplate}
+            onSaveTemplate={handleSaveTemplate}
+            user={user}
+            onNavigateToBuilder={() => setActiveTab('builder')}
+            onNavigateToTab={setActiveTab}
+            theme={theme}
+            onToggleTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+          />
         </TabPanel>
         <TabPanel isActive={activeTab === 'builder'}>
           <BuilderTab 
@@ -528,14 +549,21 @@ function NavItem({
     <button
       onClick={onClick}
       title={isCollapsed ? label : undefined}
-      className={`flex w-full items-center rounded-xl border border-transparent py-2.5 text-xs font-semibold transition-all duration-200 ${
+      className={`relative flex w-full items-center rounded-xl border border-transparent py-2.5 text-xs font-semibold transition-colors duration-200 ${
         isCollapsed ? 'justify-center px-0' : 'space-x-3 px-3'
       } ${
         isActive
-          ? `${activeColorClass} font-bold shadow-sm`
-          : 'cursor-pointer text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100'
+          ? `${activeColorClass} font-bold`
+          : 'cursor-pointer text-muted hover:bg-hover hover:text-ink'
       }`}
     >
+      {isActive && (
+        <motion.div
+          layoutId="navPill"
+          className={`absolute inset-0 -z-10 rounded-xl border shadow-sm ${activeColorClass}`}
+          transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+        />
+      )}
       <span className={`transition-transform duration-200 shrink-0 ${isActive ? 'scale-110' : iconColorClass}`}>
         {icon}
       </span>

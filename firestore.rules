@@ -78,6 +78,19 @@ service cloud.firestore {
       allow delete: if isValidId(templateId) && isOwner(existing().userId);
     }
 
+    match /suggestionModels/{uid} {
+      allow get:    if isOwner(uid);
+      allow create: if isOwner(uid)
+                    && incoming().userId == uid
+                    && incoming().createdAt == request.time
+                    && incoming().updatedAt == request.time;
+      allow update: if isOwner(uid)
+                    && incoming().userId == uid
+                    && incoming().createdAt == existing().createdAt
+                    && incoming().updatedAt == request.time;
+      allow delete: if isOwner(uid);
+    }
+
     match /projects/{projectId} {
       allow get: if isValidId(projectId) && isSignedIn() && existing().userId == request.auth.uid;
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
