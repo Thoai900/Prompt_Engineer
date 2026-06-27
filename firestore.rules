@@ -26,6 +26,30 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isValidRule(data) {
+      return data.keys().hasAll(['userId', 'title', 'content', 'type', 'updatedAt'])
+        && data.userId is string && data.userId.size() <= 128
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 200
+        && ( !('description' in data.keys()) || (data.description is string && data.description.size() <= 2000) )
+        && data.content is string && data.content.size() <= 50000
+        && data.type is string && data.type.size() <= 40
+        && ( !('tags' in data.keys()) || (data.tags is list && data.tags.size() <= 50) )
+        && ( !('authorName' in data.keys()) || (data.authorName is string && data.authorName.size() <= 100) )
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSkill(data) {
+      return data.keys().hasAll(['userId', 'title', 'updatedAt'])
+        && data.userId is string && data.userId.size() <= 128
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 200
+        && ( !('description' in data.keys()) || (data.description is string && data.description.size() <= 2000) )
+        && ( !('instructions' in data.keys()) || (data.instructions is string && data.instructions.size() <= 50000) )
+        && ( !('inputs' in data.keys()) || (data.inputs is list && data.inputs.size() <= 50) )
+        && ( !('steps' in data.keys()) || (data.steps is list && data.steps.size() <= 50) )
+        && ( !('authorName' in data.keys()) || (data.authorName is string && data.authorName.size() <= 100) )
+        && data.updatedAt is timestamp;
+    }
+
     function isValidTemplate(data) {
       return data.keys().hasAll(['userId', 'title', 'blocks', 'createdAt', 'updatedAt']) 
         && data.userId is string && data.userId.size() <= 128
@@ -106,6 +130,40 @@ service cloud.firestore {
         && incoming().createdAt == existing().createdAt
         && incoming().updatedAt == request.time;
       allow delete: if isValidId(projectId) && isSignedIn() && existing().userId == request.auth.uid;
+    }
+
+    match /rules/{ruleId} {
+      allow get: if isValidId(ruleId) && isOwner(resource.data.userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isValidId(ruleId)
+        && isSignedIn()
+        && isValidRule(incoming())
+        && incoming().userId == request.auth.uid
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(ruleId)
+        && isSignedIn()
+        && isOwner(existing().userId)
+        && isValidRule(incoming())
+        && incoming().userId == existing().userId
+        && incoming().updatedAt == request.time;
+      allow delete: if isValidId(ruleId) && isOwner(existing().userId);
+    }
+
+    match /skills/{skillId} {
+      allow get: if isValidId(skillId) && isOwner(resource.data.userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isValidId(skillId)
+        && isSignedIn()
+        && isValidSkill(incoming())
+        && incoming().userId == request.auth.uid
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(skillId)
+        && isSignedIn()
+        && isOwner(existing().userId)
+        && isValidSkill(incoming())
+        && incoming().userId == existing().userId
+        && incoming().updatedAt == request.time;
+      allow delete: if isValidId(skillId) && isOwner(existing().userId);
     }
   }
 }

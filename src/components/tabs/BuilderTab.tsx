@@ -46,8 +46,9 @@ export default function BuilderTab({
   onNavigateToTab
 }: BuilderTabProps) {
   const { 
-    geminiApiKey, setGeminiApiKey, openaiApiKey, setOpenaiApiKey, 
-    useSystemGeminiKey, setUseSystemGeminiKey 
+    geminiApiKey, setGeminiApiKey, openaiApiKey, setOpenaiApiKey,
+    groqApiKey, setGroqApiKey,
+    useSystemGeminiKey, setUseSystemGeminiKey
   } = useWorkspace();
 
   const {
@@ -1087,6 +1088,8 @@ export default function BuilderTab({
               setGeminiApiKey={setGeminiApiKey}
               openaiApiKey={openaiApiKey}
               setOpenaiApiKey={setOpenaiApiKey}
+              groqApiKey={groqApiKey}
+              setGroqApiKey={setGroqApiKey}
               playgroundTemp={playgroundTemp}
               setPlaygroundTemp={setPlaygroundTemp}
               playgroundMaxTokens={playgroundMaxTokens}

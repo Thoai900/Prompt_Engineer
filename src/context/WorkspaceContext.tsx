@@ -8,9 +8,11 @@ interface WorkspaceContextType {
   authReady: boolean;
   geminiApiKey: string;
   openaiApiKey: string;
+  groqApiKey: string;
   useSystemGeminiKey: boolean;
   setGeminiApiKey: (key: string) => void;
   setOpenaiApiKey: (key: string) => void;
+  setGroqApiKey: (key: string) => void;
   setUseSystemGeminiKey: (use: boolean) => void;
   activeWorkspaceId: string;
   setActiveWorkspaceId: (id: string) => void;
@@ -26,6 +28,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [authReady, setAuthReady] = useState(false);
   const [geminiApiKey, setGeminiApiKeyState] = useState(() => localStorage.getItem('mentor_ai_gemini_key') || '');
   const [openaiApiKey, setOpenaiApiKeyState] = useState(() => localStorage.getItem('mentor_ai_openai_key') || '');
+  const [groqApiKey, setGroqApiKeyState] = useState(() => localStorage.getItem('mentor_ai_groq_key') || '');
   const [useSystemGeminiKey, setUseSystemGeminiKeyState] = useState(() => localStorage.getItem('mentor_ai_use_system_key') !== 'false'); // Mặc định là true nếu không set
   const [activeWorkspaceId, setActiveWorkspaceId] = useState('w1');
   const [ghostTextEnabled, setGhostTextEnabledState] = useState(() => localStorage.getItem('ghost_text_enabled') !== 'false'); // Mặc định bật
@@ -53,6 +56,11 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     localStorage.setItem('mentor_ai_openai_key', key);
   };
 
+  const setGroqApiKey = (key: string) => {
+    setGroqApiKeyState(key);
+    localStorage.setItem('mentor_ai_groq_key', key);
+  };
+
   const setUseSystemGeminiKey = (use: boolean) => {
     setUseSystemGeminiKeyState(use);
     localStorage.setItem('mentor_ai_use_system_key', String(use));
@@ -70,9 +78,11 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         authReady,
         geminiApiKey,
         openaiApiKey,
+        groqApiKey,
         useSystemGeminiKey,
         setGeminiApiKey,
         setOpenaiApiKey,
+        setGroqApiKey,
         setUseSystemGeminiKey,
         activeWorkspaceId,
         setActiveWorkspaceId,

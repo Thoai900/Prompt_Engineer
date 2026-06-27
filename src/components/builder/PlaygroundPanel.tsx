@@ -21,6 +21,8 @@ interface PlaygroundPanelProps {
   setGeminiApiKey: (key: string) => void;
   openaiApiKey: string;
   setOpenaiApiKey: (key: string) => void;
+  groqApiKey: string;
+  setGroqApiKey: (key: string) => void;
   playgroundTemp: number;
   setPlaygroundTemp: (temp: number) => void;
   playgroundMaxTokens: number;
@@ -47,6 +49,8 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
   setGeminiApiKey,
   openaiApiKey,
   setOpenaiApiKey,
+  groqApiKey,
+  setGroqApiKey,
   playgroundTemp,
   setPlaygroundTemp,
   playgroundMaxTokens,
@@ -153,6 +157,24 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
               />
             </div>
           )}
+
+          {/* Llama-3-8B (Groq) — mô hình hỗ trợ DÀNH RIÊNG cho việc tạo prompt,
+              giúp tiết kiệm hạn mức Gemini. Áp dụng toàn cục, lưu cục bộ. */}
+          <div className="flex flex-col gap-0.5 pt-2 border-t border-dashed border-slate-200 dark:border-slate-800">
+            <label className="text-[10px] font-bold text-amber-600 dark:text-amber-400 block flex items-center gap-1">
+              🦙 Llama-3-8B (Groq) — hỗ trợ tạo prompt
+            </label>
+            <span className="text-[9px] text-slate-500 dark:text-slate-500 leading-snug mb-0.5">
+              Key mặc định của ứng dụng (Gemini + Llama) được giấu an toàn ở backend — chỉ cần đăng nhập là dùng được, việc tạo prompt ưu tiên Llama và tự chuyển sang Llama khi Gemini hết hạn mức. Nhập key Groq riêng vào đây để gọi thẳng bằng key của bạn (không qua backend).
+            </span>
+            <input
+              type="password"
+              value={groqApiKey}
+              onChange={(e) => setGroqApiKey(e.target.value)}
+              placeholder="Nhập gsk_..."
+              className="w-full text-xs px-2.5 py-1 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-955 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-400 dark:placeholder-slate-800"
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-3 mt-1">
             <div>

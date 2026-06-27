@@ -1,6 +1,341 @@
 import { GoogleGenAI } from "@google/genai";
+import { proxyGenerate, proxyGenerateStream } from "./aiProxy";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// ─────────────────────────────────────────────────────────────────────────────
+// Quản lý API key:
+//  - Key MẶC ĐỊNH của ứng dụng (Gemini + Groq/Llama) KHÔNG còn nằm trong bundle
+//    trình duyệt; chúng được giấu trong Firebase Cloud Functions (backend proxy).
+//    Khi client không có key riêng, mọi lời gọi đi qua proxy (yêu cầu đăng nhập).
+//  - Nếu người dùng tự nhập key riêng (Gemini qua options.apiKey, Groq qua
+//    localStorage/tham số), client gọi thẳng provider bằng key của họ — không gửi
+//    key cá nhân của họ cho backend.
+// getGroqApiKey/isGroqConfigured chỉ phản ánh KEY RIÊNG của người dùng (không phải
+// key mặc định, vì key mặc định giờ ở backend).
+// ─────────────────────────────────────────────────────────────────────────────
+const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
+const DEFAULT_GROQ_MODEL = 'llama-3.1-8b-instant';
+export const GROQ_API_KEY_STORAGE = 'mentor_ai_groq_key';
+
+export function getGroqApiKey(explicitKey?: string): string {
+  if (explicitKey && explicitKey.trim()) return explicitKey.trim();
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const stored = localStorage.getItem(GROQ_API_KEY_STORAGE);
+      if (stored && stored.trim()) return stored.trim();
+    }
+  } catch {
+    /* localStorage không khả dụng (môi trường test/SSR) — bỏ qua */
+  }
+  return '';
+}
+
+export function isGroqConfigured(explicitKey?: string): boolean {
+  return !!getGroqApiKey(explicitKey);
+}
+
+interface GroqChatOptions {
+  apiKey?: string;
+  model?: string;
+  temperature?: number;
+  topP?: number;
+  maxTokens?: number;
+  json?: boolean;
+}
+
+function buildGroqBody(
+  systemInstruction: string,
+  userContent: string,
+  opts: GroqChatOptions,
+  stream: boolean
+): Record<string, any> {
+  const body: Record<string, any> = {
+    model: opts.model || DEFAULT_GROQ_MODEL,
+    messages: [
+      { role: 'system', content: systemInstruction },
+      { role: 'user', content: userContent },
+    ],
+    temperature: opts.temperature !== undefined ? opts.temperature : 0.7,
+    top_p: opts.topP !== undefined ? opts.topP : 0.95,
+  };
+  if (opts.maxTokens) body.max_tokens = opts.maxTokens;
+  if (stream) body.stream = true;
+  // response_format chỉ áp dụng cho lời gọi không stream (Groq không kết hợp được với stream)
+  if (opts.json && !stream) body.response_format = { type: 'json_object' };
+  return body;
+}
+
+// Gọi Groq (Llama-3-8B) và trả về text thuần. Ném lỗi nếu thiếu key hoặc API lỗi.
+async function callGroqChat(
+  systemInstruction: string,
+  userContent: string,
+  opts: GroqChatOptions = {}
+): Promise<string> {
+  const apiKey = getGroqApiKey(opts.apiKey);
+  if (!apiKey) {
+    // Không có key Groq riêng → đi qua backend proxy (dùng key mặc định của app).
+    return await proxyGenerate({
+      provider: 'groq',
+      model: opts.model,
+      system: systemInstruction,
+      user: userContent,
+      temperature: opts.temperature,
+      topP: opts.topP,
+      maxTokens: opts.maxTokens,
+      json: opts.json,
+    });
+  }
+
+  const response = await fetch(GROQ_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(buildGroqBody(systemInstruction, userContent, opts, false)),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Groq API Error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data?.choices?.[0]?.message?.content || '';
+}
+
+// Bản streaming cho các tác vụ sinh nội dung khối theo luồng (SSE tương thích OpenAI).
+async function callGroqChatStream(
+  systemInstruction: string,
+  userContent: string,
+  onChunk: (chunk: string) => void,
+  opts: GroqChatOptions = {}
+): Promise<void> {
+  const apiKey = getGroqApiKey(opts.apiKey);
+  if (!apiKey) {
+    // Không có key Groq riêng → stream qua backend proxy (key mặc định của app).
+    await proxyGenerateStream(
+      {
+        provider: 'groq',
+        model: opts.model,
+        system: systemInstruction,
+        user: userContent,
+        temperature: opts.temperature,
+        topP: opts.topP,
+        maxTokens: opts.maxTokens,
+      },
+      onChunk
+    );
+    return;
+  }
+
+  const response = await fetch(GROQ_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(buildGroqBody(systemInstruction, userContent, opts, true)),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Groq API Error: ${response.status} - ${errorText}`);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error('Không thể khởi tạo luồng đọc dữ liệu từ Groq.');
+
+  const decoder = new TextDecoder('utf-8');
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    for (const line of lines) {
+      const cleaned = line.trim();
+      if (!cleaned || cleaned === 'data: [DONE]') continue;
+      if (cleaned.startsWith('data: ')) {
+        try {
+          const json = JSON.parse(cleaned.substring(6));
+          const text = json.choices?.[0]?.delta?.content || '';
+          if (text) onChunk(text);
+        } catch {
+          /* bỏ qua dòng SSE lẻ không parse được */
+        }
+      }
+    }
+  }
+}
+
+// Sinh JSON cho tác vụ tạo prompt: ưu tiên Llama-3-8B (Groq), fallback Gemini.
+// callGroqChat tự định tuyến (key riêng → gọi thẳng; không có key → backend proxy).
+async function generatePromptJson(
+  systemInstruction: string,
+  userContent: string,
+  geminiModel: string,
+  temperature: number,
+  topP: number,
+  options?: AiGenParams
+): Promise<string> {
+  try {
+    return await callGroqChat(systemInstruction, userContent, {
+      apiKey: options?.groqApiKey,
+      model: options?.groqModel,
+      temperature,
+      topP,
+      json: true,
+    });
+  } catch (groqError) {
+    console.warn('Groq (Llama-3-8B) thất bại, chuyển về Gemini:', groqError);
+    return await geminiGenerate({
+      model: options?.model || geminiModel,
+      systemInstruction,
+      userContent,
+      temperature,
+      topP,
+      json: true,
+      options,
+    });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Lớp gọi Gemini, tự định tuyến theo key:
+//  - Có key Gemini riêng (options.apiKey) → gọi thẳng SDK bằng key đó.
+//  - Không có → đi qua backend proxy (key mặc định của app, yêu cầu đăng nhập).
+// geminiGenerate/geminiStream KHÔNG tự fallback sang Groq (dùng cho nhánh fallback
+// của tác vụ tạo prompt để tránh lặp vòng). geminiGenerateWithFallback/
+// geminiStreamWithFallback = Gemini trước, lỗi thì tự động chuyển sang Groq.
+// ─────────────────────────────────────────────────────────────────────────────
+interface GeminiCallParams {
+  model: string;
+  systemInstruction: string;
+  userContent: string;
+  temperature?: number;
+  topP?: number;
+  maxOutputTokens?: number;
+  json?: boolean;
+  options?: AiGenParams;
+}
+
+async function geminiGenerate(params: GeminiCallParams): Promise<string> {
+  const {
+    model, systemInstruction, userContent,
+    temperature, topP, maxOutputTokens, json, options,
+  } = params;
+  if (options?.apiKey) {
+    const client = new GoogleGenAI({ apiKey: options.apiKey });
+    const response = await client.models.generateContent({
+      model,
+      contents: userContent,
+      config: {
+        systemInstruction,
+        ...(temperature !== undefined ? { temperature } : {}),
+        ...(topP !== undefined ? { topP } : {}),
+        ...(maxOutputTokens ? { maxOutputTokens } : {}),
+        ...(json ? { responseMimeType: 'application/json' } : {}),
+      },
+    });
+    return response.text || (json ? '{}' : '');
+  }
+  return await proxyGenerate({
+    provider: 'gemini',
+    model,
+    system: systemInstruction,
+    user: userContent,
+    temperature,
+    topP,
+    maxTokens: maxOutputTokens,
+    json,
+  });
+}
+
+async function geminiStream(
+  params: GeminiCallParams,
+  onChunk: (chunk: string) => void
+): Promise<void> {
+  const {
+    model, systemInstruction, userContent,
+    temperature, topP, maxOutputTokens, options,
+  } = params;
+  if (options?.apiKey) {
+    const client = new GoogleGenAI({ apiKey: options.apiKey });
+    const stream = await client.models.generateContentStream({
+      model,
+      contents: userContent,
+      config: {
+        systemInstruction,
+        ...(temperature !== undefined ? { temperature } : {}),
+        ...(topP !== undefined ? { topP } : {}),
+        ...(maxOutputTokens ? { maxOutputTokens } : {}),
+      },
+    });
+    for await (const chunk of stream) {
+      if (chunk.text) onChunk(chunk.text);
+    }
+    return;
+  }
+  await proxyGenerateStream(
+    {
+      provider: 'gemini',
+      model,
+      system: systemInstruction,
+      user: userContent,
+      temperature,
+      topP,
+      maxTokens: maxOutputTokens,
+    },
+    onChunk
+  );
+}
+
+async function geminiGenerateWithFallback(params: GeminiCallParams): Promise<string> {
+  try {
+    return await geminiGenerate(params);
+  } catch (geminiError) {
+    console.warn('Gemini lỗi — fallback tự động sang Groq (Llama-3-8B):', geminiError);
+    try {
+      return await callGroqChat(params.systemInstruction, params.userContent, {
+        apiKey: params.options?.groqApiKey,
+        model: params.options?.groqModel,
+        temperature: params.temperature,
+        topP: params.topP,
+        maxTokens: params.maxOutputTokens,
+        json: params.json,
+      });
+    } catch (groqError) {
+      console.error('Groq fallback cũng thất bại:', groqError);
+      throw geminiError;
+    }
+  }
+}
+
+async function geminiStreamWithFallback(
+  params: GeminiCallParams,
+  onChunk: (chunk: string) => void
+): Promise<void> {
+  let emitted = false;
+  const tracked = (chunk: string) => {
+    emitted = true;
+    onChunk(chunk);
+  };
+  try {
+    await geminiStream(params, tracked);
+  } catch (geminiError) {
+    // Chỉ fallback khi chưa phát ra chunk nào, tránh lặp/ghép nội dung sai.
+    if (emitted) throw geminiError;
+    console.warn('Gemini stream lỗi — fallback tự động sang Groq (Llama-3-8B):', geminiError);
+    await callGroqChatStream(params.systemInstruction, params.userContent, onChunk, {
+      apiKey: params.options?.groqApiKey,
+      model: params.options?.groqModel,
+      temperature: params.temperature,
+      topP: params.topP,
+      maxTokens: params.maxOutputTokens,
+    });
+  }
+}
 
 export function sanitizeJsonString(str: string): string {
   let result = '';
@@ -120,6 +455,8 @@ export interface AiGenParams {
   useDeepReasoning?: boolean;
   customInstruction?: string;
   apiKey?: string;
+  groqApiKey?: string; // Ghi đè key Groq (Llama-3-8B); nếu trống lấy từ UI/env
+  groqModel?: string;  // Model Groq tùy chỉnh (mặc định llama-3.1-8b-instant)
 }
 
 export async function generateAutoBlockStream(
@@ -205,22 +542,32 @@ Sinh ra chính xác đoạn nội dung trực tiếp cần thiết để điền
     }
     const temperature = options?.temperature !== undefined ? options.temperature : 0.7;
     const topP = options?.topP !== undefined ? options.topP : 0.95;
+    const userContent = currentText ? `Cải thiện đoạn: ${currentText}` : `Viết phần ${blockTitle}`;
 
-    const responseStream = await ai.models.generateContentStream({
-      model: modelName,
-      contents: currentText ? `Cải thiện đoạn: ${currentText}` : `Viết phần ${blockTitle}`,
-      config: {
-        systemInstruction,
+    // Ưu tiên Llama-3-8B (Groq) cho việc tạo nội dung khối để tiết kiệm hạn mức Gemini;
+    // nếu Groq lỗi thì fallback sang Gemini. Cả hai tự định tuyến key riêng/proxy.
+    try {
+      await callGroqChatStream(systemInstruction, userContent, onChunk, {
+        apiKey: options?.groqApiKey,
+        model: options?.groqModel,
         temperature,
         topP,
-        maxOutputTokens,
-      }
-    });
-
-    for await (const chunk of responseStream) {
-      if (chunk.text) {
-        onChunk(chunk.text);
-      }
+        maxTokens: maxOutputTokens,
+      });
+    } catch (groqError) {
+      console.warn('Groq (Llama-3-8B) stream thất bại, chuyển về Gemini:', groqError);
+      await geminiStream(
+        {
+          model: modelName,
+          systemInstruction,
+          userContent,
+          temperature,
+          topP,
+          maxOutputTokens,
+          options,
+        },
+        onChunk
+      );
     }
   } catch (error) {
     console.error("AI Stream Generation failed:", error);
@@ -254,18 +601,15 @@ KHÔNG MỞ ĐẦU, KHÔNG GIẢI THÍCH, KHÔNG FORMAT MARKDOWN LOẠI BỎ (\`
     const temperature = options?.temperature !== undefined ? options.temperature : 0.1; // Extremely low creativity for JSON compliance
     const topP = options?.topP !== undefined ? options.topP : 0.1;
 
-    const response = await ai.models.generateContent({
+    const text = await geminiGenerateWithFallback({
       model: modelName,
-      contents: prompt,
-      config: {
-        systemInstruction,
-        temperature,
-        topP,
-        responseMimeType: "application/json"
-      }
+      systemInstruction,
+      userContent: prompt,
+      temperature,
+      topP,
+      json: true,
+      options,
     });
-
-    const text = response.text || "{}";
     try {
       return safeJsonParse(text);
     } catch(e) {
@@ -308,25 +652,21 @@ Người dùng vừa gửi một yêu cầu rất ngắn. Tuy nhiên, hệ thố
     const temperature = options?.temperature !== undefined ? options.temperature : 0.7;
     const topP = options?.topP !== undefined ? options.topP : 0.95;
 
-    const responseStream = await ai.models.generateContentStream({
-      model: modelName,
-      contents: shortInput,
-      config: {
+    let fullText = "";
+    await geminiStreamWithFallback(
+      {
+        model: modelName,
         systemInstruction,
+        userContent: shortInput,
         temperature,
         topP,
+        options,
+      },
+      (chunk) => {
+        fullText += chunk;
+        if (onChunk) onChunk(chunk);
       }
-    });
-
-    let fullText = "";
-    for await (const chunk of responseStream) {
-      if (chunk.text) {
-        fullText += chunk.text;
-        if (onChunk) {
-          onChunk(chunk.text);
-        }
-      }
-    }
+    );
     return fullText;
   } catch (error) {
     console.error("AI Quick Generation failed:", error);
@@ -355,22 +695,18 @@ Trọng tâm: Cung cấp nội dung CHẤT LƯỢNG CAO, CÔ ĐỌNG, SẴN SÀN
 BẮT BUỘC trả về ĐÚNG ĐỊNH DẠNG JSON.
 KHÔNG MỞ ĐẦU, KHÔNG GIẢI THÍCH, KHÔNG FORMAT MARKDOWN.`;
 
-    const modelName = options?.model || (options?.useDeepReasoning ? 'gemini-2.5-pro' : 'gemini-3.5-flash');
+    const geminiModel = options?.useDeepReasoning ? 'gemini-2.5-pro' : 'gemini-3.5-flash';
     const temperature = options?.temperature !== undefined ? options.temperature : 0.6;
     const topP = options?.topP !== undefined ? options.topP : 0.9;
 
-    const response = await ai.models.generateContent({
-      model: modelName,
-      contents: `Hãy tạo nội dung cho các khối tương ứng để giải quyết nhiệm vụ: "${topic}"`,
-      config: {
-        systemInstruction,
-        temperature,
-        topP,
-        responseMimeType: "application/json"
-      }
-    });
-
-    const text = response.text || "{}";
+    const text = await generatePromptJson(
+      systemInstruction,
+      `Hãy tạo nội dung cho các khối tương ứng để giải quyết nhiệm vụ: "${topic}"`,
+      geminiModel,
+      temperature,
+      topP,
+      options
+    );
     return safeJsonParse(text);
   } catch (error) {
     console.error("AI Quick Fill failed:", error);
@@ -406,22 +742,18 @@ Hãy trả về CHỈ MỘT JSON OBJECT khớp với định dạng cấu trúc 
 
 BẮT BUỘC trả về ĐÚNG GIÁ TRỊ JSON cấu trúc như trên. KHÔNG bình luận, KHÔNG giải thích, KHÔNG bọc trong các ký tự markdown dư thừa.`;
 
-    const modelName = options?.model || (options?.useDeepReasoning ? 'gemini-2.5-pro' : 'gemini-3.5-flash');
+    const geminiModel = options?.useDeepReasoning ? 'gemini-2.5-pro' : 'gemini-3.5-flash';
     const temperature = options?.temperature !== undefined ? options.temperature : 0.6;
     const topP = options?.topP !== undefined ? options.topP : 0.9;
 
-    const response = await ai.models.generateContent({
-      model: modelName,
-      contents: `Hãy tạo một Framework Prompt cấu trúc hoàn hảo cho nhiệm vụ: "${topic}"`,
-      config: {
-        systemInstruction,
-        temperature,
-        topP,
-        responseMimeType: "application/json"
-      }
-    });
-
-    const text = response.text || "{}";
+    const text = await generatePromptJson(
+      systemInstruction,
+      `Hãy tạo một Framework Prompt cấu trúc hoàn hảo cho nhiệm vụ: "${topic}"`,
+      geminiModel,
+      temperature,
+      topP,
+      options
+    );
     const result = safeJsonParse(text);
     
     if (result.blocks && Array.isArray(result.blocks)) {
@@ -444,7 +776,7 @@ export async function enhancePromptWithAi(
   options?: AiGenParams
 ): Promise<any[]> {
   try {
-    const modelName = options?.model || (options?.useDeepReasoning ? 'gemini-2.5-pro' : 'gemini-3.5-flash');
+    const geminiModel = options?.useDeepReasoning ? 'gemini-2.5-pro' : 'gemini-3.5-flash';
     const temperature = options?.temperature !== undefined ? options.temperature : 0.7;
     const topP = options?.topP !== undefined ? options.topP : 0.95;
 
@@ -463,19 +795,14 @@ BẠN PHẢI TRẢ VỀ ĐÚNG MỘT CHUỖI JSON THEO CẤU TRÚC BÊN DƯỚI,
 Chú ý, trường 'type' bắt buộc phải là MỘT TRONG CÁC GIÁ TRỊ SAU: 'role', 'task', 'context', 'format', 'tone', 'constraints', 'example'.
 Cố gắng phân tích prompt của người dùng và chia nhỏ ra thành ít nhất 3 block trở lên để cấu trúc rõ ràng.`;
 
-    const client = options?.apiKey ? new GoogleGenAI({ apiKey: options.apiKey }) : ai;
-    const response = await client.models.generateContent({
-      model: modelName,
-      contents: `Hãy phân tích và tối ưu hoá prompt cơ bản sau:\n\n${inputPrompt}`,
-      config: {
-        systemInstruction,
-        temperature,
-        topP,
-        responseMimeType: "application/json",
-      }
-    });
-
-    const jsonStr = response.text || "{}";
+    const jsonStr = await generatePromptJson(
+      systemInstruction,
+      `Hãy phân tích và tối ưu hoá prompt cơ bản sau:\n\n${inputPrompt}`,
+      geminiModel,
+      temperature,
+      topP,
+      options
+    );
     const parsed = safeJsonParse(jsonStr);
     
     if (parsed && parsed.blocks && Array.isArray(parsed.blocks)) {
@@ -520,18 +847,15 @@ KHÔNG mở đầu, KHÔNG kết luận, KHÔNG bọc trong markdown codeblock \
 - Ràng buộc (Rules & Constraints): "${params.constraints}"
 - Định dạng kết quả (Output Preferences): "${params.outputFormat}"`;
 
-    const response = await ai.models.generateContent({
+    const text = await geminiGenerateWithFallback({
       model: modelName,
-      contents,
-      config: {
-        systemInstruction,
-        temperature,
-        topP,
-        responseMimeType: "application/json"
-      }
+      systemInstruction,
+      userContent: contents,
+      temperature,
+      topP,
+      json: true,
+      options,
     });
-
-    const text = response.text || "{}";
     const parsed = safeJsonParse(text);
     return {
       role: parsed.role || params.role,
@@ -580,18 +904,15 @@ KHÔNG mở đầu, KHÔNG giải thích, KHÔNG bọc trong markdown codeblock 
 
     const contents = `Hãy tạo danh sách các tin tức AI mới nhất cho hôm nay.`;
 
-    const response = await ai.models.generateContent({
+    const text = await geminiGenerateWithFallback({
       model: modelName,
-      contents,
-      config: {
-        systemInstruction,
-        temperature,
-        topP,
-        responseMimeType: "application/json"
-      }
+      systemInstruction,
+      userContent: contents,
+      temperature,
+      topP,
+      json: true,
+      options,
     });
-
-    const text = response.text || "{}";
     const parsed = safeJsonParse(text);
     if (parsed && Array.isArray(parsed.news)) {
       return parsed.news;
@@ -642,28 +963,43 @@ export async function runPlaygroundChatStream(
   onChunk: (chunk: string) => void
 ) {
   if (provider === 'gemini') {
-    const client = config.apiKey ? new GoogleGenAI({ apiKey: config.apiKey }) : ai;
     const model = config.model || 'gemini-2.5-flash';
-    
-    const contents = messages.map(m => ({
-      role: m.role === 'assistant' ? 'model' as const : 'user' as const,
-      parts: [{ text: m.content }]
-    }));
 
-    const responseStream = await client.models.generateContentStream({
-      model,
-      contents,
-      config: {
-        systemInstruction,
-        temperature: config.temperature !== undefined ? config.temperature : 0.7,
-        maxOutputTokens: config.maxTokens,
-      }
-    });
+    // Có key Gemini riêng → gọi thẳng SDK; không có → đi qua backend proxy (key mặc định).
+    if (config.apiKey) {
+      const client = new GoogleGenAI({ apiKey: config.apiKey });
+      const contents = messages.map(m => ({
+        role: m.role === 'assistant' ? 'model' as const : 'user' as const,
+        parts: [{ text: m.content }]
+      }));
 
-    for await (const chunk of responseStream) {
-      if (chunk.text) {
-        onChunk(chunk.text);
+      const responseStream = await client.models.generateContentStream({
+        model,
+        contents,
+        config: {
+          systemInstruction,
+          temperature: config.temperature !== undefined ? config.temperature : 0.7,
+          maxOutputTokens: config.maxTokens,
+        }
+      });
+
+      for await (const chunk of responseStream) {
+        if (chunk.text) {
+          onChunk(chunk.text);
+        }
       }
+    } else {
+      await proxyGenerateStream(
+        {
+          provider: 'gemini',
+          model,
+          system: systemInstruction,
+          messages,
+          temperature: config.temperature,
+          maxTokens: config.maxTokens,
+        },
+        onChunk
+      );
     }
   } else if (provider === 'openai') {
     const apiKey = config.apiKey;
@@ -762,17 +1098,14 @@ Chỉ trả về phần nội dung Markdown đã được tối ưu hóa. KHÔNG
     const temperature = options?.temperature !== undefined ? options.temperature : 0.6;
     const topP = options?.topP !== undefined ? options.topP : 0.9;
 
-    const response = await ai.models.generateContent({
+    return await geminiGenerateWithFallback({
       model: modelName,
-      contents,
-      config: {
-        systemInstruction,
-        temperature,
-        topP,
-      }
-    });
-
-    return response.text || content;
+      systemInstruction,
+      userContent: contents,
+      temperature,
+      topP,
+      options,
+    }) || content;
   } catch (error) {
     console.error("Optimize AI Rules failed:", error);
     throw error;
@@ -811,19 +1144,73 @@ ${steps.map(s => `  + Bước ${s.order}: ${s.title} - ${s.description}`).join('
     const temperature = options?.temperature !== undefined ? options.temperature : 0.6;
     const topP = options?.topP !== undefined ? options.topP : 0.9;
 
-    const response = await ai.models.generateContent({
+    return await geminiGenerateWithFallback({
       model: modelName,
-      contents,
-      config: {
-        systemInstruction,
-        temperature,
-        topP,
-      }
+      systemInstruction,
+      userContent: contents,
+      temperature,
+      topP,
+      options,
     });
-
-    return response.text || "";
   } catch (error) {
     console.error("Generate Skill Instructions failed:", error);
+    throw error;
+  }
+}
+
+/**
+ * Substitute {{variable}} tokens in a skill's instructions with concrete values.
+ *
+ * - Whole-token matching prevents partial-name collisions (e.g. `grade` vs `grade_level`).
+ * - Whitespace inside the braces is tolerated: `{{ name }}` === `{{name}}`.
+ * - Booleans render as "Có"/"Không"; strings (including empty) are inserted verbatim.
+ * - Unknown variables are left untouched so the gap is visible in the rendered prompt.
+ *
+ * Pure & side-effect free — safe to unit test and to call synchronously from the UI.
+ */
+export function renderSkillPrompt(
+  instructions: string,
+  values: Record<string, string | boolean>
+): string {
+  if (!instructions) return '';
+  return instructions.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (token, name: string) => {
+    if (!Object.prototype.hasOwnProperty.call(values, name)) return token;
+    const value = values[name];
+    if (typeof value === 'boolean') return value ? 'Có' : 'Không';
+    // Use a function replacer (above) so `$` sequences in values are never treated
+    // as regex replacement patterns — values are always inserted literally.
+    return value;
+  });
+}
+
+/**
+ * Execute a fully-rendered skill prompt against the model and return the raw text output.
+ * Mirrors the generateContent pattern used by the other skill helpers above.
+ */
+export async function executeSkill(
+  renderedPrompt: string,
+  options?: AiGenParams
+): Promise<string> {
+  try {
+    const systemInstruction = `Bạn là một trợ lý AI thực thi kỹ năng được cấu trúc sẵn.
+Người dùng cung cấp một bản đặc tả kỹ năng đã được điền đầy đủ biến đầu vào.
+Hãy thực hiện chính xác nhiệm vụ theo chỉ dẫn và quy trình từng bước, trả về kết quả cuối cùng dưới dạng Markdown rõ ràng, mạch lạc.
+KHÔNG nhắc lại đề bài, KHÔNG giải thích quy trình nội bộ trừ khi chỉ dẫn yêu cầu.`;
+
+    const modelName = options?.model || 'gemini-3.5-flash';
+    const temperature = options?.temperature !== undefined ? options.temperature : 0.6;
+    const topP = options?.topP !== undefined ? options.topP : 0.9;
+
+    return await geminiGenerateWithFallback({
+      model: modelName,
+      systemInstruction,
+      userContent: renderedPrompt,
+      temperature,
+      topP,
+      options,
+    });
+  } catch (error) {
+    console.error("Execute Skill failed:", error);
     throw error;
   }
 }
@@ -924,17 +1311,14 @@ ${chatText}`;
     const modelName = options?.model || 'gemini-3.5-flash';
     const temperature = 0.2; // Độ sáng tạo thấp để chấm điểm nhất quán
 
-    const response = await ai.models.generateContent({
+    const text = await geminiGenerateWithFallback({
       model: modelName,
-      contents,
-      config: {
-        systemInstruction: evaluatorSystemInstruction,
-        temperature,
-        responseMimeType: "application/json"
-      }
+      systemInstruction: evaluatorSystemInstruction,
+      userContent: contents,
+      temperature,
+      json: true,
+      options,
     });
-
-    const text = response.text || "{}";
     try {
       return safeJsonParse(text);
     } catch (e) {
@@ -964,9 +1348,8 @@ export async function evaluateOutputQualityWithAi(
   options?: AiGenParams
 ): Promise<'effective' | 'ineffective'> {
   try {
-    const client = options?.apiKey ? new GoogleGenAI({ apiKey: options.apiKey }) : ai;
     const model = options?.model || 'gemini-3.5-flash';
-    
+
     const criteriaText = criteria && criteria.length > 0
       ? criteria.map((c, i) => `${i + 1}. ${c}`).join('\n')
       : "1. Đảm bảo nội dung hữu ích, chính xác và chuyên nghiệp.";
@@ -985,16 +1368,15 @@ Yêu cầu:
 - Nếu văn bản đầu ra VI PHẠM hoặc CHƯA ĐẠT bất kỳ quy chuẩn nào ở trên, hãy trả về kết quả là "ineffective".
 - Chỉ trả về từ duy nhất là "effective" hoặc "ineffective". KHÔNG giải thích, KHÔNG viết thêm từ nào khác.`;
 
-    const response = await client.models.generateContent({
+    const responseText = await geminiGenerateWithFallback({
       model,
-      contents: "Tiến hành đánh giá chất lượng văn bản đầu ra.",
-      config: {
-        systemInstruction,
-        temperature: 0.1,
-      }
+      systemInstruction,
+      userContent: "Tiến hành đánh giá chất lượng văn bản đầu ra.",
+      temperature: 0.1,
+      options,
     });
 
-    const result = response.text?.trim().toLowerCase() || "effective";
+    const result = responseText.trim().toLowerCase() || "effective";
     if (result.includes("ineffective")) {
       return "ineffective";
     }
@@ -1016,9 +1398,8 @@ export async function runAutomatedTestEvaluation(
   options?: AiGenParams
 ): Promise<TestCaseEvaluationResult> {
   try {
-    const client = options?.apiKey ? new GoogleGenAI({ apiKey: options.apiKey }) : ai;
     const model = options?.model || 'gemini-3.5-flash';
-    
+
     const criteriaText = criteria && criteria.length > 0
       ? criteria.map((c, i) => `${i + 1}. ${c}`).join('\n')
       : "1. Đảm bảo nội dung hữu ích, chính xác và chuyên nghiệp.";
@@ -1045,17 +1426,14 @@ BẮT BUỘC trả về kết quả dưới dạng JSON object duy nhất, khôn
 
 Chỉ trả về JSON object, không sử dụng markdown code block \`\`\`json.`;
 
-    const response = await client.models.generateContent({
+    const text = await geminiGenerateWithFallback({
       model,
-      contents: "Tiến hành đánh giá chất lượng phản hồi.",
-      config: {
-        systemInstruction,
-        temperature: 0.1,
-        responseMimeType: "application/json"
-      }
+      systemInstruction,
+      userContent: "Tiến hành đánh giá chất lượng phản hồi.",
+      temperature: 0.1,
+      json: true,
+      options,
     });
-
-    const text = response.text || "{}";
     try {
       return safeJsonParse(text);
     } catch (e) {
@@ -1090,9 +1468,8 @@ export async function evaluateAndEnhancePrompt(
   options?: AiGenParams
 ): Promise<AIChainEvaluation> {
   try {
-    const client = options?.apiKey ? new GoogleGenAI({ apiKey: options.apiKey }) : ai;
     const model = options?.model || 'gemini-3.5-flash';
-    
+
     const systemInstruction = `Bạn là chuyên gia thẩm định và cải tiến Prompt cho hệ thống Mentor AI.
 Nhiệm vụ của bạn là phân tích prompt gốc của người dùng và kết quả phản hồi giả lập tương ứng của mô hình ngôn ngữ lớn để tìm ra các điểm yếu, lỗ hổng logic, lỗi định dạng, hoặc thiếu sót khác. Từ đó chấm điểm chất lượng và đề xuất các phần bổ sung ngắn gọn (ví dụ: bổ sung quy tắc, ví dụ cụ thể, các ràng buộc bổ sung) để nối vào cuối prompt gốc giúp cải thiện kết quả.
 
@@ -1114,17 +1491,14 @@ BẠN BẮT BUỘC PHẢI TRẢ VỀ KẾT QUẢ DẠNG MỘT ĐỐI TƯỢNG JS
 
 Lưu ý: nội dung trong suggestions.content phải bắt đầu bằng 1 hoặc 2 dấu xuống dòng (\\n\\n) và được định dạng rõ ràng, sẵn sàng để nối trực tiếp vào prompt gốc của người dùng.`;
 
-    const response = await client.models.generateContent({
+    const text = await geminiGenerateWithFallback({
       model,
-      contents: `[PROMPT GỐC CỦA NGƯỜI DÙNG]\n${basePrompt}\n\n[KẾT QUẢ GIẢ LẬP ĐẦU RA CỦA AI]\n${simulationOutput}`,
-      config: {
-        systemInstruction,
-        temperature: 0.2,
-        responseMimeType: "application/json"
-      }
+      systemInstruction,
+      userContent: `[PROMPT GỐC CỦA NGƯỜI DÙNG]\n${basePrompt}\n\n[KẾT QUẢ GIẢ LẬP ĐẦU RA CỦA AI]\n${simulationOutput}`,
+      temperature: 0.2,
+      json: true,
+      options,
     });
-
-    const text = response.text || "{}";
     return safeJsonParse(text);
   } catch (error) {
     console.error("evaluateAndEnhancePrompt failed:", error);

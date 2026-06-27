@@ -48,6 +48,16 @@ export interface AiSkill {
   updatedAt: string;
 }
 
+// A single execution of a skill: the filled-in inputs, the rendered prompt, and the model output.
+export interface SkillRunRecord {
+  id: string;
+  skillId: string;
+  values: Record<string, string | boolean>;
+  renderedPrompt: string;
+  output: string;
+  createdAt: string;
+}
+
 export interface AiPersona {
   id: string;
   name: string;

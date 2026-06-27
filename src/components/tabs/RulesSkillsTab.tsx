@@ -7,15 +7,27 @@ import {
 import { User } from 'firebase/auth';
 import { collection, doc, getDocs, query, setDoc, where, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db, handleFirestoreError } from '../../firebase';
-import { TabType, AiRule, AiSkill, SkillVariable, SkillStep, PromptTemplate, PromptBlock } from '../../types';
+import { TabType, AiRule, AiSkill, SkillVariable, SkillStep, PromptTemplate, PromptBlock, SkillRunRecord } from '../../types';
 import { PRESET_RULES, PRESET_SKILLS } from '../../presets';
-import { optimizeAiRules, generateSkillInstructions } from '../../services/aiService';
+import { optimizeAiRules, generateSkillInstructions, renderSkillPrompt, executeSkill } from '../../services/aiService';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 interface RulesSkillsTabProps {
   user: User | null;
   onApplyTemplate?: (template: PromptTemplate) => void;
+}
+
+// Safely parse a localStorage JSON array; corrupt/legacy data returns [] instead of crashing the tab.
+function safeParseArray<T>(raw: string | null): T[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
+  } catch (err) {
+    console.warn('Bỏ qua dữ liệu localStorage hỏng:', err);
+    return [];
+  }
 }
 
 export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTabProps) {
@@ -68,17 +80,26 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
   // Combined compiled markdown display
   const [compiledSkillSpec, setCompiledSkillSpec] = useState('');
 
+  // --- Skill RUN mode state ---
+  const [skillMode, setSkillMode] = useState<'edit' | 'run'>('edit');
+  const [runValues, setRunValues] = useState<Record<string, string | boolean>>({});
+  const [renderedPrompt, setRenderedPrompt] = useState('');
+  const [runOutput, setRunOutput] = useState('');
+  const [isRunning, setIsRunning] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
+  const [missingVars, setMissingVars] = useState<string[]>([]);
+  const [copiedRun, setCopiedRun] = useState(false);
+  const [runHistory, setRunHistory] = useState<SkillRunRecord[]>([]);
+
   // Sync state
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   // --- INITIAL DATA LOAD & SYNC ---
   useEffect(() => {
     // Load local storage first
-    const localRules = localStorage.getItem('custom_rules');
-    const localSkills = localStorage.getItem('custom_skills');
-    
-    let parsedRules: AiRule[] = localRules ? JSON.parse(localRules) : [];
-    let parsedSkills: AiSkill[] = localSkills ? JSON.parse(localSkills) : [];
+    let parsedRules = safeParseArray<AiRule>(localStorage.getItem('custom_rules'));
+    let parsedSkills = safeParseArray<AiSkill>(localStorage.getItem('custom_skills'));
 
     // Filter out preset duplicates from legacy saves
     parsedRules = parsedRules.filter(r => !r.isPreset);
@@ -103,6 +124,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
   const syncDataWithFirestore = async () => {
     if (!user) return;
     setIsSyncing(true);
+    setSyncError(null);
     try {
       // 1. Fetch custom rules
       const rulesQuery = query(collection(db, 'rules'), where('userId', '==', user.uid));
@@ -139,10 +161,8 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
       });
 
       // Merge local with DB
-      const localRulesStr = localStorage.getItem('custom_rules');
-      const localSkillsStr = localStorage.getItem('custom_skills');
-      const localRules: AiRule[] = localRulesStr ? JSON.parse(localRulesStr).filter((r: any) => !r.isPreset) : [];
-      const localSkills: AiSkill[] = localSkillsStr ? JSON.parse(localSkillsStr).filter((s: any) => !s.isPreset) : [];
+      const localRules = safeParseArray<AiRule>(localStorage.getItem('custom_rules')).filter(r => !r.isPreset);
+      const localSkills = safeParseArray<AiSkill>(localStorage.getItem('custom_skills')).filter(s => !s.isPreset);
 
       // Deduplicate rules by ID (DB takes priority)
       const mergedRulesMap = new Map<string, AiRule>();
@@ -170,6 +190,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
 
     } catch (err) {
       console.error("Sync data failed:", err);
+      setSyncError('Đồng bộ đám mây thất bại. Dữ liệu vẫn được giữ cục bộ trên thiết bị này.');
     } finally {
       setIsSyncing(false);
     }
@@ -251,6 +272,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
       }
     } catch (err) {
       console.error(err);
+      setSyncError('Không thể lưu quy tắc lên Cloud, đã lưu tạm cục bộ.');
       alert('Không thể lưu quy tắc lên Cloud, đã lưu tạm cục bộ.');
     } finally {
       setIsSavingRule(false);
@@ -372,6 +394,24 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
   };
 
   // --- SKILL MANAGEMENT ACTIONS ---
+  // Seed run inputs from each variable's defaultValue (booleans honour 'true').
+  const buildInitialRunValues = (inputs: SkillVariable[]): Record<string, string | boolean> => {
+    const seed: Record<string, string | boolean> = {};
+    inputs.forEach(v => {
+      if (v.type === 'boolean') {
+        seed[v.name] = v.defaultValue === 'true';
+      } else {
+        seed[v.name] = v.defaultValue ?? '';
+      }
+    });
+    return seed;
+  };
+
+  const loadRunHistory = (skillId: string): SkillRunRecord[] => {
+    const records = safeParseArray<SkillRunRecord>(localStorage.getItem(`skill_runs_${skillId}`));
+    return records.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  };
+
   const selectSkill = (skill: AiSkill) => {
     setSelectedSkillId(skill.id);
     setSkillTitle(skill.title);
@@ -381,6 +421,13 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
     setSkillInstructions(skill.instructions || '');
     setIsSkillPreset(!!skill.isPreset);
     setCompiledSkillSpec('');
+    // Reset run mode for the newly selected skill
+    setRunValues(buildInitialRunValues(skill.inputs || []));
+    setRenderedPrompt('');
+    setRunOutput('');
+    setRunError(null);
+    setMissingVars([]);
+    setRunHistory(loadRunHistory(skill.id));
   };
 
   const handleCreateNewSkill = () => {
@@ -443,6 +490,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
       }
     } catch (err) {
       console.error(err);
+      setSyncError('Không thể lưu kỹ năng lên Cloud, đã lưu tạm cục bộ.');
       alert('Không thể lưu kỹ năng lên Cloud, đã lưu tạm cục bộ.');
     } finally {
       setIsSavingSkill(false);
@@ -567,10 +615,13 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
   };
 
   // --- SKILL SPEC COMPILER ---
-  const handleCompileSkill = () => {
+  // Pure builder: derive the Markdown spec from the current skill state.
+  // Kept side-effect free so callers (compile button, push-to-builder) can use
+  // the value synchronously instead of reading stale `compiledSkillSpec` state.
+  const buildSkillSpec = (): string => {
     let md = `# KỸ NĂNG: ${skillTitle.toUpperCase()}\n`;
     md += `> ${skillDesc || 'Không có mô tả.'}\n\n`;
-    
+
     if (skillInputs.length > 0) {
       md += `### 📥 BIẾN ĐẦU VÀO (INPUT VARIABLES)\n`;
       skillInputs.forEach(v => {
@@ -594,7 +645,11 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
     md += `### 📜 CHỈ DẪN THỰC THI (INSTRUCTIONS)\n`;
     md += `${skillInstructions || 'Không có chỉ dẫn thêm.'}\n`;
 
-    setCompiledSkillSpec(md);
+    return md;
+  };
+
+  const handleCompileSkill = () => {
+    setCompiledSkillSpec(buildSkillSpec());
   };
 
   // AI assistant to auto write instructions based on inputs/steps
@@ -629,8 +684,10 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
 
   const handlePushSkillToPromptBuilder = () => {
     if (!onApplyTemplate || !skillTitle) return;
-    handleCompileSkill();
-    
+    // Build synchronously so we push the freshly compiled spec, not stale state.
+    const spec = buildSkillSpec();
+    setCompiledSkillSpec(spec);
+
     const template: PromptTemplate = {
       id: `skill-import-${Date.now()}`,
       title: `Kỹ năng: ${skillTitle}`,
@@ -640,11 +697,114 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
           id: `task-${Date.now()}`,
           type: 'task',
           title: `🎯 Kịch bản ${skillTitle}`,
-          content: compiledSkillSpec || `Sử dụng kỹ năng này để giải quyết công việc:\n\n${skillInstructions}`
+          content: spec || `Sử dụng kỹ năng này để giải quyết công việc:\n\n${skillInstructions}`
         }
       ]
     };
     onApplyTemplate(template);
+  };
+
+  // --- SKILL RUN ACTIONS ---
+  const handleRunValueChange = (name: string, value: string | boolean) => {
+    setRunValues(prev => ({ ...prev, [name]: value }));
+    if (missingVars.includes(name)) {
+      setMissingVars(prev => prev.filter(n => n !== name));
+    }
+  };
+
+  // Required text/dropdown inputs must be non-empty; booleans are always valid.
+  const validateRun = (): string[] => {
+    const missing = skillInputs
+      .filter(v => v.required && v.type !== 'boolean')
+      .filter(v => {
+        const val = runValues[v.name];
+        return typeof val !== 'string' || val.trim() === '';
+      })
+      .map(v => v.name);
+    setMissingVars(missing);
+    return missing;
+  };
+
+  const handleRenderPrompt = (): string | null => {
+    if (validateRun().length > 0) {
+      setRunError('Vui lòng điền đầy đủ các biến bắt buộc trước khi chạy.');
+      return null;
+    }
+    setRunError(null);
+    const rendered = renderSkillPrompt(skillInstructions, runValues);
+    setRenderedPrompt(rendered);
+    return rendered;
+  };
+
+  const persistRunRecord = (record: SkillRunRecord) => {
+    const next = [record, ...loadRunHistory(record.skillId)].slice(0, 20); // keep last 20
+    localStorage.setItem(`skill_runs_${record.skillId}`, JSON.stringify(next));
+    setRunHistory(next);
+  };
+
+  const handleRunSkill = async () => {
+    const rendered = handleRenderPrompt();
+    if (rendered === null) return;
+
+    setIsRunning(true);
+    setRunError(null);
+    setRunOutput('');
+    try {
+      const output = await executeSkill(rendered);
+      setRunOutput(output);
+      persistRunRecord({
+        id: `run-${Date.now()}`,
+        skillId: selectedSkillId,
+        values: runValues,
+        renderedPrompt: rendered,
+        output,
+        createdAt: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error('Run skill failed:', err);
+      setRunError('Chạy kỹ năng thất bại. Vui lòng kiểm tra API Key / kết nối và thử lại.');
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  const handleCopyRunOutput = () => {
+    if (!runOutput) return;
+    navigator.clipboard.writeText(runOutput);
+    setCopiedRun(true);
+    setTimeout(() => setCopiedRun(false), 2000);
+  };
+
+  const handlePushRunToBuilder = () => {
+    if (!onApplyTemplate || !runOutput) return;
+    const template: PromptTemplate = {
+      id: `skill-run-${Date.now()}`,
+      title: `Kết quả: ${skillTitle}`,
+      description: skillDesc || 'Kết quả chạy kỹ năng từ Rules & Skills Builder',
+      blocks: [
+        {
+          id: `output-${Date.now()}`,
+          type: 'context',
+          title: `📤 Kết quả ${skillTitle}`,
+          content: runOutput
+        }
+      ]
+    };
+    onApplyTemplate(template);
+  };
+
+  const handleRestoreRun = (record: SkillRunRecord) => {
+    setRunValues(record.values);
+    setRenderedPrompt(record.renderedPrompt);
+    setRunOutput(record.output);
+    setMissingVars([]);
+    setRunError(null);
+  };
+
+  const handleClearRunHistory = () => {
+    if (!window.confirm('Xóa toàn bộ lịch sử chạy của kỹ năng này?')) return;
+    localStorage.removeItem(`skill_runs_${selectedSkillId}`);
+    setRunHistory([]);
   };
 
   return (
@@ -690,6 +850,21 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
           </div>
         </div>
       </div>
+
+      {/* Sync error banner */}
+      {syncError && (
+        <div className="mb-4 flex items-start gap-2 px-4 py-3 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400">
+          <AlertTriangle size={15} className="mt-0.5 shrink-0" />
+          <span className="text-xs font-semibold flex-1">{syncError}</span>
+          <button
+            onClick={() => setSyncError(null)}
+            className="text-amber-500 hover:text-amber-700 text-xs font-bold cursor-pointer"
+            title="Đóng"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Main split grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-0 items-stretch">
@@ -981,6 +1156,26 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
                 </div>
               </div>
 
+              {/* Edit / Run mode toggle */}
+              <div className="flex items-center justify-center mt-1">
+                <div className="flex bg-slate-100 dark:bg-slate-950 p-0.5 rounded-xl border border-slate-200/50 dark:border-slate-800">
+                  <button
+                    onClick={() => setSkillMode('edit')}
+                    className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${skillMode === 'edit' ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                    <Edit3 size={12} /> Soạn thảo
+                  </button>
+                  <button
+                    onClick={() => setSkillMode('run')}
+                    className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${skillMode === 'run' ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                    <Play size={12} /> Chạy thử
+                  </button>
+                </div>
+              </div>
+
+              {skillMode === 'edit' && (
+              <>
               {/* Dynamic Variables and Workflow Steps Manager */}
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-2">
                 
@@ -1262,6 +1457,184 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
                       <span>{isSavingSkill ? 'Đang lưu...' : 'Lưu kỹ năng'}</span>
                     </button>
                   </div>
+                </div>
+              )}
+              </>
+              )}
+
+              {skillMode === 'run' && (
+                <div className="flex-1 flex flex-col gap-4 mt-2">
+                  {/* Run error banner */}
+                  {runError && (
+                    <div className="flex items-start gap-2 px-4 py-2.5 rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400">
+                      <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                      <span className="text-xs font-semibold flex-1">{runError}</span>
+                    </div>
+                  )}
+
+                  {/* Input form generated from variables */}
+                  <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50/30 dark:bg-slate-950/10">
+                    <h4 className="text-xs font-bold text-slate-700 dark:text-slate-350 mb-3 flex items-center gap-1.5">
+                      <span>📝 Điền biến đầu vào</span>
+                    </h4>
+                    {skillInputs.length === 0 ? (
+                      <p className="text-[11px] text-slate-400 italic">Kỹ năng này không khai báo biến nào — có thể chạy trực tiếp.</p>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {skillInputs.map(v => {
+                          const isMissing = missingVars.includes(v.name);
+                          // The global `input,textarea,select { border-color: !important }` rule (index.css) overrides
+                          // any border class, so signal the error with a ring (box-shadow, untouched by that rule) instead.
+                          const baseCls = `w-full text-[11px] px-2.5 py-1.5 border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 focus:outline-none focus:border-indigo-500 ${isMissing ? 'ring-2 ring-[#fb7185]' : ''}`;
+                          return (
+                            <div key={v.name} className={v.type === 'long-text' ? 'md:col-span-2' : ''}>
+                              <label className={`text-[10px] font-bold block mb-1 ${isMissing ? 'text-rose-600' : 'text-slate-500 dark:text-slate-400'}`}>
+                                {v.name}
+                                {v.required && v.type !== 'boolean' && <span className="text-rose-500 ml-0.5">*</span>}
+                                {v.description && <span className="font-normal text-slate-400 ml-1.5">— {v.description}</span>}
+                              </label>
+                              {v.type === 'long-text' ? (
+                                <textarea
+                                  value={(runValues[v.name] as string) ?? ''}
+                                  onChange={(e) => handleRunValueChange(v.name, e.target.value)}
+                                  className={`${baseCls} h-20 resize-none font-mono leading-relaxed`}
+                                  placeholder={`Nhập ${v.name}...`}
+                                />
+                              ) : v.type === 'dropdown' ? (
+                                <select
+                                  value={(runValues[v.name] as string) ?? ''}
+                                  onChange={(e) => handleRunValueChange(v.name, e.target.value)}
+                                  className={baseCls}
+                                >
+                                  <option value="">-- Chọn --</option>
+                                  {(v.options || []).map(opt => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                  ))}
+                                </select>
+                              ) : v.type === 'boolean' ? (
+                                <label className="flex items-center gap-2 cursor-pointer mt-1">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!runValues[v.name]}
+                                    onChange={(e) => handleRunValueChange(v.name, e.target.checked)}
+                                    className="w-4 h-4 accent-indigo-600 cursor-pointer"
+                                  />
+                                  <span className="text-[11px] text-slate-600 dark:text-slate-300">{runValues[v.name] ? 'Có' : 'Không'}</span>
+                                </label>
+                              ) : (
+                                <input
+                                  type="text"
+                                  value={(runValues[v.name] as string) ?? ''}
+                                  onChange={(e) => handleRunValueChange(v.name, e.target.value)}
+                                  className={baseCls}
+                                  placeholder={`Nhập ${v.name}...`}
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Run controls */}
+                    <div className="flex items-center justify-end gap-2 mt-4 border-t border-slate-100 dark:border-slate-850 pt-3">
+                      <button
+                        onClick={handleRenderPrompt}
+                        className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-600 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-350 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Eye size={12} /> Render prompt
+                      </button>
+                      <button
+                        onClick={handleRunSkill}
+                        disabled={isRunning}
+                        className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                      >
+                        {isRunning ? <RefreshCw size={12} className="animate-spin" /> : <Play size={12} />}
+                        <span>{isRunning ? 'Đang chạy...' : 'Chạy với AI'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Rendered prompt preview */}
+                  {renderedPrompt && (
+                    <div className="flex flex-col bg-slate-50/50 dark:bg-slate-950/50 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                      <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-900/50">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                          <Eye size={11} /> Prompt sau khi render
+                        </span>
+                      </div>
+                      <div className="p-4 max-h-[160px] overflow-y-auto custom-scrollbar text-[11px] font-mono whitespace-pre-wrap text-slate-700 dark:text-slate-300">
+                        {renderedPrompt}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Run output */}
+                  {(runOutput || isRunning) && (
+                    <div className="flex flex-col bg-white dark:bg-slate-950 rounded-xl border border-indigo-100 dark:border-indigo-950/30 overflow-hidden">
+                      <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-850 flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/30">
+                        <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
+                          <CheckCircle2 size={12} /> Kết quả thực thi
+                        </span>
+                        {runOutput && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={handleCopyRunOutput}
+                              className="px-2.5 py-1 bg-white hover:bg-slate-50 border border-slate-200 rounded-md text-[10px] font-semibold text-slate-600 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-350 flex items-center gap-1 cursor-pointer"
+                            >
+                              {copiedRun ? <Check size={11} className="text-green-600" /> : <Copy size={11} />}
+                              <span>{copiedRun ? 'Đã sao chép' : 'Copy'}</span>
+                            </button>
+                            <button
+                              onClick={handlePushRunToBuilder}
+                              className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md text-[10px] font-semibold text-indigo-700 dark:bg-indigo-950/30 dark:border-indigo-900/50 dark:text-indigo-400 flex items-center gap-1 cursor-pointer"
+                            >
+                              <Play size={10} /> Đẩy vào Builder
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-4 max-h-[300px] overflow-y-auto custom-scrollbar text-xs leading-relaxed prose prose-indigo dark:prose-invert prose-sm max-w-none">
+                        {isRunning && !runOutput ? (
+                          <p className="text-slate-400 italic flex items-center gap-2"><RefreshCw size={12} className="animate-spin" /> AI đang xử lý kỹ năng...</p>
+                        ) : (
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{runOutput}</ReactMarkdown>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Run history */}
+                  {runHistory.length > 0 && (
+                    <div className="flex flex-col bg-slate-50/30 dark:bg-slate-950/10 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                      <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-850 flex items-center justify-between bg-slate-100/30 dark:bg-slate-900/30">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">🕘 Lịch sử chạy ({runHistory.length})</span>
+                        <button
+                          onClick={handleClearRunHistory}
+                          className="text-[10px] font-semibold text-rose-500 hover:text-rose-600 cursor-pointer"
+                        >
+                          Xóa lịch sử
+                        </button>
+                      </div>
+                      <div className="divide-y divide-slate-100 dark:divide-slate-850 max-h-[160px] overflow-y-auto custom-scrollbar">
+                        {runHistory.map(rec => (
+                          <button
+                            key={rec.id}
+                            onClick={() => handleRestoreRun(rec)}
+                            className="w-full text-left px-4 py-2 hover:bg-slate-100/50 dark:hover:bg-slate-900/40 transition-colors cursor-pointer flex items-center justify-between gap-2"
+                            title="Khôi phục lần chạy này"
+                          >
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate flex-1">
+                              {rec.output.slice(0, 80) || '(trống)'}
+                            </span>
+                            <span className="text-[9px] text-slate-400 shrink-0">
+                              {new Date(rec.createdAt).toLocaleString('vi-VN')}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
