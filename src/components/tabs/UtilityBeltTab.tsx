@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { optimizeCustomInstructions } from '../../services/aiService';
+import { useWorkspace } from '../../context/WorkspaceContext';
 
 // Interfaces
 interface CustomProfile {
@@ -59,6 +60,7 @@ const PRESETS: CustomProfile[] = [
 ];
 
 export default function UtilityBeltTab({ user, onSaveTemplate }: UtilityBeltTabProps) {
+  const { ghostTextEnabled, setGhostTextEnabled } = useWorkspace();
   // Load profiles from localStorage or initialize with presets
   const [profiles, setProfiles] = useState<CustomProfile[]>(() => {
     try {
@@ -317,13 +319,28 @@ ${outputFormat || '(Chưa điền)'}`;
           </div>
         </div>
         
-        <button 
-          onClick={handleCreateNewProfile}
-          className="flex items-center gap-1.5 px-3 py-2 text-xs font-black text-white dark:text-slate-900 bg-slate-900 dark:bg-white hover:bg-indigo-600 dark:hover:bg-indigo-100 rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
-        >
-          <Plus size={14} />
-          Tạo Cấu Hình Mới
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setGhostTextEnabled(!ghostTextEnabled)}
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer border ${
+              ghostTextEnabled
+                ? 'bg-violet-600 text-white border-violet-600 hover:bg-violet-500'
+                : 'bg-transparent text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700 hover:border-violet-400'
+            }`}
+            title="Bật/tắt gợi ý gõ nhanh (ghost-text). Nhấn Tab để điền."
+          >
+            <Sparkles size={14} />
+            Gợi ý gõ nhanh: {ghostTextEnabled ? 'BẬT' : 'TẮT'}
+          </button>
+
+          <button
+            onClick={handleCreateNewProfile}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-black text-white dark:text-slate-900 bg-slate-900 dark:bg-white hover:bg-indigo-600 dark:hover:bg-indigo-100 rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
+          >
+            <Plus size={14} />
+            Tạo Cấu Hình Mới
+          </button>
+        </div>
       </div>
 
       {/* Main Body Layout Split */}
