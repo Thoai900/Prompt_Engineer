@@ -99,10 +99,10 @@ export default function PromptCard({ template, onSelect, onRemix, onPreview }: P
 
   return (
     <div 
-      className="group bg-white rounded-3xl border border-slate-200 shadow-sm hover:border-indigo-300 hover:shadow-lg transition-all relative flex flex-col h-[400px] overflow-hidden"
+      className="group bg-white rounded-3xl border border-slate-200 shadow-sm hover:border-indigo-300 hover:shadow-lg transition-all relative flex flex-col min-h-[400px] overflow-hidden"
     >
-      {/* Visual Header (40%) - Output/Input Preview */}
-      <div className="h-[40%] min-h-[160px] bg-slate-50 border-b border-slate-100 relative group/io overflow-hidden flex flex-col shrink-0 cursor-pointer">
+      {/* Visual Header - Output/Input Preview */}
+      <div className="h-[160px] bg-slate-50 border-b border-slate-100 relative group/io overflow-hidden flex flex-col shrink-0 cursor-pointer">
         {template.outputExample ? (
           <>
             {/* Action Overlay */}

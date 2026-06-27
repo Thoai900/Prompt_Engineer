@@ -21,6 +21,8 @@ import { UserProfileModal } from '../builder/modals/UserProfileModal';
 import AddToProjectModal from '../modals/AddToProjectModal';
 import { autoFillVariables, type AiActionType } from '../../services/aiService';
 import { routeQuickFill, routeAutoBlock } from '../../services/promptRouter';
+import StepNarrator from '../common/StepNarrator';
+import type { GenerationFlowKey } from '../../utils/generationNarratives';
 import { PRESET_RULES, PRESET_SKILLS } from '../../presets';
 import { DEFAULT_FRAMEWORKS } from '../../utils/builderUtils';
 
@@ -136,7 +138,10 @@ export default function BuilderTab({
   const allFrameworks = [...savedFrameworks, ...DEFAULT_FRAMEWORKS];
 
   const [generatingBlocks, setGeneratingBlocks] = useState<Record<string, boolean>>({});
-  const [detailLevel, setDetailLevel] = useState<number>(3);
+  // Cờ "chunk đầu đã về" + loại kịch bản narration cho từng khối đang sinh nội dung.
+  const [streamedBlocks, setStreamedBlocks] = useState<Record<string, boolean>>({});
+  const [blockNarration, setBlockNarration] = useState<Record<string, GenerationFlowKey>>({});
+  const [detailLevel, setDetailLevel] = useState<number>(2);
   const [openAiMenuId, setOpenAiMenuId] = useState<string | null>(null);
   const [customInstructions, setCustomInstructions] = useState<Record<string, string>>({});
 
@@ -286,10 +291,12 @@ export default function BuilderTab({
   const handleAiAssist = async (block: PromptBlock, actionType: AiActionType | string = 'auto') => {
     saveBlockVersion(block.id, block.content, 'Trước khi AI chạy');
     setGeneratingBlocks(prev => ({ ...prev, [block.id]: true }));
+    setStreamedBlocks(prev => ({ ...prev, [block.id]: false }));
+    setBlockNarration(prev => ({ ...prev, [block.id]: 'block-assist' }));
     setExpandedBlocks(prev => ({ ...prev, [block.id]: true })); // Expand if collapsed
     setOpenAiMenuId(null);
     const contextBlocks = blocks.filter(b => b.id !== block.id).map(b => ({ title: b.title, content: b.content }));
-    
+
     let accumulatedText = "";
     let isFirstChunk = true;
 
@@ -305,6 +312,7 @@ export default function BuilderTab({
           if (isFirstChunk) {
             isFirstChunk = false;
             accumulatedText = chunk;
+            setStreamedBlocks(prev => ({ ...prev, [block.id]: true })); // chunk đầu → nhường narrator
           } else {
             accumulatedText += chunk;
           }
@@ -360,6 +368,8 @@ export default function BuilderTab({
 
     const newBlockId = hookAddBlock(type as BlockType, blockDef.title, '');
     setGeneratingBlocks(prev => ({ ...prev, [newBlockId]: true }));
+    setStreamedBlocks(prev => ({ ...prev, [newBlockId]: false }));
+    setBlockNarration(prev => ({ ...prev, [newBlockId]: 'doctor-fix' }));
     setExpandedBlocks(prev => ({ ...prev, [newBlockId]: true }));
 
     const contextBlocks = blocks.map(b => ({ title: b.title, content: b.content }));
@@ -378,6 +388,7 @@ export default function BuilderTab({
           if (isFirstChunk) {
             isFirstChunk = false;
             accumulatedText = chunk;
+            setStreamedBlocks(prev => ({ ...prev, [newBlockId]: true }));
           } else {
             accumulatedText += chunk;
           }
@@ -796,6 +807,8 @@ export default function BuilderTab({
             activeHistoryMenuId={activeHistoryMenuId}
             setActiveHistoryMenuId={setActiveHistoryMenuId}
             generatingBlocks={generatingBlocks}
+            streamedBlocks={streamedBlocks}
+            blockNarration={blockNarration}
             openAiMenuId={openAiMenuId}
             setOpenAiMenuId={setOpenAiMenuId}
             customInstructions={customInstructions}
@@ -944,13 +957,17 @@ export default function BuilderTab({
                        </div>
                        
                        <div className="p-2 border-t border-slate-800/80 bg-slate-950/40 flex justify-between gap-2.5">
-                         <button 
+                         <button
                            onClick={handleAutoFill}
-                           disabled={isAutoFilling || !userProfile.trim()}
+                           disabled={isAutoFilling}
+                           title={!userProfile.trim() ? 'Mẹo: thêm Hồ sơ để AI điền chính xác hơn' : undefined}
                            className="flex-1 py-1.5 px-3 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-850 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer disabled:text-slate-600 flex items-center justify-center gap-1 active:scale-95 shadow-md shadow-violet-900/10"
                          >
-                            {isAutoFilling ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
-                            {isAutoFilling ? 'Đang điền...' : 'Điền nhanh AI'}
+                            {isAutoFilling ? (
+                              <StepNarrator flowKey="variable-fill" isActive={isAutoFilling} placement="compact" />
+                            ) : (
+                              <><Sparkles size={11} /> Điền nhanh AI</>
+                            )}
                          </button>
                          <button 
                            onClick={() => setVariableValues({})}

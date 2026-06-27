@@ -34,14 +34,12 @@ export const usePlaygroundSession = () => {
     setIsChatGenerating(true);
 
     try {
-      // Append Mentor AI guidelines to enforce Socratic method, empathetic tone and LaTeX math format
-      const finalSystemInstruction = systemInstruction + 
-        `\n\n[HƯỚNG DẪN BẮT BUỘC CHO MENTOR AI]\n` +
-        `Bạn là Mentor AI - gia sư thân thiện, kiên nhẫn và khuyến khích cho học sinh trung học. Hãy tuân thủ nghiêm ngặt:\n` +
-        `1. Tuyệt đối KHÔNG giải hộ bài tập hay đưa ra đáp án trực tiếp. Sử dụng phương pháp Socratic để đặt câu hỏi khơi gợi tư duy, dẫn dắt từng bước để học sinh tự tìm ra câu trả lời.\n` +
-        `2. Giọng điệu thân thiện, kiên nhẫn, sử dụng emoji một cách ấm áp, khích lệ.\n` +
-        `3. Khi viết các công thức toán học hoặc khoa học, hãy luôn sử dụng LaTeX (bọc bằng $ hoặc $$).`;
-      
+      // Dùng trực tiếp prompt mà người dùng đang dựng trong Builder làm System Prompt,
+      // không ép thêm bất kỳ persona cố định nào để giả lập phản ánh đúng prompt thực tế.
+      const finalSystemInstruction = systemInstruction.trim()
+        ? systemInstruction
+        : 'Bạn là một trợ lý AI hữu ích. Hãy trả lời trực tiếp, rõ ràng và đúng trọng tâm.';
+
       const apiMessages = updatedMessages.map(m => ({
         role: m.role === 'assistant' ? 'model' as const : 'user' as const,
         content: m.content
@@ -100,16 +98,14 @@ export const usePlaygroundSession = () => {
     ]);
 
     try {
-      const finalSystemInstruction = systemInstruction + 
-        `\n\n[HƯỚNG DẪN BẮT BUỘC CHO MENTOR AI]\n` +
-        `Bạn là Mentor AI - gia sư thân thiện, kiên nhẫn và khuyến khích cho học sinh trung học. Hãy tuân thủ nghiêm ngặt:\n` +
-        `1. Tuyệt đối KHÔNG giải hộ bài tập hay đưa ra đáp án trực tiếp. Sử dụng phương pháp Socratic để đặt câu hỏi khơi gợi tư duy, dẫn dắt từng bước để học sinh tự tìm ra câu trả lời.\n` +
-        `2. Giọng điệu thân thiện, kiên nhẫn, sử dụng emoji một cách ấm áp, khích lệ.\n` +
-        `3. Khi viết các công thức toán học hoặc khoa học, hãy luôn sử dụng LaTeX (bọc bằng $ hoặc $$).`;
-      
+      // Lấy đúng prompt người dùng đang dựng làm System Prompt, không ép persona gia sư.
+      const finalSystemInstruction = systemInstruction.trim()
+        ? systemInstruction
+        : 'Bạn là một trợ lý AI hữu ích. Hãy trả lời trực tiếp, rõ ràng và đúng trọng tâm.';
+
       const apiMessages = [{
         role: 'user' as const,
-        content: 'Hãy tạo một phản hồi mẫu ngắn gọn, súc tích (khoảng 2-3 câu) thể hiện đúng vai trò, tính cách và định hướng nhiệm vụ mà bạn được cấu hình ở trên để minh họa cách bạn sẽ trả lời học sinh.'
+        content: 'Hãy tạo một phản hồi mẫu ngắn gọn, súc tích (khoảng 2-3 câu) thể hiện đúng vai trò, tính cách và định hướng nhiệm vụ mà bạn được cấu hình ở trên để minh họa cách bạn sẽ phản hồi người dùng.'
       }];
 
       let accumulatedResponse = '';

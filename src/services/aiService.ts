@@ -141,7 +141,7 @@ export async function generateAutoBlockStream(
         break;
       case 'context':
       case 'example':
-        blockDirectives = "NGUYÊN TẮC: Trình bày chi tiết, phân rã thông tin thành nhiều lớp.";
+        blockDirectives = "NGUYÊN TẮC: Trình bày đủ ý, có cấu trúc nhưng súc tích, tránh lặp.";
         break;
       case 'constraints':
       case 'format':
@@ -151,10 +151,15 @@ export async function generateAutoBlockStream(
         blockDirectives = "NGUYÊN TẮC: Trình bày với cấu trúc tiêu chuẩn và rõ nghĩa.";
     }
 
+    // detailLevel điều khiển hướng dẫn độ dài. Trần token chỉ là "lưới an toàn" chống
+    // sinh lan man — đặt rộng rãi để KHÔNG cắt ngang nội dung bình thường (tiếng Việt
+    // tốn nhiều token/từ). Việc rút gọn do hướng dẫn trong prompt đảm nhiệm, không phải
+    // do cắt cứng đầu ra.
     let detailInstruction = "";
-    if (detailLevel === 1) detailInstruction = "YÊU CẦU: RẤT NGẮN GỌN.";
-    else if (detailLevel === 2) detailInstruction = "YÊU CẦU: TIÊU CHUẨN.";
-    else if (detailLevel === 3) detailInstruction = "YÊU CẦU: CỰC KỲ CHI TIẾT.";
+    let maxOutputTokens = 1024;
+    if (detailLevel === 1) { detailInstruction = "YÊU CẦU: RẤT NGẮN GỌN, chỉ 1-3 câu hoặc vài gạch đầu dòng."; maxOutputTokens = 768; }
+    else if (detailLevel === 2) { detailInstruction = "YÊU CẦU: TIÊU CHUẨN, đủ ý nhưng cô đọng."; maxOutputTokens = 1536; }
+    else if (detailLevel === 3) { detailInstruction = "YÊU CẦU: CHI TIẾT NHƯNG CÓ KIỂM SOÁT, không lan man, không lặp lại ý."; maxOutputTokens = 3072; }
 
     let actionInstruction = "";
     switch (actionType) {
@@ -186,7 +191,7 @@ Các phần khác trong Prompt (Ngữ cảnh):
 ${optimizedContext}
 
 Nội dung hiện tại cho [${blockTitle}]: "${currentText}".
-Sinh ra chính xác đoạn nội dung trực tiếp cần thiết để điền vào. KHÔNG GIẢI THÍCH, KHÔNG CHÀO HỎI.`;
+Sinh ra chính xác đoạn nội dung trực tiếp cần thiết để điền vào. Ưu tiên súc tích, đi thẳng trọng tâm, không lặp ý, không thêm lời dẫn. KHÔNG GIẢI THÍCH, KHÔNG CHÀO HỎI.`;
 
     // Dynamic model routing for speed and reasoning
     let modelName = options?.model;
@@ -208,6 +213,7 @@ Sinh ra chính xác đoạn nội dung trực tiếp cần thiết để điền
         systemInstruction,
         temperature,
         topP,
+        maxOutputTokens,
       }
     });
 
@@ -341,10 +347,10 @@ Các khối hiện tại đang có trong Prompt:
 ${blocksInfo.map(b => `- ID: ${b.id} | Phân loại: ${b.type} | Tiêu đề: ${b.title}`).join('\n')}
 
 Bạn phải trả lại một JSON Object. Mỗi key là ID của khối (block ID), value là nội dung tương ứng của khối đó.
-Nội dung của mỗi khối phải chi tiết, sát với chủ đề "${topic}", tuân theo quy tắc của chuyên gia Prompt Engineering.
+Nội dung mỗi khối phải sát chủ đề "${topic}", súc tích và đi thẳng trọng tâm, không lan man, không lặp ý.
 Với thẻ 'thinking', 'anchor', 'self_correction', 'input_data' hãy viết nội dung đặc thù phù hợp nội dung.
 
-Trọng tâm: Cung cấp nội dung CHẤT LƯỢNG CAO, SẴN SÀNG SỬ DỤNG.
+Trọng tâm: Cung cấp nội dung CHẤT LƯỢNG CAO, CÔ ĐỌNG, SẴN SÀNG SỬ DỤNG (tối ưu token).
 
 BẮT BUỘC trả về ĐÚNG ĐỊNH DẠNG JSON.
 KHÔNG MỞ ĐẦU, KHÔNG GIẢI THÍCH, KHÔNG FORMAT MARKDOWN.`;

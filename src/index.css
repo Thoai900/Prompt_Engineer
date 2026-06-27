@@ -3,9 +3,86 @@
 @variant dark (&:where(.dark, .dark *));
 
 @theme {
+  /* ==========================================================================
+     CUSTOM INTERMEDIATE COLOR SHADES
+     These non-standard shades (slate-850, slate-955, violet-650, …) are used
+     widely across components but were never defined, so Tailwind generated no
+     utilities for them — they silently resolved to no-ops and only "looked ok"
+     by cascade/inheritance. Defining them here makes every bg-/text-/border-
+     utility resolve correctly in BOTH light and dark mode. Values are linear
+     interpolations between the adjacent standard Tailwind shades.
+     ========================================================================== */
+  --color-slate-250: #d7dee8;
+  --color-slate-350: #b0bccd;
+  --color-slate-450: #7c8ca2;
+  --color-slate-550: #55657a;
+  --color-slate-650: #3d4b5f;
+  --color-slate-655: #3b4859;
+  --color-slate-750: #293548;
+  --color-slate-850: #172032;
+  --color-slate-955: #01030c;
+
+  --color-violet-550: #834bf2;
+  --color-violet-650: #7431e3;
+  --color-violet-655: #7330e2;
+  --color-violet-955: #230c50;
+
+  --color-indigo-250: #b6c3fd;
+  --color-indigo-650: #493fd8;
+  --color-indigo-655: #483ed7;
+  --color-indigo-955: #161438;
+
+  --color-purple-550: #9d44f1;
+  --color-purple-650: #892bdc;
+
+  --color-rose-350: #fc8b9a;
+  --color-rose-450: #f85872;
+  --color-rose-550: #ea2e53;
+  --color-rose-650: #d01842;
+  --color-rose-955: #380412;
+
+  --color-orange-650: #d64d0c;
+
+  --color-emerald-250: #8aedc4;
+  --color-emerald-450: #22c68d;
+  --color-emerald-550: #0ba875;
+  --color-emerald-650: #048760;
+
+  --color-amber-250: #fcdd6c;
+  --color-amber-550: #e78a09;
+
+  --color-yellow-450: #f2c00f;
+
+  --color-blue-650: #2159e2;
+
+  /* ==========================================================================
+     SEMANTIC TOKENS (light defaults; overridden for dark in `html.dark` below)
+     These self-switch with the theme, so elements using them need NO `dark:`
+     variant and are NOT touched by the legacy `!important` override layer.
+     This is the migration target — move components onto these and the override
+     blocks can be retired tab by tab.
+     ========================================================================== */
+  --color-surface: #f8fafc; /* page background        (slate-50)  */
+  --color-panel: #ffffff;   /* cards / inputs / select (white)    */
+  --color-glass: #ffffff;   /* nav/header glass base, use /70      */
+  --color-line: #e2e8f0;    /* borders & dividers     (slate-200) */
+  --color-ink: #0f172a;     /* primary text           (slate-900) */
+  --color-muted: #475569;   /* secondary text         (slate-600) */
+  --color-faint: #94a3b8;   /* tertiary text / icons  (slate-400) */
+  --color-hover: #f8fafc;   /* hover background        (slate-50)  */
+
   --animate-fade-in: fade-in 0.2s ease-out;
   --animate-slide-up: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-slide-down: slide-down 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Slow, organic drift for the aurora background blobs */
+  --animate-aurora-a: aurora-a 22s ease-in-out infinite;
+  --animate-aurora-b: aurora-b 28s ease-in-out infinite;
+  --animate-aurora-c: aurora-c 25s ease-in-out infinite;
+
+  /* Generation step-narration: shimmer sweep + breathing orb */
+  --animate-shimmer-sweep: shimmer-sweep 1.6s linear infinite;
+  --animate-orb-breathe: orb-breathe 2.2s ease-in-out infinite;
 
   @keyframes fade-in {
     from { opacity: 0; }
@@ -19,6 +96,39 @@
     from { transform: translateY(-20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
   }
+  @keyframes aurora-a {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33%      { transform: translate(8%, 12%) scale(1.15); }
+    66%      { transform: translate(-10%, -6%) scale(0.95); }
+  }
+  @keyframes aurora-b {
+    0%, 100% { transform: translate(0, 0) scale(1.1); }
+    50%      { transform: translate(-12%, 8%) scale(0.9); }
+  }
+  @keyframes aurora-c {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50%      { transform: translate(10%, -10%) scale(1.2); }
+  }
+  @keyframes shimmer-sweep {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  @keyframes orb-breathe {
+    0%, 100% { transform: scale(1); opacity: 0.85; }
+    50%      { transform: scale(1.12); opacity: 1; }
+  }
+}
+
+/* Dark-mode values for the semantic tokens defined in @theme above. */
+html.dark {
+  --color-surface: #020617; /* slate-950 */
+  --color-panel: #0f172a;   /* slate-900 */
+  --color-glass: #020617;   /* slate-950 */
+  --color-line: #1e293b;    /* slate-800 */
+  --color-ink: #f1f5f9;     /* slate-100 */
+  --color-muted: #94a3b8;   /* slate-400 */
+  --color-faint: #64748b;   /* slate-500 */
+  --color-hover: #0f172a;   /* slate-900 */
 }
 
 @layer utilities {
@@ -540,6 +650,172 @@ html:not(.dark) textarea.input-transparent:focus,
 html.dark textarea.input-transparent:focus {
   outline: none !important;
   box-shadow: none !important;
+}
+
+/* ==========================================================================
+   EFFECTS: Spotlight card
+   A soft glow follows the cursor across the card. The position is driven by
+   the --mx / --my custom properties (set imperatively on mousemove, no React
+   re-render). The glow lives in an ::after overlay so it never disturbs the
+   card's own layout or z-order.
+   ========================================================================== */
+.spotlight-card {
+  position: relative;
+}
+.spotlight-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    420px circle at var(--mx, 50%) var(--my, -100%),
+    var(--spot-color, rgba(16, 185, 129, 0.16)),
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+.spotlight-card:hover::after {
+  opacity: 1;
+}
+
+/* ==========================================================================
+   EFFECTS: Film grain overlay
+   A faint fractal-noise texture over the whole app to break up flat fills and
+   gradient banding. Fixed, non-interactive, and very low opacity so text stays
+   crisp; sits below the nav/modals (z-60+) so dialogs remain clean.
+   ========================================================================== */
+.grain-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+html.dark .grain-overlay {
+  opacity: 0.06;
+}
+
+/* ==========================================================================
+   Honor users who prefer reduced motion: freeze ambient animations.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .aurora-blob {
+    animation: none !important;
+  }
+  .spotlight-card::after {
+    transition: none;
+  }
+  .text-aurora-sweep,
+  .glow-border::before,
+  .floor-glow {
+    animation: none !important;
+  }
+}
+
+/* ==========================================================================
+   EFFECTS: Premium dark-tech hero
+   A cinematic dark "stage" band: an overhead spotlight beam, a fine grid that
+   fades toward the edges, and a bottom vignette that blends the dark hero into
+   the lighter content below. Decorative only — pointer-events disabled inline.
+   ========================================================================== */
+/* Soft emerald ambient glow — subtle enough to read on both light and dark
+   surfaces (no hard dark band on light pages). */
+.hero-spotlight {
+  background:
+    radial-gradient(120% 85% at 50% -8%, rgba(16, 185, 129, 0.16), transparent 55%),
+    radial-gradient(60% 50% at 50% 0%, rgba(45, 212, 191, 0.10), transparent 60%);
+}
+.hero-grid {
+  background-image:
+    linear-gradient(to right, rgba(100, 116, 139, 0.12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(100, 116, 139, 0.12) 1px, transparent 1px);
+  background-size: 3.5rem 3.5rem;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 55%, transparent 100%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 55%, transparent 100%);
+}
+
+/* ==========================================================================
+   EFFECTS: Animated aurora gradient text
+   Sweeps a multi-stop gradient across clipped text for a living headline.
+   ========================================================================== */
+.text-aurora-sweep {
+  background-image: linear-gradient(
+    100deg,
+    #10b981 0%, #34d399 22%, #2dd4bf 44%, #6ee7b7 62%, #10b981 82%, #34d399 100%
+  );
+  background-size: 220% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: aurora-text 8s linear infinite;
+}
+@keyframes aurora-text {
+  to { background-position: 220% center; }
+}
+
+/* ==========================================================================
+   EFFECTS: Rotating conic glow border
+   A slowly-spinning conic gradient sits behind the element via ::before; the
+   element's own opaque surface masks the center so only a glowing ring shows.
+   Wrap a solid-background panel inside .glow-border.
+   ========================================================================== */
+.glow-border {
+  position: relative;
+  isolation: isolate;
+}
+.glow-border::before {
+  content: '';
+  position: absolute;
+  inset: -1.5px;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--angle, 0deg),
+    rgba(16, 185, 129, 0.05),
+    #10b981 12%,
+    #2dd4bf 28%,
+    rgba(16, 185, 129, 0.05) 42%,
+    rgba(16, 185, 129, 0.05) 70%,
+    #6ee7b7 86%,
+    rgba(16, 185, 129, 0.05)
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  z-index: -1;
+  opacity: 0.7;
+  transition: opacity 0.4s ease;
+  animation: spin-border 6s linear infinite;
+}
+.glow-border:focus-within::before,
+.glow-border:hover::before {
+  opacity: 1;
+}
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes spin-border {
+  to { --angle: 360deg; }
+}
+
+/* ==========================================================================
+   EFFECTS: Floor glow under the 3D showcase active card
+   ========================================================================== */
+.floor-glow {
+  animation: glow-pulse 4s ease-in-out infinite;
+}
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.55; transform: translateX(-50%) scaleX(1); }
+  50%      { opacity: 0.85; transform: translateX(-50%) scaleX(1.12); }
 }
 
 

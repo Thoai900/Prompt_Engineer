@@ -1,6 +1,7 @@
 import React from 'react';
 import { Sparkles, Loader2, Send } from 'lucide-react';
 import AIResponseRenderer from '../common/AIResponseRenderer';
+import StepNarrator from '../common/StepNarrator';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -210,7 +211,7 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
             return (
               <div key={idx} className={`flex flex-col gap-1 max-w-[85%] ${isAi ? 'self-start text-left' : 'self-end items-end text-right'}`}>
                 <div className={`text-[8px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-550 ${isAi ? 'pl-2' : 'pr-2'}`}>
-                  {isAi ? '🎓 Mentor AI' : '👤 Học sinh'}
+                  {isAi ? '🤖 AI' : '👤 Bạn'}
                 </div>
                 <div className={`p-3 rounded-2xl text-[11.5px] leading-relaxed shadow-sm border text-left
                   ${isAi 
@@ -218,10 +219,7 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
                     : 'bg-gradient-to-r from-violet-600 to-indigo-600 border-violet-500/10 text-white rounded-tr-sm'}`}
                 >
                   {m.content === '' ? (
-                    <div className="flex items-center gap-1 py-1">
-                      <Loader2 size={12} className="animate-spin text-violet-655 dark:text-violet-400" />
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400 italic">Đang suy nghĩ...</span>
-                    </div>
+                    <StepNarrator flowKey="playground-sim" isActive placement="inline" className="min-w-[180px]" />
                   ) : isAi ? (
                     <AIResponseRenderer content={m.content} className="dark:prose-invert text-slate-850 dark:text-slate-200" />
                   ) : (
@@ -242,7 +240,7 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
             disabled={isChatGenerating || playgroundMessages.length === 0}
-            placeholder={playgroundMessages.length === 0 ? "Bấm 'Khởi chạy Chat' để bắt đầu..." : "Hỏi Mentor AI gì đó..."}
+            placeholder={playgroundMessages.length === 0 ? "Bấm 'Khởi chạy Chat' để bắt đầu..." : "Nhập tin nhắn thử nghiệm..."}
             className="flex-1 text-xs px-3.5 py-2.5 border border-slate-200 dark:border-slate-880 bg-white dark:bg-slate-955 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-650 rounded-xl focus:outline-none focus:ring-1 focus:ring-violet-500 disabled:opacity-50"
           />
           <button

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { PromptBlock, PromptTemplate, BlockType } from '../types';
 
 export interface ExtractedVar {
@@ -24,6 +24,22 @@ export const usePromptBlocks = (initialTemplate: PromptTemplate | null) => {
   const [variableValues, setVariableValues] = useState<Record<string, string>>({});
   const [blockHistoryList, setBlockHistoryList] = useState<Record<string, HistoryEntry[]>>({});
   const [blockRedoList, setBlockRedoList] = useState<Record<string, HistoryEntry[]>>({});
+
+  // BuilderTab luôn được mount sẵn (App dùng class `hidden` thay vì unmount), nên khi
+  // người dùng mở một template mới từ Home/Library, prop `initialTemplate` đổi nhưng
+  // state khởi tạo lazy ở trên không tự cập nhật. Effect này nạp lại blocks mỗi khi
+  // template (theo id) thực sự thay đổi, dùng ref để không ghi đè bản nháp đang sửa.
+  const loadedTemplateIdRef = useRef<string | null>(initialTemplate?.id ?? null);
+  useEffect(() => {
+    const incomingId = initialTemplate?.id ?? null;
+    if (incomingId && incomingId !== loadedTemplateIdRef.current) {
+      loadedTemplateIdRef.current = incomingId;
+      setBlocks(initialTemplate?.blocks ?? []);
+      setBlockHistoryList({});
+      setBlockRedoList({});
+      setVariableValues({});
+    }
+  }, [initialTemplate]);
 
   // Helper to extract variables from all blocks
   const getVariablesFromBlocks = (blocksArgs: PromptBlock[]): ExtractedVar[] => {

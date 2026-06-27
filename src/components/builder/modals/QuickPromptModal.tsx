@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Layers, Wand2 } from 'lucide-react';
+import StepNarrator from '../../common/StepNarrator';
 
 interface QuickPromptModalProps {
   isOpen: boolean;
@@ -24,10 +25,15 @@ export const QuickPromptModal: React.FC<QuickPromptModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-slate-955/70 backdrop-blur-sm z-[999] flex items-center justify-center p-4">
-      <div 
-        className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-2xl p-6 md:p-8 w-full max-w-lg border border-slate-200/50 dark:border-slate-800/50 text-slate-900 dark:text-slate-100"
+      <div
+        className="relative bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-2xl p-6 md:p-8 w-full max-w-lg border border-slate-200/50 dark:border-slate-800/50 text-slate-900 dark:text-slate-100"
         onClick={(e) => e.stopPropagation()}
       >
+        {isGeneratingQuickPrompt && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm">
+            <StepNarrator flowKey="quick-fill" isActive={isGeneratingQuickPrompt} placement="overlay" className="w-72 max-w-[90%]" />
+          </div>
+        )}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-violet-500/10 border border-violet-500/20 rounded-xl flex items-center justify-center text-violet-600 dark:text-violet-400">

@@ -4,6 +4,7 @@ import { Layers, ChevronRight } from 'lucide-react';
 import { PromptBlock } from '../../types';
 import { PromptBlockCard } from './PromptBlockCard';
 import { ExtractedVar } from '../../hooks/usePromptBlocks';
+import type { GenerationFlowKey } from '../../utils/generationNarratives';
 
 interface PromptBlockListProps {
   blocks: PromptBlock[];
@@ -25,6 +26,8 @@ interface PromptBlockListProps {
   activeHistoryMenuId: string | null;
   setActiveHistoryMenuId: (id: string | null) => void;
   generatingBlocks: Record<string, boolean>;
+  streamedBlocks: Record<string, boolean>;
+  blockNarration: Record<string, GenerationFlowKey>;
   openAiMenuId: string | null;
   setOpenAiMenuId: (id: string | null) => void;
   customInstructions: Record<string, string>;
@@ -57,6 +60,8 @@ export const PromptBlockList: React.FC<PromptBlockListProps> = ({
   activeHistoryMenuId,
   setActiveHistoryMenuId,
   generatingBlocks,
+  streamedBlocks,
+  blockNarration,
   openAiMenuId,
   setOpenAiMenuId,
   customInstructions,
@@ -115,6 +120,8 @@ export const PromptBlockList: React.FC<PromptBlockListProps> = ({
                   index={idx}
                   isMobile={isMobile}
                   isExpanded={isExpanded}
+                  streamStarted={!!streamedBlocks[block.id]}
+                  narrationFlow={blockNarration[block.id] || 'block-assist'}
                   toggleBlockExpansion={toggleBlockExpansion}
                   editingBlockId={editingBlockId}
                   setEditingBlockId={setEditingBlockId}
