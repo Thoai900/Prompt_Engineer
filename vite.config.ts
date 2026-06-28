@@ -26,6 +26,25 @@ export default defineConfig(() => {
               if (id.includes('lucide-react')) {
                 return 'lucide';
               }
+              // Thư viện nặng & chỉ dùng ở một số nơi → tách riêng để không kéo
+              // theo bundle khởi động. Chúng chỉ được tải khi tab/component dùng tới.
+              if (id.includes('/three/') || id.includes('\\three\\')) {
+                return 'three';
+              }
+              if (
+                id.includes('react-syntax-highlighter') ||
+                id.includes('refractor') ||
+                id.includes('prismjs') ||
+                id.includes('highlight.js')
+              ) {
+                return 'syntax-highlighter';
+              }
+              if (id.includes('/firebase/') || id.includes('@firebase')) {
+                return 'firebase';
+              }
+              if (id.includes('/motion') || id.includes('framer-motion')) {
+                return 'motion';
+              }
               return 'vendor';
             }
           }

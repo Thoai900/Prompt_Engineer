@@ -50,7 +50,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
   // Rule Optimization Comparison state
   const [compareModalOpen, setCompareModalOpen] = useState(false);
   const [optimizedText, setOptimizedText] = useState('');
-  const [ruleOptModel, setRuleOptModel] = useState('gemini-3.5-flash');
+  const [ruleOptModel, setRuleOptModel] = useState('gemini-2.5-flash');
 
   // --- skills state ---
   const [skills, setSkills] = useState<AiSkill[]>([]);
@@ -1042,7 +1042,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
                       onChange={(e) => setRuleOptModel(e.target.value)}
                       className="bg-transparent text-[10px] font-bold text-slate-600 dark:text-slate-300 focus:outline-none"
                     >
-                      <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+                      <option value="gemini-2.5-flash">Gemini 3.5 Flash</option>
                       <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
                     </select>
                   </div>

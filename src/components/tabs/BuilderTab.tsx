@@ -148,7 +148,7 @@ export default function BuilderTab({
   const [customInstructions, setCustomInstructions] = useState<Record<string, string>>({});
 
   // AI Configuration states for block generation
-  const [selectedModel, setSelectedModel] = useState<string>('gemini-3.5-flash');
+  const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-flash');
   const [useDeepReasoning, setUseDeepReasoning] = useState<boolean>(false);
   const [customTemp, setCustomTemp] = useState<number>(0.7);
   const [customTopP, setCustomTopP] = useState<number>(0.95);

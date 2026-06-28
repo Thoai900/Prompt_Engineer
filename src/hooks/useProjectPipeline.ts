@@ -120,7 +120,7 @@ export const useProjectPipeline = (
           const evalResult = await evaluateOutputQualityWithAi(
             accumulatedOutput,
             nextProj.globalEvalCriteria || [],
-            { apiKey: useSystemKey ? undefined : customKey, model: 'gemini-3.5-flash' }
+            { apiKey: useSystemKey ? undefined : customKey, model: 'gemini-2.5-flash' }
           );
           routeDecision = evalResult === 'effective' ? 'success' : 'failure';
           addPipelineLog(`[AI Auto-Router]: Kết quả đánh giá là "${evalResult === 'effective' ? 'HIỆU QUẢ 👍' : 'CHƯA ĐẠT 👎'}". Tự động định tuyến sang nhánh ${routeDecision === 'success' ? 'Nâng cao (Success)' : 'Sửa lỗi (Failure)'}.`);

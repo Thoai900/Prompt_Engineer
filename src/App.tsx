@@ -3,25 +3,28 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { Brain, Briefcase, GraduationCap, Home, Library, LogIn, LogOut, Moon, Sparkles, Sun, Zap, Menu, X, ScrollText, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { Brain, Briefcase, GraduationCap, Home, Library, LogIn, LogOut, Loader2, Moon, Sparkles, Sun, Zap, Menu, X, ScrollText, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, getDocFromServer, getDocs, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
 import { AiPersona, PromptTemplate, TabType, Workspace } from './types';
-import AIFutureTab from './components/tabs/AIFutureTab';
-import BuilderTab from './components/tabs/BuilderTab';
-import EnhancerTab from './components/tabs/EnhancerTab';
-import HomeTab from './components/tabs/HomeTab';
-import LearnTab from './components/tabs/LearnTab';
-import LibraryTab from './components/tabs/LibraryTab';
-import UtilityBeltTab from './components/tabs/UtilityBeltTab';
-import RulesSkillsTab from './components/tabs/RulesSkillsTab';
-import ProjectChainTab from './components/tabs/ProjectChainTab';
+import HomeTab from './components/tabs/HomeTab'; // eager: là màn hình đầu tiên (landing)
+// Các tab còn lại tải lười (code-split) để giảm bundle khởi động — three.js/motion nặng
+// chỉ được tải khi người dùng thực sự mở tab tương ứng.
+const AIFutureTab = lazy(() => import('./components/tabs/AIFutureTab'));
+const BuilderTab = lazy(() => import('./components/tabs/BuilderTab'));
+const EnhancerTab = lazy(() => import('./components/tabs/EnhancerTab'));
+const LearnTab = lazy(() => import('./components/tabs/LearnTab'));
+const LibraryTab = lazy(() => import('./components/tabs/LibraryTab'));
+const UtilityBeltTab = lazy(() => import('./components/tabs/UtilityBeltTab'));
+const RulesSkillsTab = lazy(() => import('./components/tabs/RulesSkillsTab'));
+const ProjectChainTab = lazy(() => import('./components/tabs/ProjectChainTab'));
 import AuroraBackground from './components/common/AuroraBackground';
 import GrainOverlay from './components/common/GrainOverlay';
 import { auth, db, handleFirestoreError, loginWithGoogle, logoutUser } from './firebase';
 import { initSuggestionSync } from './services/suggestionSync';
+import { DEFAULT_REASONING_MODEL } from './config/models';
 
 export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -44,6 +47,12 @@ export default function App() {
   }, []);
 
   const [activeTab, setActiveTab] = useState<TabType>('home');
+  // Tab đã từng được mở: chỉ những tab này mới được mount (lazy). Sau khi mount thì
+  // giữ nguyên (ẩn bằng CSS) để không mất state khi chuyển qua lại giữa các tab.
+  const [visitedTabs, setVisitedTabs] = useState<Set<TabType>>(() => new Set<TabType>(['home']));
+  useEffect(() => {
+    setVisitedTabs((prev) => (prev.has(activeTab) ? prev : new Set(prev).add(activeTab)));
+  }, [activeTab]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [loadedTemplate, setLoadedTemplate] = useState<PromptTemplate | null>(null);
   const [customTemplates, setCustomTemplates] = useState<PromptTemplate[]>([]);
@@ -208,7 +217,7 @@ export default function App() {
       authorName: user.displayName || user.email?.split('@')[0] || 'Unknown',
       metrics: template.metrics || { usageCount: 0, upvotes: 0 },
       variables: template.variables || [],
-      aiConfig: template.aiConfig || { recommendedModels: ['gemini-1.5-pro'], temperature: 0.7 },
+      aiConfig: template.aiConfig || { recommendedModels: [DEFAULT_REASONING_MODEL], temperature: 0.7 },
       updatedAt: serverTimestamp(),
     };
 
@@ -495,63 +504,75 @@ export default function App() {
       <main className="relative flex h-full w-full flex-1 flex-col overflow-hidden bg-surface">
         <AuroraBackground />
 
-        <TabPanel isActive={activeTab === 'home'}>
-          <HomeTab
-            onSelectTemplate={handleSelectTemplate}
-            onSaveTemplate={handleSaveTemplate}
-            user={user}
-            onNavigateToBuilder={() => setActiveTab('builder')}
-            onNavigateToTab={setActiveTab}
-            theme={theme}
-            onToggleTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-          />
-        </TabPanel>
-        <TabPanel isActive={activeTab === 'builder'}>
-          <BuilderTab 
-            initialTemplate={loadedTemplate} 
-            personas={personas} 
-            activePersonaId={activePersonaId} 
-            setActivePersonaId={setActivePersonaId} 
-            onSaveTemplate={handleSaveTemplate} 
-            user={user}
-            onNavigateToTab={setActiveTab}
-          />
-        </TabPanel>
-        <TabPanel isActive={activeTab === 'library'}>
-          <LibraryTab 
-            onSelectTemplate={handleSelectTemplate} 
-            customTemplates={customTemplates} 
-            user={user}
-            onNavigateToTab={setActiveTab}
-          />
-        </TabPanel>
-        <TabPanel isActive={activeTab === 'enhancer'}>
-          <EnhancerTab onApplyTemplate={handleSelectTemplate} />
-        </TabPanel>
-        <TabPanel isActive={activeTab === 'learn'}>
-          <LearnTab />
-        </TabPanel>
-        <TabPanel isActive={activeTab === 'aifuture'}>
-          <AIFutureTab theme={theme} />
-        </TabPanel>
-        <TabPanel isActive={activeTab === 'utilitybelt'}>
-          <UtilityBeltTab user={user} onSaveTemplate={handleSaveTemplate} />
-        </TabPanel>
-        <TabPanel isActive={activeTab === 'rulesskills'}>
-          <RulesSkillsTab user={user} onApplyTemplate={handleSelectTemplate} />
-        </TabPanel>
-        <TabPanel isActive={activeTab === 'projectchain'}>
-          <ProjectChainTab theme={theme} user={user} customTemplates={customTemplates} onSaveTemplate={handleSaveTemplate} />
-        </TabPanel>
+        <Suspense fallback={<TabLoader />}>
+          <TabPanel isActive={activeTab === 'home'} mounted={visitedTabs.has('home')}>
+            <HomeTab
+              onSelectTemplate={handleSelectTemplate}
+              onSaveTemplate={handleSaveTemplate}
+              user={user}
+              onNavigateToBuilder={() => setActiveTab('builder')}
+              onNavigateToTab={setActiveTab}
+              theme={theme}
+              onToggleTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+            />
+          </TabPanel>
+          <TabPanel isActive={activeTab === 'builder'} mounted={visitedTabs.has('builder')}>
+            <BuilderTab
+              initialTemplate={loadedTemplate}
+              personas={personas}
+              activePersonaId={activePersonaId}
+              setActivePersonaId={setActivePersonaId}
+              onSaveTemplate={handleSaveTemplate}
+              user={user}
+              onNavigateToTab={setActiveTab}
+            />
+          </TabPanel>
+          <TabPanel isActive={activeTab === 'library'} mounted={visitedTabs.has('library')}>
+            <LibraryTab
+              onSelectTemplate={handleSelectTemplate}
+              customTemplates={customTemplates}
+              user={user}
+              onNavigateToTab={setActiveTab}
+            />
+          </TabPanel>
+          <TabPanel isActive={activeTab === 'enhancer'} mounted={visitedTabs.has('enhancer')}>
+            <EnhancerTab onApplyTemplate={handleSelectTemplate} />
+          </TabPanel>
+          <TabPanel isActive={activeTab === 'learn'} mounted={visitedTabs.has('learn')}>
+            <LearnTab />
+          </TabPanel>
+          <TabPanel isActive={activeTab === 'aifuture'} mounted={visitedTabs.has('aifuture')}>
+            <AIFutureTab theme={theme} />
+          </TabPanel>
+          <TabPanel isActive={activeTab === 'utilitybelt'} mounted={visitedTabs.has('utilitybelt')}>
+            <UtilityBeltTab user={user} onSaveTemplate={handleSaveTemplate} />
+          </TabPanel>
+          <TabPanel isActive={activeTab === 'rulesskills'} mounted={visitedTabs.has('rulesskills')}>
+            <RulesSkillsTab user={user} onApplyTemplate={handleSelectTemplate} />
+          </TabPanel>
+          <TabPanel isActive={activeTab === 'projectchain'} mounted={visitedTabs.has('projectchain')}>
+            <ProjectChainTab theme={theme} user={user} customTemplates={customTemplates} onSaveTemplate={handleSaveTemplate} />
+          </TabPanel>
+        </Suspense>
       </main>
     </div>
   );
 }
 
-function TabPanel({ isActive, children }: { isActive: boolean; children: React.ReactNode }) {
+function TabPanel({ isActive, mounted = true, children }: { isActive: boolean; mounted?: boolean; children: React.ReactNode }) {
+  // Chưa từng mở thì không render (tránh tải code-split & chạy effect của tab nặng).
+  if (!mounted) return null;
   return (
     <div className={`${isActive ? 'flex animate-fade-in' : 'hidden'} relative z-10 h-full w-full flex-1 flex-col overflow-hidden`}>
       {children}
+    </div>
+  );
+}
+
+function TabLoader() {
+  return (
+    <div className="relative z-10 flex h-full w-full flex-1 items-center justify-center">
+      <Loader2 size={28} className="animate-spin text-emerald-500" />
     </div>
   );
 }

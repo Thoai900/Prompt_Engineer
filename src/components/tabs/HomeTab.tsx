@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence, useInView } from 'motion/react';
 import {
   Search, Copy, Check, Sparkles, ArrowRight, Bookmark,
@@ -9,7 +9,8 @@ import { generateStructuredTemplateFromTopic } from '../../services/aiService';
 import { TabType } from '../../types';
 import SpotlightCard from '../common/SpotlightCard';
 import { GhostTextInput } from '../common/GhostTextInput';
-import AIShowcase3D from '../common/AIShowcase3D';
+// Lazy: kéo theo three.js (~rất nặng) — chỉ tải khi khối 3D thực sự hiển thị.
+const AIShowcase3D = lazy(() => import('../common/AIShowcase3D'));
 import AuroraBackground from '../common/AuroraBackground';
 
 interface HomeTabProps {
@@ -226,7 +227,9 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
             <p className="text-[11px] font-black uppercase tracking-[0.25em] text-faint mb-7">
               Tối ưu cho mọi nền tảng AI hàng đầu
             </p>
-            <AIShowcase3D />
+            <Suspense fallback={<div className="h-[320px] w-full" />}>
+              <AIShowcase3D />
+            </Suspense>
           </motion.div>
         </div>
       </section>
