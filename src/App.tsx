@@ -22,6 +22,7 @@ const RulesSkillsTab = lazy(() => import('./components/tabs/RulesSkillsTab'));
 const ProjectChainTab = lazy(() => import('./components/tabs/ProjectChainTab'));
 import AuroraBackground from './components/common/AuroraBackground';
 import GrainOverlay from './components/common/GrainOverlay';
+import { Toaster, toast } from './components/common/Toaster';
 import { auth, db, handleFirestoreError, loginWithGoogle, logoutUser } from './firebase';
 import { initSuggestionSync } from './services/suggestionSync';
 import { DEFAULT_REASONING_MODEL } from './config/models';
@@ -181,7 +182,7 @@ export default function App() {
 
   const handleSaveTemplate = async (template: PromptTemplate) => {
     if (!user) {
-      alert('Please login to save templates.');
+      toast('Please login to save templates.');
       return;
     }
 
@@ -197,7 +198,7 @@ export default function App() {
         handleFirestoreError(err, 'get', `templates/${template.id}`);
       } catch (handlerErr: any) {
         console.error('Failed to check existing template:', handlerErr.message);
-        alert('Could not save this template.');
+        toast('Could not save this template.');
       }
       return;
     }
@@ -243,7 +244,7 @@ export default function App() {
         handleFirestoreError(err, isUpdate ? 'update' : 'create', `templates/${template.id}`);
       } catch (handlerErr: any) {
         console.error('Failed to save template:', handlerErr.message);
-        alert('Could not save this template.');
+        toast('Could not save this template.');
       }
     }
   };
@@ -251,6 +252,7 @@ export default function App() {
   return (
     <div className="flex h-full w-full flex-1 flex-col overflow-hidden bg-surface font-sans text-ink md:flex-row">
       <GrainOverlay />
+      <Toaster />
       {/* Header tĩnh trên Mobile — ẩn ở trang chủ để landing page chiếm trọn màn hình */}
       {activeTab !== 'home' && (
       <header className="z-50 flex w-full items-center justify-between border-b border-line/50 bg-glass/70 p-3.5 backdrop-blur-md md:hidden shrink-0">

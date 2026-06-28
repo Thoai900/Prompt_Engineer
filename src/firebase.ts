@@ -1,3 +1,4 @@
+import { toast } from './components/common/Toaster';
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
@@ -14,11 +15,11 @@ export const loginWithGoogle = async () => {
   } catch (error: any) {
     console.error("Firebase Google Auth Error:", error);
     if (error.code === 'auth/operation-not-allowed') {
-      alert("Đăng nhập Google chưa được kích hoạt trong Firebase Console. Vui lòng bật Google Auth trong phần Sign-in method.");
+      toast("Đăng nhập Google chưa được kích hoạt trong Firebase Console. Vui lòng bật Google Auth trong phần Sign-in method.");
     } else if (error.code === 'auth/popup-closed-by-user') {
       // User closed popup, do nothing
     } else {
-      alert(`Đăng nhập thất bại: ${error.message} (Mã lỗi: ${error.code})`);
+      toast(`Đăng nhập thất bại: ${error.message} (Mã lỗi: ${error.code})`);
     }
     throw error;
   }

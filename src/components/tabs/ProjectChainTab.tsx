@@ -1,3 +1,4 @@
+import { toast } from '../common/Toaster';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Plus, Trash2, Play, Save, Check, AlertCircle, ArrowRight, Settings, 
@@ -437,7 +438,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
     if (!activeNode) return;
     const hasBlock = activeNode.blocks.some(b => b.title === title || b.type === type);
     if (hasBlock) {
-      alert(`Khối "${title}" đã tồn tại trong Node.`);
+      toast(`Khối "${title}" đã tồn tại trong Node.`);
       return;
     }
     const newBlock: PromptBlock = {
@@ -510,8 +511,8 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
       variables: activeNode.variables
     };
     onSaveTemplate(template)
-      .then(() => alert('Đã lưu Node thành Template thư viện thành công!'))
-      .catch(err => alert('Không thể xuất template: ' + err.message));
+      .then(() => toast('Đã lưu Node thành Template thư viện thành công!'))
+      .catch(err => toast('Không thể xuất template: ' + err.message));
   };
 
   const handleImportTemplateIntoNode = (template: PromptTemplate) => {
@@ -579,7 +580,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
     if (!node) return;
     
     if (node.parentId === null) {
-      alert('Không thể xóa Node gốc!');
+      toast('Không thể xóa Node gốc!');
       return;
     }
 
@@ -1290,7 +1291,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
     
     const injectedPrompt = injectVariables(rawPrompt, compileVals);
     navigator.clipboard.writeText(injectedPrompt);
-    alert('Đã điền các biến số và sao chép Prompt vào Clipboard thành công! Đang chuyển hướng bạn sang trang Playground ngoài...');
+    toast('Đã điền các biến số và sao chép Prompt vào Clipboard thành công! Đang chuyển hướng bạn sang trang Playground ngoài...');
     window.open(url, '_blank');
   };
 
@@ -1299,7 +1300,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
     const outputToEval = nodeExecutionOutputs[evalNodeIndex] || simOutput;
     
     if (!outputToEval || isEvaluating) {
-      alert(`Vui lòng chạy giả lập ở Bước 2 trước khi thẩm định Bước ${evalNodeIndex + 1}!`);
+      toast(`Vui lòng chạy giả lập ở Bước 2 trước khi thẩm định Bước ${evalNodeIndex + 1}!`);
       return;
     }
 
@@ -1313,7 +1314,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
       setEvaluation(res);
     } catch (err: any) {
       console.error(err);
-      alert('Đã xảy ra lỗi khi thẩm định AI: ' + err.message);
+      toast('Đã xảy ra lỗi khi thẩm định AI: ' + err.message);
     } finally {
       setIsEvaluating(false);
     }
@@ -1401,7 +1402,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
     });
 
     setSelectedVersionToCompare(null);
-    alert('Khôi phục phiên bản thành công!');
+    toast('Khôi phục phiên bản thành công!');
   };
 
   // Compute text diff (line by line unified diff helper)

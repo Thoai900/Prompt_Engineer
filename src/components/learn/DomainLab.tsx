@@ -1,3 +1,4 @@
+import { toast } from '../common/Toaster';
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   ArrowLeft, Atom, Lightbulb, Briefcase, Gamepad2, Settings, Send, 
@@ -305,7 +306,7 @@ export default function DomainLab({ domainId, onBack, onEarnXP }: DomainLabProps
       }
     } catch (err) {
       console.error(err);
-      alert('Không thể thực hiện đánh giá tự động lúc này. Hãy kiểm tra kết nối API.');
+      toast('Không thể thực hiện đánh giá tự động lúc này. Hãy kiểm tra kết nối API.');
     } finally {
       setIsEvaluating(false);
     }

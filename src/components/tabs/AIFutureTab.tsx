@@ -1,3 +1,4 @@
+import { toast } from '../common/Toaster';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -140,7 +141,7 @@ export default function AIFutureTab({ theme = 'dark' }: { theme?: 'light' | 'dar
     if (!newWord.trim()) return;
 
     if (vectorNodes.some(n => n.word.toLowerCase() === newWord.trim().toLowerCase())) {
-      alert("Từ vựng này đã có mặt trong mạng lưới!");
+      toast("Từ vựng này đã có mặt trong mạng lưới!");
       return;
     }
 

@@ -1,3 +1,4 @@
+import { toast } from '../common/Toaster';
 import React, { useState, useEffect, useRef } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { 
@@ -289,7 +290,7 @@ export default function BuilderTab({
       }));
     } catch (err) {
       console.error("Auto Fill Failed", err);
-      alert("Tính năng điền tự động AI đang gặp lỗi, vui lòng thử lại sau.");
+      toast("Tính năng điền tự động AI đang gặp lỗi, vui lòng thử lại sau.");
     } finally {
       setIsAutoFilling(false);
     }
@@ -363,7 +364,7 @@ export default function BuilderTab({
       setQuickPromptTopic('');
     } catch (err) {
       console.error(err);
-      alert("Đã có lỗi xảy ra trong quá trình sinh tự động.");
+      toast("Đã có lỗi xảy ra trong quá trình sinh tự động.");
     } finally {
       setIsGeneratingQuickPrompt(false);
     }
@@ -715,7 +716,7 @@ export default function BuilderTab({
 
   const handleOpenAddToProject = () => {
     if (blocks.length === 0) {
-      alert("Không có khối nào trong Workshop để lưu.");
+      toast("Không có khối nào trong Workshop để lưu.");
       return;
     }
     

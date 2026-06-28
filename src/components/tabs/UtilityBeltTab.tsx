@@ -1,3 +1,4 @@
+import { toast } from '../common/Toaster';
 import React, { useState, useEffect } from 'react';
 import { 
   Zap, Brain, Settings, Sliders, Copy, Check, RotateCcw, 
@@ -156,7 +157,7 @@ export default function UtilityBeltTab({ user, onSaveTemplate }: UtilityBeltTabP
   const handleDeleteProfile = (idToDelete: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (profiles.length <= 1) {
-      alert("Bạn phải giữ lại ít nhất một cấu hình.");
+      toast("Bạn phải giữ lại ít nhất một cấu hình.");
       return;
     }
     if (confirm("Bạn có chắc chắn muốn xóa cấu hình này?")) {
@@ -198,7 +199,7 @@ export default function UtilityBeltTab({ user, onSaveTemplate }: UtilityBeltTabP
   // Call AI (Gemini 3.5 Flash) to optimize system prompt structure
   const handleOptimizeWithAI = async () => {
     if (!role.trim() && !context.trim() && !constraints.trim() && !outputFormat.trim()) {
-      alert("Vui lòng điền nội dung vào ít nhất một trường để AI có dữ liệu tối ưu hóa.");
+      toast("Vui lòng điền nội dung vào ít nhất một trường để AI có dữ liệu tối ưu hóa.");
       return;
     }
 
@@ -237,7 +238,7 @@ export default function UtilityBeltTab({ user, onSaveTemplate }: UtilityBeltTabP
       saveToLocalStorage(updated);
     } catch (err) {
       console.error(err);
-      alert("Đã xảy ra lỗi trong quá trình tối ưu bằng AI. Vui lòng kiểm tra lại API Key hoặc thử lại.");
+      toast("Đã xảy ra lỗi trong quá trình tối ưu bằng AI. Vui lòng kiểm tra lại API Key hoặc thử lại.");
     } finally {
       setIsOptimizing(false);
     }

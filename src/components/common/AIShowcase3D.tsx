@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, useMotionValue, useSpring, useTransform, useReducedMotion } from 'motion/react';
-import claudeImg from '../../../assest/Claude.png';
-import gptImg from '../../../assest/GPT.png';
-import geminiImg from '../../../assest/Gemini.png';
+import claudeImg from '../../../assest/Claude.webp';
+import gptImg from '../../../assest/GPT.webp';
+import geminiImg from '../../../assest/Gemini.webp';
 
 interface AIModel {
   name: string;

@@ -1,3 +1,4 @@
+import { toast } from '../common/Toaster';
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence, useInView } from 'motion/react';
 import {
@@ -5,7 +6,8 @@ import {
   Briefcase, CheckCircle, Compass, Info, Edit3, Zap, Layers,
   Workflow, Library, ScrollText, GraduationCap, Brain, Moon, Sun
 } from 'lucide-react';
-import { generateStructuredTemplateFromTopic } from '../../services/aiService';
+// aiService kéo theo @google/genai (~280KB). Import động khi người dùng thực sự
+// bấm "Tạo prompt" để không nặng tải khởi động của trang chủ.
 import { TabType } from '../../types';
 import SpotlightCard from '../common/SpotlightCard';
 import { GhostTextInput } from '../common/GhostTextInput';
@@ -108,6 +110,7 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
     setIsSaved(false);
 
     try {
+      const { generateStructuredTemplateFromTopic } = await import('../../services/aiService');
       const result = await generateStructuredTemplateFromTopic(searchInput.trim());
       setGeneratedTemplate(result);
     } catch (err: any) {
@@ -131,7 +134,7 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
   const handleSaveToLibrary = async () => {
     if (!generatedTemplate) return;
     if (!user) {
-      alert('Vui lòng đăng nhập bằng tài khoản Google để đồng bộ lưu dữ liệu lên đám mây.');
+      toast('Vui lòng đăng nhập bằng tài khoản Google để đồng bộ lưu dữ liệu lên đám mây.');
       return;
     }
     setSaveLoading(true);
@@ -140,7 +143,7 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
       setIsSaved(true);
     } catch (err) {
       console.error(err);
-      alert('Lỗi lưu trữ dữ liệu.');
+      toast('Lỗi lưu trữ dữ liệu.');
     } finally {
       setSaveLoading(false);
     }

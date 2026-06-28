@@ -1,3 +1,4 @@
+import { toast } from '../common/Toaster';
 import React, { useState, useEffect } from 'react';
 import { X, FolderPlus, Database, ArrowRight, Play, CheckCircle } from 'lucide-react';
 import { TreeNode, PromptProject, PromptTemplate, PromptBlock, PromptVariable, TabType } from '../../types';
@@ -127,7 +128,7 @@ export default function AddToProjectModal({
 
     if (isCreatingNew) {
       if (!newProjName.trim()) {
-        alert('Vui lòng điền tên dự án mới!');
+        toast('Vui lòng điền tên dự án mới!');
         return;
       }
       
@@ -215,7 +216,7 @@ export default function AddToProjectModal({
     localStorage.setItem('mentor_ai_active_project_id', targetProject.id);
     localStorage.setItem('mentor_ai_selected_node_id', newId);
 
-    alert(`Đã thêm thành công prompt vào dự án "${targetProject.name}"!`);
+    toast(`Đã thêm thành công prompt vào dự án "${targetProject.name}"!`);
     onClose();
     
     // 4. Chuyển hướng

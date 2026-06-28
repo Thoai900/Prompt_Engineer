@@ -40,6 +40,7 @@
     "@types/three": "^0.184.1",
     "autoprefixer": "^10.4.21",
     "jsdom": "^29.1.1",
+    "sharp": "^0.35.2",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",

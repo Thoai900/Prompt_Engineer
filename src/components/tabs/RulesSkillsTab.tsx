@@ -1,3 +1,4 @@
+import { toast } from '../common/Toaster';
 import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, Plus, Trash, Copy, Check, FileDown, 
@@ -228,11 +229,11 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
 
   const handleSaveRule = async () => {
     if (isRulePreset) {
-      alert('Không thể lưu đè lên quy tắc mặc định (Preset). Vui lòng tạo bản sao mới.');
+      toast('Không thể lưu đè lên quy tắc mặc định (Preset). Vui lòng tạo bản sao mới.');
       return;
     }
     if (!ruleTitle.trim()) {
-      alert('Vui lòng nhập tiêu đề cho quy tắc.');
+      toast('Vui lòng nhập tiêu đề cho quy tắc.');
       return;
     }
 
@@ -273,7 +274,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
     } catch (err) {
       console.error(err);
       setSyncError('Không thể lưu quy tắc lên Cloud, đã lưu tạm cục bộ.');
-      alert('Không thể lưu quy tắc lên Cloud, đã lưu tạm cục bộ.');
+      toast('Không thể lưu quy tắc lên Cloud, đã lưu tạm cục bộ.');
     } finally {
       setIsSavingRule(false);
     }
@@ -301,7 +302,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
       if (PRESET_RULES.length > 0) selectRule(PRESET_RULES[0]);
     } catch (err) {
       console.error(err);
-      alert('Xóa thất bại.');
+      toast('Xóa thất bại.');
     } finally {
       setIsDeletingRule(false);
     }
@@ -338,7 +339,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
       setCompareModalOpen(true);
     } catch (error) {
       console.error("Optimize failed:", error);
-      alert("Đã xảy ra lỗi khi gọi AI tối ưu. Vui lòng kiểm tra API Key.");
+      toast("Đã xảy ra lỗi khi gọi AI tối ưu. Vui lòng kiểm tra API Key.");
     } finally {
       setIsOptimizingRule(false);
     }
@@ -450,11 +451,11 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
 
   const handleSaveSkill = async () => {
     if (isSkillPreset) {
-      alert('Không thể lưu đè lên kỹ năng mặc định (Preset). Vui lòng tạo bản sao mới.');
+      toast('Không thể lưu đè lên kỹ năng mặc định (Preset). Vui lòng tạo bản sao mới.');
       return;
     }
     if (!skillTitle.trim()) {
-      alert('Vui lòng nhập tiêu đề cho kỹ năng.');
+      toast('Vui lòng nhập tiêu đề cho kỹ năng.');
       return;
     }
 
@@ -491,7 +492,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
     } catch (err) {
       console.error(err);
       setSyncError('Không thể lưu kỹ năng lên Cloud, đã lưu tạm cục bộ.');
-      alert('Không thể lưu kỹ năng lên Cloud, đã lưu tạm cục bộ.');
+      toast('Không thể lưu kỹ năng lên Cloud, đã lưu tạm cục bộ.');
     } finally {
       setIsSavingSkill(false);
     }
@@ -516,7 +517,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
       if (PRESET_SKILLS.length > 0) selectSkill(PRESET_SKILLS[0]);
     } catch (err) {
       console.error(err);
-      alert('Xóa thất bại.');
+      toast('Xóa thất bại.');
     } finally {
       setIsDeletingSkill(false);
     }
@@ -546,7 +547,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
     
     // Check duplicate
     if (skillInputs.some(v => v.name === newVarName.trim())) {
-      alert('Biến số này đã tồn tại!');
+      toast('Biến số này đã tồn tại!');
       return;
     }
 
@@ -655,7 +656,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
   // AI assistant to auto write instructions based on inputs/steps
   const handleAiAutoInstructions = async () => {
     if (!skillTitle.trim()) {
-      alert('Vui lòng nhập tên kỹ năng trước.');
+      toast('Vui lòng nhập tên kỹ năng trước.');
       return;
     }
     setIsCompilingSkill(true);
@@ -669,7 +670,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
       setSkillInstructions(compiledInst);
     } catch (e) {
       console.error(e);
-      alert('Sinh chỉ dẫn bằng AI thất bại. Vui lòng thử lại sau.');
+      toast('Sinh chỉ dẫn bằng AI thất bại. Vui lòng thử lại sau.');
     } finally {
       setIsCompilingSkill(false);
     }
