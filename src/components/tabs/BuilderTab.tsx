@@ -14,12 +14,13 @@ import { usePromptBlocks } from '../../hooks/usePromptBlocks';
 import { usePlaygroundSession } from '../../hooks/usePlaygroundSession';
 import { BuilderSidebar } from '../builder/BuilderSidebar';
 import { PromptBlockList } from '../builder/PromptBlockList';
+import { EmptyStateGenerator } from '../builder/EmptyStateGenerator';
 import { PlaygroundPanel } from '../builder/PlaygroundPanel';
 import { SaveTemplateModal } from '../builder/modals/SaveTemplateModal';
 import { QuickPromptModal } from '../builder/modals/QuickPromptModal';
 import { UserProfileModal } from '../builder/modals/UserProfileModal';
 import AddToProjectModal from '../modals/AddToProjectModal';
-import { autoFillVariables, type AiActionType } from '../../services/aiService';
+import { autoFillVariables, generateStructuredTemplateFromTopic, type AiActionType } from '../../services/aiService';
 import { routeQuickFill, routeAutoBlock } from '../../services/promptRouter';
 import StepNarrator from '../common/StepNarrator';
 import type { GenerationFlowKey } from '../../utils/generationNarratives';
@@ -168,6 +169,11 @@ export default function BuilderTab({
   const [quickPromptTopic, setQuickPromptTopic] = useState('');
   const [quickPromptFramework, setQuickPromptFramework] = useState('claude_xmd');
   const [isGeneratingQuickPrompt, setIsGeneratingQuickPrompt] = useState(false);
+
+  // "Tạo từ ý tưởng" — empty-state generator states
+  const [ideaInput, setIdeaInput] = useState('');
+  const [isGeneratingFromIdea, setIsGeneratingFromIdea] = useState(false);
+  const [ideaError, setIdeaError] = useState<string | null>(null);
 
 
   // Auto-fill and profile states
@@ -360,6 +366,32 @@ export default function BuilderTab({
       alert("Đã có lỗi xảy ra trong quá trình sinh tự động.");
     } finally {
       setIsGeneratingQuickPrompt(false);
+    }
+  };
+
+  // Sinh khung multi-block từ một câu ý tưởng và đổ thẳng vào canvas trống.
+  const handleGenerateFromIdea = async () => {
+    const topic = ideaInput.trim();
+    if (!topic) return;
+    setIsGeneratingFromIdea(true);
+    setIdeaError(null);
+    try {
+      const result = await generateStructuredTemplateFromTopic(topic);
+      if (!result?.blocks || !Array.isArray(result.blocks) || result.blocks.length === 0) {
+        throw new Error('Kết quả AI không hợp lệ (thiếu khối nội dung). Vui lòng thử lại.');
+      }
+      loadBlocksFromTemplate(result);
+      // Prefill metadata để dành cho nút "Lưu Template".
+      setTemplateTitle(result.title || '');
+      setTemplateDesc(result.description || '');
+      if (result.category) setTemplateCategory(result.category);
+      setTemplateTags(Array.isArray(result.tags) ? result.tags.join(', ') : '');
+      setIdeaInput('');
+    } catch (err: any) {
+      console.error(err);
+      setIdeaError(err?.message || 'Có lỗi xảy ra khi tạo prompt bằng AI. Vui lòng kiểm tra API Key hoặc đường truyền.');
+    } finally {
+      setIsGeneratingFromIdea(false);
     }
   };
 
@@ -820,6 +852,16 @@ export default function BuilderTab({
             getVariablesFromText={getVariablesFromText}
             isMobile={isMobile}
             setShowMobilePanel={setShowMobilePanel}
+            emptyState={
+              <EmptyStateGenerator
+                value={ideaInput}
+                onValueChange={setIdeaInput}
+                onGenerate={handleGenerateFromIdea}
+                isGenerating={isGeneratingFromIdea}
+                error={ideaError}
+                onRetry={handleGenerateFromIdea}
+              />
+            }
           />
         </div>
 

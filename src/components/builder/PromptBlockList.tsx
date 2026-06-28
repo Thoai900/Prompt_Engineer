@@ -38,6 +38,8 @@ interface PromptBlockListProps {
   getVariablesFromText: (text: string) => ExtractedVar[];
   isMobile: boolean;
   setShowMobilePanel: (panel: 'build' | 'preview') => void;
+  /** Nội dung thay cho hộp empty mặc định khi canvas trống (vd: ô tạo từ ý tưởng). */
+  emptyState?: React.ReactNode;
 }
 
 export const PromptBlockList: React.FC<PromptBlockListProps> = ({
@@ -72,6 +74,7 @@ export const PromptBlockList: React.FC<PromptBlockListProps> = ({
   getVariablesFromText,
   isMobile,
   setShowMobilePanel,
+  emptyState,
 }) => {
   return (
     <div className="flex-1 overflow-y-auto px-4 lg:px-6 custom-scrollbar pb-32 lg:pb-8 relative pt-4 bg-transparent">
@@ -97,16 +100,18 @@ export const PromptBlockList: React.FC<PromptBlockListProps> = ({
             className={`flex-1 flex flex-col gap-4.5 transition-colors min-h-[300px] ${snapshot.isDraggingOver ? 'bg-slate-100/30 dark:bg-slate-900/30 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800' : ''}`}
           >
             {blocks.length === 0 && (
-              <div className="p-8 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center gap-2 text-slate-400 dark:text-slate-550 py-16 mt-4">
-                <Layers className="w-10 h-10 text-slate-350 dark:text-slate-700 mb-2 animate-pulse" />
-                <span className="text-sm font-bold text-slate-650 dark:text-slate-400">Chưa có thành phần nào</span>
-                <span className="text-xs text-slate-500 text-center max-w-xs hidden md:inline">
-                  Chạm '+ Thêm khối' hoặc Kéo thả khối từ cột trái để bắt đầu thiết kế prompt.
-                </span>
-                <span className="text-xs text-slate-500 text-center max-w-xs inline md:hidden">
-                  Chạm '+ Thêm khối' phía dưới để bắt đầu thiết kế prompt.
-                </span>
-              </div>
+              emptyState ?? (
+                <div className="p-8 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center gap-2 text-slate-400 dark:text-slate-550 py-16 mt-4">
+                  <Layers className="w-10 h-10 text-slate-350 dark:text-slate-700 mb-2 animate-pulse" />
+                  <span className="text-sm font-bold text-slate-650 dark:text-slate-400">Chưa có thành phần nào</span>
+                  <span className="text-xs text-slate-500 text-center max-w-xs hidden md:inline">
+                    Chạm '+ Thêm khối' hoặc Kéo thả khối từ cột trái để bắt đầu thiết kế prompt.
+                  </span>
+                  <span className="text-xs text-slate-500 text-center max-w-xs inline md:hidden">
+                    Chạm '+ Thêm khối' phía dưới để bắt đầu thiết kế prompt.
+                  </span>
+                </div>
+              )
             )}
             
             {blocks.map((block, idx) => {
