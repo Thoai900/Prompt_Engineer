@@ -176,34 +176,62 @@ export default function App() {
       return;
     }
 
-    try {
-      const templateRef = doc(db, 'templates', template.id);
-      const firestoreData = {
-        userId: user.uid,
-        title: template.title,
-        description: template.description || '',
-        category: template.category || 'My templates',
-        blocks: template.blocks,
-        tags: template.tags || [],
-        language: template.language || 'vi',
-        isPublic: template.isPublic || false,
-        status: template.status || 'Published',
-        version: template.version || 'v1.0',
-        authorId: user.uid,
-        authorName: user.displayName || user.email?.split('@')[0] || 'Unknown',
-        metrics: template.metrics || { usageCount: 0, upvotes: 0 },
-        variables: template.variables || [],
-        aiConfig: template.aiConfig || { recommendedModels: ['gemini-1.5-pro'], temperature: 0.7 },
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
+    const templateRef = doc(db, 'templates', template.id);
 
-      await setDoc(templateRef, firestoreData);
-      setCustomTemplates((current) => [...current, template]);
+    // Xác định tạo mới hay cập nhật: rules giữ createdAt bất biến, nên khi
+    // cập nhật ta KHÔNG được ghi đè createdAt (incoming().createdAt phải == existing().createdAt).
+    let isUpdate = false;
+    try {
+      isUpdate = (await getDocFromServer(templateRef)).exists();
+    } catch (err) {
+      try {
+        handleFirestoreError(err, 'get', `templates/${template.id}`);
+      } catch (handlerErr: any) {
+        console.error('Failed to check existing template:', handlerErr.message);
+        alert('Could not save this template.');
+      }
+      return;
+    }
+
+    const baseData = {
+      userId: user.uid,
+      title: template.title,
+      description: template.description || '',
+      category: template.category || 'My templates',
+      blocks: template.blocks,
+      tags: template.tags || [],
+      language: template.language || 'vi',
+      isPublic: template.isPublic || false,
+      status: template.status || 'Published',
+      version: template.version || 'v1.0',
+      authorId: user.uid,
+      authorName: user.displayName || user.email?.split('@')[0] || 'Unknown',
+      metrics: template.metrics || { usageCount: 0, upvotes: 0 },
+      variables: template.variables || [],
+      aiConfig: template.aiConfig || { recommendedModels: ['gemini-1.5-pro'], temperature: 0.7 },
+      updatedAt: serverTimestamp(),
+    };
+
+    try {
+      if (isUpdate) {
+        // merge: true để giữ nguyên createdAt hiện có; chỉ updatedAt được làm mới.
+        await setDoc(templateRef, baseData, { merge: true });
+      } else {
+        await setDoc(templateRef, { ...baseData, createdAt: serverTimestamp() });
+      }
+
+      // Upsert vào state cục bộ: thay thế nếu đã tồn tại, ngược lại thêm mới.
+      setCustomTemplates((current) => {
+        const idx = current.findIndex((t) => t.id === template.id);
+        if (idx === -1) return [...current, template];
+        const next = [...current];
+        next[idx] = template;
+        return next;
+      });
       setActiveTab('library');
     } catch (err) {
       try {
-        handleFirestoreError(err, 'create', `templates/${template.id}`);
+        handleFirestoreError(err, isUpdate ? 'update' : 'create', `templates/${template.id}`);
       } catch (handlerErr: any) {
         console.error('Failed to save template:', handlerErr.message);
         alert('Could not save this template.');
