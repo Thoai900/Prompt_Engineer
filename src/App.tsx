@@ -27,6 +27,15 @@ import { auth, db, handleFirestoreError, loginWithGoogle, logoutUser } from './f
 import { initSuggestionSync } from './services/suggestionSync';
 import { DEFAULT_REASONING_MODEL } from './config/models';
 
+// Deep-linking: đồng bộ tab hiện tại với URL hash (vd: #builder) để chia sẻ link
+// và dùng nút back/forward của trình duyệt. Không phụ thuộc thư viện router.
+const VALID_TABS: TabType[] = ['home', 'builder', 'projectchain', 'rulesskills', 'utilitybelt', 'library', 'enhancer', 'learn', 'aifuture'];
+
+function getTabFromHash(): TabType {
+  const raw = window.location.hash.replace(/^#\/?/, '');
+  return (VALID_TABS as string[]).includes(raw) ? (raw as TabType) : 'home';
+}
+
 export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('theme');
@@ -47,13 +56,32 @@ export default function App() {
     return cleanup;
   }, []);
 
-  const [activeTab, setActiveTab] = useState<TabType>('home');
+  const [activeTab, setActiveTab] = useState<TabType>(() => getTabFromHash());
   // Tab đã từng được mở: chỉ những tab này mới được mount (lazy). Sau khi mount thì
   // giữ nguyên (ẩn bằng CSS) để không mất state khi chuyển qua lại giữa các tab.
-  const [visitedTabs, setVisitedTabs] = useState<Set<TabType>>(() => new Set<TabType>(['home']));
+  const [visitedTabs, setVisitedTabs] = useState<Set<TabType>>(() => new Set<TabType>(['home', getTabFromHash()]));
   useEffect(() => {
     setVisitedTabs((prev) => (prev.has(activeTab) ? prev : new Set(prev).add(activeTab)));
   }, [activeTab]);
+
+  // Ghi tab hiện tại lên URL hash khi đổi tab (không tạo thêm entry rác cho 'home' lúc mới vào).
+  useEffect(() => {
+    const target = activeTab === 'home' ? '#' : `#${activeTab}`;
+    if (window.location.hash !== target && !(activeTab === 'home' && window.location.hash === '')) {
+      window.history.pushState(null, '', target);
+    }
+  }, [activeTab]);
+
+  // Đồng bộ ngược URL → tab: back/forward (popstate) và sửa hash trực tiếp (hashchange).
+  useEffect(() => {
+    const sync = () => setActiveTab(getTabFromHash());
+    window.addEventListener('popstate', sync);
+    window.addEventListener('hashchange', sync);
+    return () => {
+      window.removeEventListener('popstate', sync);
+      window.removeEventListener('hashchange', sync);
+    };
+  }, []);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [loadedTemplate, setLoadedTemplate] = useState<PromptTemplate | null>(null);
   const [customTemplates, setCustomTemplates] = useState<PromptTemplate[]>([]);

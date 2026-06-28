@@ -102,9 +102,12 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
     let parsedRules = safeParseArray<AiRule>(localStorage.getItem('custom_rules'));
     let parsedSkills = safeParseArray<AiSkill>(localStorage.getItem('custom_skills'));
 
-    // Filter out preset duplicates from legacy saves
-    parsedRules = parsedRules.filter(r => !r.isPreset);
-    parsedSkills = parsedSkills.filter(s => !s.isPreset);
+    // Filter out preset duplicates from legacy saves (cả cờ isPreset lẫn id trùng preset —
+    // dữ liệu cũ có thể lưu bản sao mang đúng id preset nhưng thiếu cờ → gây trùng React key).
+    const presetRuleIds = new Set(PRESET_RULES.map(r => r.id));
+    const presetSkillIds = new Set(PRESET_SKILLS.map(s => s.id));
+    parsedRules = parsedRules.filter(r => !r.isPreset && !presetRuleIds.has(r.id));
+    parsedSkills = parsedSkills.filter(s => !s.isPreset && !presetSkillIds.has(s.id));
 
     // Merge presets
     setRules([...PRESET_RULES, ...parsedRules]);
@@ -165,17 +168,21 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
       const localRules = safeParseArray<AiRule>(localStorage.getItem('custom_rules')).filter(r => !r.isPreset);
       const localSkills = safeParseArray<AiSkill>(localStorage.getItem('custom_skills')).filter(s => !s.isPreset);
 
+      // Loại id trùng preset để tránh trùng React key khi nối với PRESET_* bên dưới.
+      const presetRuleIds = new Set(PRESET_RULES.map(r => r.id));
+      const presetSkillIds = new Set(PRESET_SKILLS.map(s => s.id));
+
       // Deduplicate rules by ID (DB takes priority)
       const mergedRulesMap = new Map<string, AiRule>();
       localRules.forEach(r => mergedRulesMap.set(r.id, r));
       dbRules.forEach(r => mergedRulesMap.set(r.id, r));
-      const mergedRules = Array.from(mergedRulesMap.values());
+      const mergedRules = Array.from(mergedRulesMap.values()).filter(r => !presetRuleIds.has(r.id));
 
       // Deduplicate skills by ID (DB takes priority)
       const mergedSkillsMap = new Map<string, AiSkill>();
       localSkills.forEach(s => mergedSkillsMap.set(s.id, s));
       dbSkills.forEach(s => mergedSkillsMap.set(s.id, s));
-      const mergedSkills = Array.from(mergedSkillsMap.values());
+      const mergedSkills = Array.from(mergedSkillsMap.values()).filter(s => !presetSkillIds.has(s.id));
 
       // Save back to local storage
       localStorage.setItem('custom_rules', JSON.stringify(mergedRules));

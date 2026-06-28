@@ -72,13 +72,22 @@ export const BuilderSidebar: React.FC<BuilderSidebarProps> = ({
     fw.name.toLowerCase().includes(sidebarSearchQuery.toLowerCase())
   );
 
-  const filteredRules = [...localRules, ...PRESET_RULES].filter(rule => 
-    rule.title.toLowerCase().includes(sidebarSearchQuery.toLowerCase()) || 
+  // localRules/localSkills đã bao gồm sẵn PRESET_* (xem BuilderTab). Khử trùng theo id
+  // để không nhân đôi preset → tránh trùng React key, đồng thời vẫn an toàn nếu caller
+  // không kèm preset.
+  const dedupeById = <T extends { id: string }>(items: T[]): T[] => {
+    const map = new Map<string, T>();
+    for (const item of items) if (!map.has(item.id)) map.set(item.id, item);
+    return Array.from(map.values());
+  };
+
+  const filteredRules = dedupeById([...localRules, ...PRESET_RULES]).filter(rule =>
+    rule.title.toLowerCase().includes(sidebarSearchQuery.toLowerCase()) ||
     rule.description.toLowerCase().includes(sidebarSearchQuery.toLowerCase())
   );
 
-  const filteredSkills = [...localSkills, ...PRESET_SKILLS].filter(skill => 
-    skill.title.toLowerCase().includes(sidebarSearchQuery.toLowerCase()) || 
+  const filteredSkills = dedupeById([...localSkills, ...PRESET_SKILLS]).filter(skill =>
+    skill.title.toLowerCase().includes(sidebarSearchQuery.toLowerCase()) ||
     skill.description.toLowerCase().includes(sidebarSearchQuery.toLowerCase())
   );
 
