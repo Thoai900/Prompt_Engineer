@@ -71,7 +71,26 @@ service cloud.firestore {
         && ( !('status' in data.keys()) || (data.status is string && data.status.size() <= 20) )
         && ( !('authorId' in data.keys()) || (data.authorId is string && data.authorId.size() <= 128) )
         && ( !('authorName' in data.keys()) || (data.authorName is string && data.authorName.size() <= 100) )
+        && ( !('workspaceId' in data.keys()) || (data.workspaceId is string && data.workspaceId.size() <= 128) )
         && data.blocks is list && data.blocks.size() <= 50
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidWorkspace(data) {
+      return data.keys().hasAll(['userId', 'name', 'createdAt', 'updatedAt'])
+        && data.userId is string && data.userId.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && ( !('color' in data.keys()) || (data.color is string && data.color.size() <= 20) )
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPersona(data) {
+      return data.keys().hasAll(['userId', 'name', 'systemInstructions', 'createdAt', 'updatedAt'])
+        && data.userId is string && data.userId.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.systemInstructions is string && data.systemInstructions.size() <= 20000
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
@@ -97,7 +116,7 @@ service cloud.firestore {
         && incoming().createdAt == existing().createdAt
         && incoming().updatedAt == request.time
         // Action: Edit Template
-        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'category', 'blocks', 'variables', 'version', 'parentPromptId', 'changelog', 'tags', 'language', 'difficultyLevel', 'useCase', 'aiConfig', 'metrics', 'fewShots', 'isPublic', 'status', 'authorId', 'authorName', 'updatedAt']);
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'category', 'blocks', 'variables', 'version', 'parentPromptId', 'changelog', 'tags', 'language', 'difficultyLevel', 'useCase', 'aiConfig', 'metrics', 'fewShots', 'isPublic', 'status', 'authorId', 'authorName', 'workspaceId', 'updatedAt']);
         
       allow delete: if isValidId(templateId) && isOwner(existing().userId);
     }
@@ -164,6 +183,44 @@ service cloud.firestore {
         && incoming().userId == existing().userId
         && incoming().updatedAt == request.time;
       allow delete: if isValidId(skillId) && isOwner(existing().userId);
+    }
+
+    match /workspaces/{workspaceId} {
+      allow get: if isValidId(workspaceId) && isOwner(resource.data.userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isValidId(workspaceId)
+        && isSignedIn()
+        && isValidWorkspace(incoming())
+        && incoming().userId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(workspaceId)
+        && isSignedIn()
+        && isOwner(existing().userId)
+        && isValidWorkspace(incoming())
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+      allow delete: if isValidId(workspaceId) && isOwner(existing().userId);
+    }
+
+    match /personas/{personaId} {
+      allow get: if isValidId(personaId) && isOwner(resource.data.userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isValidId(personaId)
+        && isSignedIn()
+        && isValidPersona(incoming())
+        && incoming().userId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(personaId)
+        && isSignedIn()
+        && isOwner(existing().userId)
+        && isValidPersona(incoming())
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+      allow delete: if isValidId(personaId) && isOwner(existing().userId);
     }
   }
 }

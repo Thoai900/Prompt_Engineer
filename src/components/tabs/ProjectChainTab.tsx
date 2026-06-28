@@ -4,7 +4,7 @@ import {
   Plus, Trash2, Play, Save, Check, AlertCircle, ArrowRight, Settings, 
   RefreshCw, Copy, ExternalLink, Sparkles, AlertTriangle, ArrowLeft,
   ChevronRight, Wrench, Edit3, HelpCircle, Layers, FileText, X, Clock,
-  Upload, Download, ZoomIn, ZoomOut, Maximize2
+  Download, ZoomIn, ZoomOut, Maximize2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -12,12 +12,16 @@ import {
 } from 'firebase/firestore';
 import { db, handleFirestoreError } from '../../firebase';
 import { TEMPLATES } from '../../data';
+import { PRESET_SYSTEM_ROLES } from '../../presets';
 import { PromptProject, PromptBlock, PromptTemplate, TestCase, PromptVersion, TreeNode, EvolutionType, PromptVariable } from '../../types';
-import { runPlaygroundChatStream, evaluateAndEnhancePrompt, AIChainEvaluation } from '../../services/aiService';
+import { runPlaygroundChatStream, evaluateAndEnhancePrompt, withPersona, AIChainEvaluation } from '../../services/aiService';
+import { useWorkspace } from '../../context/WorkspaceContext';
 import AIResponseRenderer from '../common/AIResponseRenderer';
 import { CanvasView } from '../project-chain/CanvasView';
 import { NodeDetailSidebar } from '../project-chain/NodeDetailSidebar';
 import { SimulatorPanel } from '../project-chain/SimulatorPanel';
+import { ImportTemplateModal } from '../project-chain/ImportTemplateModal';
+import { VersionDrawer } from '../project-chain/VersionDrawer';
 import { useCanvasInteraction } from '../../hooks/useCanvasInteraction';
 import { useProjectPipeline } from '../../hooks/useProjectPipeline';
 import { markDescendantsStale } from '../../utils/chainUtils';
@@ -62,6 +66,7 @@ const DEFAULT_PROJECTS: PromptProject[] = [
 ];
 
 export default function ProjectChainTab({ theme = 'dark', user, customTemplates = [], onSaveTemplate }: ProjectChainTabProps) {
+  const { activeWorkspaceId, isInActiveWorkspace, activePersona } = useWorkspace();
   const [projects, setProjects] = useState<PromptProject[]>([]);
   const [activeProject, setActiveProject] = useState<PromptProject | null>(null);
   const [syncStatus, setSyncStatus] = useState<'synced' | 'saving' | 'local' | 'error'>('local');
@@ -126,7 +131,9 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDesc, setNewProjectDesc] = useState('');
 
-  const saveProjectState = async (updatedProj: PromptProject) => {
+  const saveProjectState = async (proj: PromptProject) => {
+    // Đóng dấu workspace: giữ workspaceId sẵn có, nếu chưa có thì gán workspace đang chọn.
+    const updatedProj: PromptProject = { ...proj, workspaceId: proj.workspaceId || activeWorkspaceId };
     const updatedProjects = projects.map(p => p.id === updatedProj.id ? updatedProj : p);
     setProjects(updatedProjects);
     setActiveProject(updatedProj);
@@ -160,7 +167,8 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
     setActiveProject,
     setProjects,
     saveProjectState,
-    user
+    user,
+    activePersona?.systemInstructions
   );
 
   // --- 1. TẢI DỮ LIỆU ---
@@ -236,6 +244,16 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
 
     loadProjects();
   }, [user]);
+
+  // Khi đổi workspace: nếu dự án đang mở không thuộc workspace mới, chuyển sang
+  // dự án đầu tiên hiển thị trong workspace đó (hoặc null nếu trống).
+  useEffect(() => {
+    if (activeProject && !isInActiveWorkspace(activeProject.workspaceId)) {
+      const firstVisible = projects.find((p) => isInActiveWorkspace(p.workspaceId)) || null;
+      setActiveProject(firstVisible);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeWorkspaceId]);
 
   // Reset selectedNodeIndex when project ID changes
   const prevProjectIdRef = React.useRef(activeProject?.id);
@@ -958,23 +976,6 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
     );
   }, [allAvailableTemplates, searchTemplateQuery]);
 
-  const PRESET_SYSTEM_ROLES = useMemo(() => {
-    return [
-      {
-        id: 'role-mentor-ai',
-        title: 'Mentor AI - Socratic Tutor',
-        rolePrompt: 'Bạn là Mentor AI - gia sư thân thiện, kiên nhẫn và khuyến khích cho học sinh trung học. Hãy tuân thủ nghiêm ngặt phương pháp Socratic, đặt câu hỏi khơi gợi và sử dụng LaTeX.',
-        variables: []
-      },
-      {
-        id: 'role-code-reviewer',
-        title: 'Senior Code Reviewer',
-        rolePrompt: 'Bạn là một lập trình viên cao cấp có vai trò review code. Hãy tập trung review tính đúng đắn, hiệu năng và phong cách viết code.',
-        variables: []
-      }
-    ];
-  }, []);
-
   const handleUpdatePromptText = (text: string) => {
     if (!activeProject) return;
     setBasePromptInput(text);
@@ -1152,6 +1153,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
       }],
       testCases: [],
       versions: [],
+      workspaceId: activeWorkspaceId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -1229,7 +1231,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
         
         await runPlaygroundChatStream(
           simProvider,
-          injectedPrompt,
+          withPersona(injectedPrompt, activePersona?.systemInstructions),
           [{ role: 'user', content: 'Hãy thực thi và phản hồi theo chỉ dẫn prompt hệ thống.' }],
           {
             apiKey: undefined,
@@ -1405,56 +1407,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
     toast('Khôi phục phiên bản thành công!');
   };
 
-  // Compute text diff (line by line unified diff helper)
-  const computeUnifiedDiff = (oldText: string, newText: string) => {
-    const oldLines = oldText.split('\n');
-    const newLines = newText.split('\n');
-    const diffResult: { type: 'added' | 'removed' | 'unchanged'; text: string }[] = [];
-    
-    let i = 0, j = 0;
-    while (i < oldLines.length || j < newLines.length) {
-      if (i < oldLines.length && j < newLines.length) {
-        if (oldLines[i] === newLines[j]) {
-          diffResult.push({ type: 'unchanged', text: oldLines[i] });
-          i++;
-          j++;
-        } else {
-          let foundMatch = false;
-          for (let k = 1; k < 5; k++) {
-            if (i + k < oldLines.length && oldLines[i + k] === newLines[j]) {
-              for (let m = 0; m < k; m++) {
-                diffResult.push({ type: 'removed', text: oldLines[i + m] });
-              }
-              i += k;
-              foundMatch = true;
-              break;
-            }
-            if (j + k < newLines.length && oldLines[i] === newLines[j + k]) {
-              for (let m = 0; m < k; m++) {
-                diffResult.push({ type: 'added', text: newLines[j + m] });
-              }
-              j += k;
-              foundMatch = true;
-              break;
-            }
-          }
-          if (!foundMatch) {
-            diffResult.push({ type: 'removed', text: oldLines[i] });
-            diffResult.push({ type: 'added', text: newLines[j] });
-            i++;
-            j++;
-          }
-        }
-      } else if (i < oldLines.length) {
-        diffResult.push({ type: 'removed', text: oldLines[i] });
-        i++;
-      } else if (j < newLines.length) {
-        diffResult.push({ type: 'added', text: newLines[j] });
-        j++;
-      }
-    }
-    return diffResult;
-  };
+  // computeUnifiedDiff đã chuyển sang utils/chainUtils.ts (dùng trong VersionDrawer).
 
   // Preset Template loader
   const handleLoadTemplate = (content: string) => {
@@ -1484,7 +1437,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
         </div>
 
         <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2.5 custom-scrollbar bg-slate-50/50 dark:bg-transparent text-left">
-          {projects.map((proj) => {
+          {projects.filter((proj) => isInActiveWorkspace(proj.workspaceId)).map((proj) => {
             const isActive = activeProject?.id === proj.id;
             return (
               <div
@@ -2414,52 +2367,14 @@ Nếu là bước thứ 2 trở đi, sử dụng {{output_${selectedNodeIndex}}}
       </div>
 
       {/* IMPORT TEMPLATE INTO NODE MODAL */}
-      {isImportModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-250 dark:border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col text-left max-h-[80vh]"
-          >
-            <div className="px-5 py-4 border-b border-slate-250 dark:border-slate-855 bg-slate-50 dark:bg-slate-950 flex justify-between items-center shrink-0">
-              <div className="flex items-center gap-2">
-                <Upload size={16} className="text-cyan-500" />
-                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Nạp mẫu Prompt vào Node</h3>
-              </div>
-              <button
-                onClick={() => setIsImportModalOpen(false)}
-                className="rounded-lg p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-4 shrink-0">
-              <input
-                type="text"
-                value={searchTemplateQuery}
-                onChange={(e) => setSearchTemplateQuery(e.target.value)}
-                placeholder="Tìm mẫu theo tên hoặc mô tả..."
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
-              />
-            </div>
-            <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2">
-              {filteredTemplates.length === 0 ? (
-                <p className="text-xs italic text-slate-400 text-center py-8">Không tìm thấy mẫu phù hợp.</p>
-              ) : (
-                filteredTemplates.map((tpl) => (
-                  <button
-                    key={tpl.id}
-                    onClick={() => handleImportTemplateIntoNode(tpl)}
-                    className="w-full text-left rounded-xl border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-950/40 hover:border-cyan-400 dark:hover:border-cyan-600 p-3 transition-colors cursor-pointer"
-                  >
-                    <span className="block text-xs font-bold text-slate-800 dark:text-slate-200">{tpl.title}</span>
-                    <span className="block text-[10.5px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{tpl.description}</span>
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <ImportTemplateModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        searchQuery={searchTemplateQuery}
+        onSearchChange={setSearchTemplateQuery}
+        templates={filteredTemplates}
+        onSelectTemplate={handleImportTemplateIntoNode}
+      />
 
       {/* 3. NEW PROJECT MODAL */}
       {isNewProjectModalOpen && (
@@ -2525,120 +2440,15 @@ Nếu là bước thứ 2 trở đi, sử dụng {{output_${selectedNodeIndex}}}
         </div>
       )}
 
-      {/* VERSION DRAWER PANEL */}
-      <AnimatePresence>
-        {showVersionDrawer && (
-          <div 
-            onClick={() => {
-              setShowVersionDrawer(false);
-              setSelectedVersionToCompare(null);
-            }}
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs flex justify-end animate-in fade-in duration-200"
-          >
-            <div 
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-850 h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-250 text-slate-800 dark:text-slate-100"
-            >
-              <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-855 bg-slate-50 dark:bg-slate-950 flex justify-between items-center shrink-0">
-                <div className="flex items-center gap-2">
-                  <Clock size={16} className="text-violet-600 dark:text-violet-400" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-355">Lịch sử phiên bản</h3>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowVersionDrawer(false);
-                    setSelectedVersionToCompare(null);
-                  }}
-                  className="text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 custom-scrollbar">
-                {(!activeProject?.versions || activeProject.versions.length === 0) ? (
-                  <div className="m-auto text-center py-12 text-slate-400 my-auto">
-                    <Clock size={24} className="mx-auto opacity-30 mb-2" />
-                    <p className="text-xs">Chưa có lịch sử phiên bản nào được ghi nhận.</p>
-                  </div>
-                ) : (
-                  <>
-                    {/* Version List */}
-                    <div className="flex flex-col gap-2 shrink-0">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left">Danh sách phiên bản ({activeProject.versions.length})</span>
-                      <div className="flex flex-col gap-2 max-h-56 overflow-y-auto custom-scrollbar p-0.5">
-                        {activeProject.versions.map((ver) => {
-                          const isSelected = selectedVersionToCompare?.id === ver.id;
-                          return (
-                            <div 
-                              key={ver.id}
-                              onClick={() => setSelectedVersionToCompare(ver)}
-                              className={`p-3 rounded-xl border text-left cursor-pointer transition-all duration-200 relative group
-                                ${isSelected 
-                                  ? 'bg-violet-50 dark:bg-violet-955/15 border-violet-400 dark:border-violet-500/50' 
-                                  : 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-850 hover:border-slate-300 dark:hover:border-slate-800'}`}
-                            >
-                              <div className="flex justify-between items-start gap-2">
-                                <span className="text-[10.5px] font-bold text-slate-800 dark:text-slate-200">
-                                  {new Date(ver.timestamp).toLocaleString()}
-                                </span>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleRestoreVersion(ver);
-                                  }}
-                                  className="py-1 px-2.5 bg-violet-600 dark:bg-violet-650 hover:bg-violet-500 text-white text-[9.5px] font-bold rounded-lg transition-colors cursor-pointer"
-                                >
-                                  Khôi phục
-                                </button>
-                              </div>
-                              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed font-semibold">
-                                {ver.description}
-                              </p>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Diff Viewer panel */}
-                    {selectedVersionToCompare && (
-                      <div className="flex-1 flex flex-col gap-2 min-h-[250px]">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left">
-                          So sánh khác biệt (So với Hiện tại)
-                        </span>
-                        <div className="flex-1 p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-900 rounded-2xl overflow-y-auto custom-scrollbar font-mono text-[10px] text-left select-text whitespace-pre-wrap leading-relaxed">
-                          {computeUnifiedDiff(selectedVersionToCompare.content, basePromptInput).map((line, idx) => {
-                            if (line.type === 'added') {
-                              return (
-                                <div key={idx} className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1 border-l-2 border-emerald-500/50">
-                                  + {line.text}
-                                </div>
-                              );
-                            } else if (line.type === 'removed') {
-                              return (
-                                <div key={idx} className="bg-rose-500/10 text-rose-600 dark:text-rose-400 px-1 border-l-2 border-rose-500/50 line-through">
-                                  - {line.text}
-                                </div>
-                              );
-                            } else {
-                              return (
-                                <div key={idx} className="text-slate-500 dark:text-slate-400 px-1">
-                                  &nbsp;&nbsp;{line.text}
-                                </div>
-                              );
-                            }
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </AnimatePresence>
+      <VersionDrawer
+        isOpen={showVersionDrawer}
+        onClose={() => setShowVersionDrawer(false)}
+        versions={activeProject?.versions || []}
+        selectedVersion={selectedVersionToCompare}
+        onSelectVersion={setSelectedVersionToCompare}
+        onRestore={handleRestoreVersion}
+        currentContent={basePromptInput}
+      />
 
     </div>
   );

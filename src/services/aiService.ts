@@ -457,6 +457,14 @@ export interface AiGenParams {
   apiKey?: string;
   groqApiKey?: string; // Ghi đè key Groq (Llama-3-8B); nếu trống lấy từ UI/env
   groqModel?: string;  // Model Groq tùy chỉnh (mặc định llama-3.1-8b-instant)
+  personaInstructions?: string; // Chỉ dẫn của Persona đang chọn — chèn lên đầu systemInstruction
+}
+
+/** Chèn chỉ dẫn Persona (nếu có) lên đầu một systemInstruction. */
+export function withPersona(systemInstruction: string, personaInstructions?: string): string {
+  const p = personaInstructions?.trim();
+  if (!p) return systemInstruction;
+  return `[PERSONA]\n${p}\n\n${systemInstruction}`;
 }
 
 export async function generateAutoBlockStream(
@@ -648,6 +656,8 @@ Người dùng vừa gửi một yêu cầu rất ngắn. Tuy nhiên, hệ thố
 `;
     }
 
+    systemInstruction = withPersona(systemInstruction, options?.personaInstructions);
+
     const modelName = options?.model || 'gemini-2.5-flash';
     const temperature = options?.temperature !== undefined ? options.temperature : 0.7;
     const topP = options?.topP !== undefined ? options.topP : 0.95;
@@ -796,7 +806,7 @@ Chú ý, trường 'type' bắt buộc phải là MỘT TRONG CÁC GIÁ TRỊ SA
 Cố gắng phân tích prompt của người dùng và chia nhỏ ra thành ít nhất 3 block trở lên để cấu trúc rõ ràng.`;
 
     const jsonStr = await generatePromptJson(
-      systemInstruction,
+      withPersona(systemInstruction, options?.personaInstructions),
       `Hãy phân tích và tối ưu hoá prompt cơ bản sau:\n\n${inputPrompt}`,
       geminiModel,
       temperature,

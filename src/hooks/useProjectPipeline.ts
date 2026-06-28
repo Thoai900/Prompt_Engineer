@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { PromptProject, TreeNode } from '../types';
-import { runPlaygroundChatStream, evaluateOutputQualityWithAi } from '../services/aiService';
+import { runPlaygroundChatStream, evaluateOutputQualityWithAi, withPersona } from '../services/aiService';
 import { compileEvolutionPrompt, markDescendantsStale } from '../utils/chainUtils';
 
 export const useProjectPipeline = (
@@ -8,7 +8,8 @@ export const useProjectPipeline = (
   setActiveProject: React.Dispatch<React.SetStateAction<PromptProject | null>>,
   setProjects: React.Dispatch<React.SetStateAction<PromptProject[]>>,
   saveActiveProject: (proj: PromptProject) => Promise<void>,
-  user: any
+  user: any,
+  personaInstructions?: string
 ) => {
   const [syncStatus, setSyncStatus] = useState<'synced' | 'local' | 'saving' | 'error'>('local');
   const [pipelineStatus, setPipelineStatus] = useState<'idle' | 'running' | 'completed' | 'error' | 'paused'>('idle');
@@ -76,7 +77,7 @@ export const useProjectPipeline = (
     try {
       await runPlaygroundChatStream(
         simProvider,
-        systemInstruction,
+        withPersona(systemInstruction, personaInstructions),
         [{ role: 'user', content: compiledPrompt }],
         {
           apiKey,

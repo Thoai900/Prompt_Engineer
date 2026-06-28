@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles, ArrowRight, Loader2, Copy, Check, ExternalLink, Settings } from 'lucide-react';
 import { PromptBlock, PromptTemplate } from '../../types';
 import { enhancePromptWithAi } from '../../services/aiService';
+import { useWorkspace } from '../../context/WorkspaceContext';
 import StepNarrator from '../common/StepNarrator';
 import { GhostTextArea } from '../common/GhostTextArea';
 
@@ -10,6 +11,7 @@ interface EnhancerTabProps {
 }
 
 export default function EnhancerTab({ onApplyTemplate }: EnhancerTabProps) {
+  const { activePersona } = useWorkspace();
   const [inputPrompt, setInputPrompt] = useState('');
   const [optimizedBlocks, setOptimizedBlocks] = useState<PromptBlock[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -31,7 +33,8 @@ export default function EnhancerTab({ onApplyTemplate }: EnhancerTabProps) {
       const blocks = await enhancePromptWithAi(inputPrompt, {
         useDeepReasoning,
         temperature: customTemp,
-        topP: customTopP
+        topP: customTopP,
+        personaInstructions: activePersona?.systemInstructions,
       });
       
       if (blocks && Array.isArray(blocks)) {

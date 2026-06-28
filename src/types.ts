@@ -62,11 +62,18 @@ export interface AiPersona {
   id: string;
   name: string;
   systemInstructions: string;
+  userId?: string;       // chủ sở hữu (mô hình cá nhân); rỗng = persona cục bộ/preset
+  createdAt?: string;    // ISO date string
+  updatedAt?: string;    // ISO date string
 }
 
 export interface Workspace {
   id: string;
   name: string;
+  color?: string;        // mã màu trang trí (vd '#10b981')
+  userId?: string;       // chủ sở hữu (mô hình cá nhân); rỗng = workspace cục bộ/mặc định
+  createdAt?: string;    // ISO date string
+  updatedAt?: string;    // ISO date string
 }
 
 export interface PromptVariable {
@@ -147,6 +154,9 @@ export interface PromptTemplate {
   // Social history
   forkedFrom?: string; // ID of the prompt it was remixed from
   createdAt?: string; // ISO date string
+
+  // 8. Phân vùng theo Workspace (cá nhân). Rỗng = thuộc workspace mặc định.
+  workspaceId?: string;
 }
 
 export type EvolutionType = 
@@ -196,6 +206,7 @@ export interface PromptProject {
   createdAt: string;
   updatedAt: string;
   userId?: string;
+  workspaceId?: string; // Phân vùng theo Workspace (cá nhân). Rỗng = workspace mặc định.
   testCases?: TestCase[]; // Bộ kiểm thử tự động
   versions?: PromptVersion[]; // Lịch sử phiên bản prompt
 }

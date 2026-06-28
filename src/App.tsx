@@ -4,11 +4,14 @@
  */
 
 import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { Brain, Briefcase, GraduationCap, Home, Library, LogIn, LogOut, Loader2, Moon, Sparkles, Sun, Zap, Menu, X, ScrollText, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Brain, Briefcase, Drama, GraduationCap, Home, Library, LogIn, LogOut, Loader2, Moon, Sparkles, Sun, Zap, Menu, X, ScrollText, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, getDocFromServer, getDocs, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
-import { AiPersona, PromptTemplate, TabType, Workspace } from './types';
+import { PromptTemplate, TabType } from './types';
+import { useWorkspace } from './context/WorkspaceContext';
+import WorkspaceSwitcher from './components/common/WorkspaceSwitcher';
+import PersonaManagerModal from './components/common/PersonaManagerModal';
 import HomeTab from './components/tabs/HomeTab'; // eager: là màn hình đầu tiên (landing)
 // Các tab còn lại tải lười (code-split) để giảm bundle khởi động — three.js/motion nặng
 // chỉ được tải khi người dùng thực sự mở tab tương ứng.
@@ -23,6 +26,7 @@ const ProjectChainTab = lazy(() => import('./components/tabs/ProjectChainTab'));
 import AuroraBackground from './components/common/AuroraBackground';
 import GrainOverlay from './components/common/GrainOverlay';
 import { Toaster, toast } from './components/common/Toaster';
+import CommandPalette from './components/common/CommandPalette';
 import { auth, db, handleFirestoreError, loginWithGoogle, logoutUser } from './firebase';
 import { initSuggestionSync } from './services/suggestionSync';
 import { DEFAULT_REASONING_MODEL } from './config/models';
@@ -88,30 +92,18 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
 
-  const workspaces: Workspace[] = useMemo(() => [
-    { id: 'w1', name: 'Dự án chính' },
-    { id: 'w2', name: 'Personal Workspace' },
-  ], []);
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState('w1');
+  // Workspaces & personas đến từ WorkspaceContext (nguồn chân lý duy nhất, đồng bộ Firestore).
+  const {
+    workspaces, activeWorkspaceId, setActiveWorkspaceId,
+    activePersona, isInActiveWorkspace,
+  } = useWorkspace();
+  const [isPersonaModalOpen, setIsPersonaModalOpen] = useState(false);
 
-  const personas: AiPersona[] = useMemo(() => [
-    {
-      id: 'p1',
-      name: 'Senior Coder',
-      systemInstructions: 'You are a senior software engineer. Prefer TypeScript, concise answers, and complete error handling.',
-    },
-    {
-      id: 'p2',
-      name: 'Copywriter',
-      systemInstructions: 'You are a persuasive copywriter. Use clear structure, strong benefits, and a direct call to action.',
-    },
-    {
-      id: 'p3',
-      name: 'Data Analyst',
-      systemInstructions: 'You are a precise data analyst. Use only the provided evidence and present results in tables when useful.',
-    },
-  ], []);
-  const [activePersonaId, setActivePersonaId] = useState('');
+  // Template hiển thị theo workspace đang chọn (lọc client-side, không migrate).
+  const visibleTemplates = useMemo(
+    () => customTemplates.filter((t) => isInActiveWorkspace(t.workspaceId)),
+    [customTemplates, isInActiveWorkspace],
+  );
 
   const navigationItems = useMemo(() => [
     { tab: 'home' as TabType, label: 'Home', icon: <Home size={18} />, active: 'bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-800', iconColor: 'text-slate-400' },
@@ -186,6 +178,7 @@ export default function App() {
               variables: data.variables,
               aiConfig: data.aiConfig,
               authorName: data.authorName,
+              workspaceId: data.workspaceId,
             });
           });
         }
@@ -231,6 +224,9 @@ export default function App() {
       return;
     }
 
+    // Đóng dấu workspace: giữ workspaceId sẵn có, nếu chưa có thì gán workspace đang chọn.
+    const workspaceId = template.workspaceId || activeWorkspaceId;
+
     const baseData = {
       userId: user.uid,
       title: template.title,
@@ -247,6 +243,7 @@ export default function App() {
       metrics: template.metrics || { usageCount: 0, upvotes: 0 },
       variables: template.variables || [],
       aiConfig: template.aiConfig || { recommendedModels: [DEFAULT_REASONING_MODEL], temperature: 0.7 },
+      workspaceId,
       updatedAt: serverTimestamp(),
     };
 
@@ -258,12 +255,13 @@ export default function App() {
         await setDoc(templateRef, { ...baseData, createdAt: serverTimestamp() });
       }
 
-      // Upsert vào state cục bộ: thay thế nếu đã tồn tại, ngược lại thêm mới.
+      // Upsert vào state cục bộ (kèm workspaceId vừa đóng dấu để lọc đúng ngay, không cần refetch).
+      const stampedTemplate = { ...template, workspaceId };
       setCustomTemplates((current) => {
         const idx = current.findIndex((t) => t.id === template.id);
-        if (idx === -1) return [...current, template];
+        if (idx === -1) return [...current, stampedTemplate];
         const next = [...current];
-        next[idx] = template;
+        next[idx] = stampedTemplate;
         return next;
       });
       setActiveTab('library');
@@ -281,6 +279,12 @@ export default function App() {
     <div className="flex h-full w-full flex-1 flex-col overflow-hidden bg-surface font-sans text-ink md:flex-row">
       <GrainOverlay />
       <Toaster />
+      <CommandPalette
+        items={navigationItems.map((it) => ({ tab: it.tab, label: it.label, icon: it.icon }))}
+        onNavigate={setActiveTab}
+        theme={theme}
+        onToggleTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+      />
       {/* Header tĩnh trên Mobile — ẩn ở trang chủ để landing page chiếm trọn màn hình */}
       {activeTab !== 'home' && (
       <header className="z-50 flex w-full items-center justify-between border-b border-line/50 bg-glass/70 p-3.5 backdrop-blur-md md:hidden shrink-0">
@@ -346,18 +350,16 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Workspace trong Drawer */}
-              <div className="my-4">
-                <h3 className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Workspace</h3>
-                <select
-                  value={activeWorkspaceId}
-                  onChange={(event) => setActiveWorkspaceId(event.target.value)}
-                  className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-700 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
+              {/* Workspace + Persona trong Drawer */}
+              <div className="my-4 space-y-2">
+                <WorkspaceSwitcher />
+                <button
+                  onClick={() => { setIsPersonaModalOpen(true); setIsMobileMenuOpen(false); }}
+                  className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900"
                 >
-                  {workspaces.map((workspace) => (
-                    <option key={workspace.id} value={workspace.id} className="dark:bg-slate-900">{workspace.name}</option>
-                  ))}
-                </select>
+                  <span className="flex items-center gap-2"><Drama size={14} className="text-violet-500" /> Persona</span>
+                  <span className="truncate text-[11px] text-slate-400">{activePersona?.name || 'Không dùng'}</span>
+                </button>
               </div>
 
               {/* Tabs trong Drawer */}
@@ -438,32 +440,40 @@ export default function App() {
         </div>
 
         <div className="flex flex-1 flex-col space-y-1">
-          <div className="mb-4 px-2 flex flex-col items-center">
+          <div className="mb-4 px-2 flex flex-col items-center gap-2">
             {!isSidebarCollapsed ? (
-              <div className="w-full">
-                <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Workspace</h3>
-                <select
-                  value={activeWorkspaceId}
-                  onChange={(event) => setActiveWorkspaceId(event.target.value)}
-                  className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-700 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+              <>
+                <WorkspaceSwitcher />
+                <button
+                  onClick={() => setIsPersonaModalOpen(true)}
+                  className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-850"
+                  title="Quản lý Persona"
                 >
-                  {workspaces.map((workspace) => (
-                    <option key={workspace.id} value={workspace.id} className="dark:bg-slate-900">{workspace.name}</option>
-                  ))}
-                </select>
-              </div>
+                  <span className="flex items-center gap-2"><Drama size={14} className="text-violet-500" /> Persona</span>
+                  <span className="max-w-[90px] truncate text-[11px] text-slate-400">{activePersona?.name || 'Không dùng'}</span>
+                </button>
+              </>
             ) : (
-              <button
-                onClick={() => {
-                  const currentIndex = workspaces.findIndex(w => w.id === activeWorkspaceId);
-                  const nextIndex = (currentIndex + 1) % workspaces.length;
-                  setActiveWorkspaceId(workspaces[nextIndex].id);
-                }}
-                title={`Workspace: ${workspaces.find(w => w.id === activeWorkspaceId)?.name} (Bấm để chuyển)`}
-                className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-900 text-xs font-bold text-slate-750 dark:text-slate-300 border border-slate-200/50 dark:border-slate-800 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
-              >
-                {workspaces.find(w => w.id === activeWorkspaceId)?.name.charAt(0) || 'W'}
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    const currentIndex = workspaces.findIndex(w => w.id === activeWorkspaceId);
+                    const nextIndex = (currentIndex + 1) % workspaces.length;
+                    setActiveWorkspaceId(workspaces[nextIndex].id);
+                  }}
+                  title={`Workspace: ${workspaces.find(w => w.id === activeWorkspaceId)?.name} (Bấm để chuyển)`}
+                  className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-900 text-xs font-bold text-slate-750 dark:text-slate-300 border border-slate-200/50 dark:border-slate-800 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                >
+                  {workspaces.find(w => w.id === activeWorkspaceId)?.name.charAt(0) || 'W'}
+                </button>
+                <button
+                  onClick={() => setIsPersonaModalOpen(true)}
+                  title={`Persona: ${activePersona?.name || 'Không dùng'}`}
+                  className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-950/40 text-violet-500 border border-violet-100 dark:border-violet-900/50 cursor-pointer hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors"
+                >
+                  <Drama size={15} />
+                </button>
+              </>
             )}
           </div>
 
@@ -549,9 +559,6 @@ export default function App() {
           <TabPanel isActive={activeTab === 'builder'} mounted={visitedTabs.has('builder')}>
             <BuilderTab
               initialTemplate={loadedTemplate}
-              personas={personas}
-              activePersonaId={activePersonaId}
-              setActivePersonaId={setActivePersonaId}
               onSaveTemplate={handleSaveTemplate}
               user={user}
               onNavigateToTab={setActiveTab}
@@ -560,7 +567,7 @@ export default function App() {
           <TabPanel isActive={activeTab === 'library'} mounted={visitedTabs.has('library')}>
             <LibraryTab
               onSelectTemplate={handleSelectTemplate}
-              customTemplates={customTemplates}
+              customTemplates={visibleTemplates}
               user={user}
               onNavigateToTab={setActiveTab}
             />
@@ -581,10 +588,12 @@ export default function App() {
             <RulesSkillsTab user={user} onApplyTemplate={handleSelectTemplate} />
           </TabPanel>
           <TabPanel isActive={activeTab === 'projectchain'} mounted={visitedTabs.has('projectchain')}>
-            <ProjectChainTab theme={theme} user={user} customTemplates={customTemplates} onSaveTemplate={handleSaveTemplate} />
+            <ProjectChainTab theme={theme} user={user} customTemplates={visibleTemplates} onSaveTemplate={handleSaveTemplate} />
           </TabPanel>
         </Suspense>
       </main>
+
+      <PersonaManagerModal isOpen={isPersonaModalOpen} onClose={() => setIsPersonaModalOpen(false)} />
     </div>
   );
 }

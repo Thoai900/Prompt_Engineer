@@ -308,3 +308,59 @@ export const getRequiredInputsForNode = (node: TreeNode, project: PromptProject)
   });
 };
 
+export type DiffLine = { type: 'added' | 'removed' | 'unchanged'; text: string };
+
+/**
+ * Diff hợp nhất theo dòng (line-by-line), có nhìn trước tối đa 4 dòng để bắt cặp
+ * thêm/xóa. Hàm thuần — tách từ ProjectChainTab để dùng lại & test được.
+ */
+export const computeUnifiedDiff = (oldText: string, newText: string): DiffLine[] => {
+  const oldLines = oldText.split('\n');
+  const newLines = newText.split('\n');
+  const diffResult: DiffLine[] = [];
+
+  let i = 0, j = 0;
+  while (i < oldLines.length || j < newLines.length) {
+    if (i < oldLines.length && j < newLines.length) {
+      if (oldLines[i] === newLines[j]) {
+        diffResult.push({ type: 'unchanged', text: oldLines[i] });
+        i++;
+        j++;
+      } else {
+        let foundMatch = false;
+        for (let k = 1; k < 5; k++) {
+          if (i + k < oldLines.length && oldLines[i + k] === newLines[j]) {
+            for (let m = 0; m < k; m++) {
+              diffResult.push({ type: 'removed', text: oldLines[i + m] });
+            }
+            i += k;
+            foundMatch = true;
+            break;
+          }
+          if (j + k < newLines.length && oldLines[i] === newLines[j + k]) {
+            for (let m = 0; m < k; m++) {
+              diffResult.push({ type: 'added', text: newLines[j + m] });
+            }
+            j += k;
+            foundMatch = true;
+            break;
+          }
+        }
+        if (!foundMatch) {
+          diffResult.push({ type: 'removed', text: oldLines[i] });
+          diffResult.push({ type: 'added', text: newLines[j] });
+          i++;
+          j++;
+        }
+      }
+    } else if (i < oldLines.length) {
+      diffResult.push({ type: 'removed', text: oldLines[i] });
+      i++;
+    } else if (j < newLines.length) {
+      diffResult.push({ type: 'added', text: newLines[j] });
+      j++;
+    }
+  }
+  return diffResult;
+};
+

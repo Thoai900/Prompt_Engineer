@@ -9,7 +9,7 @@ import {
   Wrench, Settings, Loader2
 } from 'lucide-react';
 import { AVAILABLE_BLOCKS, BLOCK_SUGGESTIONS } from '../../data';
-import { PromptBlock, PromptTemplate, AiPersona, AiRule, AiSkill, TabType, PromptVariable, BlockType } from '../../types';
+import { PromptBlock, PromptTemplate, AiRule, AiSkill, TabType, PromptVariable, BlockType } from '../../types';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { usePromptBlocks } from '../../hooks/usePromptBlocks';
 import { usePlaygroundSession } from '../../hooks/usePlaygroundSession';
@@ -30,27 +30,22 @@ import { DEFAULT_FRAMEWORKS } from '../../utils/builderUtils';
 
 interface BuilderTabProps {
   initialTemplate: PromptTemplate | null;
-  personas: AiPersona[];
-  activePersonaId: string;
-  setActivePersonaId: (id: string) => void;
   onSaveTemplate?: (template: PromptTemplate) => void;
   user?: any;
   onNavigateToTab?: (tab: TabType) => void;
 }
 
-export default function BuilderTab({ 
-  initialTemplate, 
-  personas, 
-  activePersonaId, 
-  setActivePersonaId, 
+export default function BuilderTab({
+  initialTemplate,
   onSaveTemplate,
   user,
   onNavigateToTab
 }: BuilderTabProps) {
-  const { 
+  const {
     geminiApiKey, setGeminiApiKey, openaiApiKey, setOpenaiApiKey,
     groqApiKey, setGroqApiKey,
-    useSystemGeminiKey, setUseSystemGeminiKey
+    useSystemGeminiKey, setUseSystemGeminiKey,
+    activePersona,
   } = useWorkspace();
 
   const {
@@ -443,7 +438,6 @@ export default function BuilderTab({
     }
   };
 
-  const activePersona = personas.find(p => p.id === activePersonaId);
   const systemBlocks = blocks.filter(b => ['role', 'context', 'tone', 'constraints'].includes(b.type));
   const userBlocks = blocks.filter(b => ['task', 'format', 'example'].includes(b.type));
 
