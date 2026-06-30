@@ -1,4 +1,5 @@
 import { toast } from '../common/Toaster';
+import { confirmDialog } from '../common/ConfirmDialog';
 import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, Plus, Trash, Copy, Check, FileDown, 
@@ -11,6 +12,7 @@ import { db, handleFirestoreError } from '../../firebase';
 import { TabType, AiRule, AiSkill, SkillVariable, SkillStep, PromptTemplate, PromptBlock, SkillRunRecord } from '../../types';
 import { PRESET_RULES, PRESET_SKILLS } from '../../presets';
 import { optimizeAiRules, generateSkillInstructions, renderSkillPrompt, executeSkill } from '../../services/aiService';
+import { GEMINI_FLASH, GEMINI_MODEL_OPTIONS } from '../../config/models';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -51,7 +53,8 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
   // Rule Optimization Comparison state
   const [compareModalOpen, setCompareModalOpen] = useState(false);
   const [optimizedText, setOptimizedText] = useState('');
-  const [ruleOptModel, setRuleOptModel] = useState('gemini-2.5-flash');
+  // Model AI dùng chung cho mọi tác vụ AI trong tab (tối ưu rule, sinh skill, chạy skill).
+  const [selectedModel, setSelectedModel] = useState<string>(GEMINI_FLASH);
 
   // --- skills state ---
   const [skills, setSkills] = useState<AiSkill[]>([]);
@@ -289,7 +292,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
 
   const handleDeleteRule = async () => {
     if (isRulePreset) return;
-    if (!window.confirm('Bạn có chắc chắn muốn xóa bộ quy tắc này không?')) return;
+    if (!(await confirmDialog({ message: 'Bạn có chắc chắn muốn xóa bộ quy tắc này không?', danger: true, confirmText: 'Xoá' }))) return;
 
     setIsDeletingRule(true);
     try {
@@ -339,7 +342,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
     setIsOptimizingRule(true);
     try {
       const optResult = await optimizeAiRules(ruleContent, ruleType, {
-        model: ruleOptModel,
+        model: selectedModel,
         temperature: 0.5
       });
       setOptimizedText(optResult);
@@ -507,7 +510,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
 
   const handleDeleteSkill = async () => {
     if (isSkillPreset) return;
-    if (!window.confirm('Bạn có chắc chắn muốn xóa kỹ năng này không?')) return;
+    if (!(await confirmDialog({ message: 'Bạn có chắc chắn muốn xóa kỹ năng này không?', danger: true, confirmText: 'Xoá' }))) return;
 
     setIsDeletingSkill(true);
     try {
@@ -672,7 +675,8 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
         skillTitle,
         skillDesc,
         skillInputs,
-        skillSteps
+        skillSteps,
+        { model: selectedModel }
       );
       setSkillInstructions(compiledInst);
     } catch (e) {
@@ -758,7 +762,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
     setRunError(null);
     setRunOutput('');
     try {
-      const output = await executeSkill(rendered);
+      const output = await executeSkill(rendered, { model: selectedModel });
       setRunOutput(output);
       persistRunRecord({
         id: `run-${Date.now()}`,
@@ -809,11 +813,27 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
     setRunError(null);
   };
 
-  const handleClearRunHistory = () => {
-    if (!window.confirm('Xóa toàn bộ lịch sử chạy của kỹ năng này?')) return;
+  const handleClearRunHistory = async () => {
+    if (!(await confirmDialog({ message: 'Xóa toàn bộ lịch sử chạy của kỹ năng này?', danger: true, confirmText: 'Xoá' }))) return;
     localStorage.removeItem(`skill_runs_${selectedSkillId}`);
     setRunHistory([]);
   };
+
+  // Bộ chọn model AI dùng chung cho mọi tác vụ AI trong tab.
+  const renderModelSelect = () => (
+    <div className="flex items-center bg-slate-100 dark:bg-slate-950 p-1 rounded-lg border border-slate-200/50 dark:border-slate-850">
+      <span className="text-[10px] font-bold text-slate-400 px-1">AI Model:</span>
+      <select
+        value={selectedModel}
+        onChange={(e) => setSelectedModel(e.target.value)}
+        className="bg-transparent text-[10px] font-bold text-slate-600 dark:text-slate-300 focus:outline-none cursor-pointer"
+      >
+        {GEMINI_MODEL_OPTIONS.map(m => (
+          <option key={m.value} value={m.value}>{m.label}</option>
+        ))}
+      </select>
+    </div>
+  );
 
   return (
     <div className="flex-1 p-4 md:p-6 flex flex-col overflow-y-auto w-full max-w-6xl mx-auto pb-safe">
@@ -1043,17 +1063,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <div className="flex items-center bg-slate-100 dark:bg-slate-950 p-1 rounded-lg border border-slate-200/50 dark:border-slate-850">
-                    <span className="text-[10px] font-bold text-slate-400 px-1">AI Model:</span>
-                    <select
-                      value={ruleOptModel}
-                      onChange={(e) => setRuleOptModel(e.target.value)}
-                      className="bg-transparent text-[10px] font-bold text-slate-600 dark:text-slate-300 focus:outline-none"
-                    >
-                      <option value="gemini-2.5-flash">Gemini 3.5 Flash</option>
-                      <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-                    </select>
-                  </div>
+                  {renderModelSelect()}
 
                   <button
                     onClick={handleAiOptimizeRule}
@@ -1377,14 +1387,17 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
                     <Edit3 size={11} /> 3. Chỉ dẫn chi tiết Kỹ năng (Markdown Instructions)
                   </span>
                   
-                  <button
-                    onClick={handleAiAutoInstructions}
-                    disabled={isCompilingSkill || isSkillPreset}
-                    className="text-[9px] font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 px-2 py-1 rounded-md shadow-2xs flex items-center gap-1 disabled:opacity-50 cursor-pointer"
-                  >
-                    {isCompilingSkill ? <RefreshCw size={10} className="animate-spin" /> : <Sparkles size={10} />}
-                    <span>Sinh hướng dẫn tự động bằng AI</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {renderModelSelect()}
+                    <button
+                      onClick={handleAiAutoInstructions}
+                      disabled={isCompilingSkill || isSkillPreset}
+                      className="text-[9px] font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 px-2 py-1 rounded-md shadow-2xs flex items-center gap-1 disabled:opacity-50 cursor-pointer"
+                    >
+                      {isCompilingSkill ? <RefreshCw size={10} className="animate-spin" /> : <Sparkles size={10} />}
+                      <span>Sinh hướng dẫn tự động bằng AI</span>
+                    </button>
+                  </div>
                 </div>
                 <textarea
                   readOnly={isSkillPreset}
@@ -1545,21 +1558,24 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
                     )}
 
                     {/* Run controls */}
-                    <div className="flex items-center justify-end gap-2 mt-4 border-t border-slate-100 dark:border-slate-850 pt-3">
-                      <button
-                        onClick={handleRenderPrompt}
-                        className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-600 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-350 flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Eye size={12} /> Render prompt
-                      </button>
-                      <button
-                        onClick={handleRunSkill}
-                        disabled={isRunning}
-                        className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer disabled:opacity-50"
-                      >
-                        {isRunning ? <RefreshCw size={12} className="animate-spin" /> : <Play size={12} />}
-                        <span>{isRunning ? 'Đang chạy...' : 'Chạy với AI'}</span>
-                      </button>
+                    <div className="flex items-center justify-between gap-2 mt-4 border-t border-slate-100 dark:border-slate-850 pt-3">
+                      {renderModelSelect()}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleRenderPrompt}
+                          className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-600 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-350 flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Eye size={12} /> Render prompt
+                        </button>
+                        <button
+                          onClick={handleRunSkill}
+                          disabled={isRunning}
+                          className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                        >
+                          {isRunning ? <RefreshCw size={12} className="animate-spin" /> : <Play size={12} />}
+                          <span>{isRunning ? 'Đang chạy...' : 'Chạy với AI'}</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
 

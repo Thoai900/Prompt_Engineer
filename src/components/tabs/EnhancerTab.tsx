@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, ArrowRight, Loader2, Copy, Check, ExternalLink, Settings } from 'lucide-react';
 import { PromptBlock, PromptTemplate } from '../../types';
-import { enhancePromptWithAi } from '../../services/aiService';
+import { enhancePromptWithAiStream } from '../../services/aiService';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import StepNarrator from '../common/StepNarrator';
 import { GhostTextArea } from '../common/GhostTextArea';
@@ -17,6 +17,7 @@ export default function EnhancerTab({ onApplyTemplate }: EnhancerTabProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [streamingText, setStreamingText] = useState('');
 
   // AI parameters
   const [useDeepReasoning, setUseDeepReasoning] = useState(false);
@@ -26,17 +27,23 @@ export default function EnhancerTab({ onApplyTemplate }: EnhancerTabProps) {
 
   const handleEnhance = async () => {
     if (!inputPrompt.trim()) return;
-    
+
     setIsLoading(true);
     setErrorMsg('');
+    setStreamingText('');
+    setOptimizedBlocks(null);
     try {
-      const blocks = await enhancePromptWithAi(inputPrompt, {
-        useDeepReasoning,
-        temperature: customTemp,
-        topP: customTopP,
-        personaInstructions: activePersona?.systemInstructions,
-      });
-      
+      const blocks = await enhancePromptWithAiStream(
+        inputPrompt,
+        (chunk) => setStreamingText((prev) => prev + chunk),
+        {
+          useDeepReasoning,
+          temperature: customTemp,
+          topP: customTopP,
+          personaInstructions: activePersona?.systemInstructions,
+        },
+      );
+
       if (blocks && Array.isArray(blocks)) {
         const blocksWithIds = blocks.map((b: any, idx: number) => ({
           ...b,
@@ -194,9 +201,22 @@ export default function EnhancerTab({ onApplyTemplate }: EnhancerTabProps) {
           
           <div className="flex-1 bg-white border border-slate-200 rounded-lg p-4 overflow-y-auto custom-scrollbar">
              {isLoading ? (
-               <div className="h-full flex items-center justify-center">
-                 <StepNarrator flowKey="enhancer" isActive={isLoading} placement="overlay" className="w-72 max-w-[90%]" />
-               </div>
+               streamingText ? (
+                 <div className="flex flex-col gap-2">
+                   <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-indigo-600">
+                     <Loader2 size={13} className="animate-spin" />
+                     AI đang soạn…
+                   </div>
+                   <pre className="text-xs text-slate-600 leading-relaxed font-mono whitespace-pre-wrap break-words">
+                     {streamingText}
+                     <span className="inline-block w-1.5 h-3.5 align-middle bg-indigo-400 animate-pulse ml-0.5" />
+                   </pre>
+                 </div>
+               ) : (
+                 <div className="h-full flex items-center justify-center">
+                   <StepNarrator flowKey="enhancer" isActive={isLoading} placement="overlay" className="w-72 max-w-[90%]" />
+                 </div>
+               )
              ) : errorMsg ? (
                <div className="text-sm text-rose-500 font-medium p-4 bg-rose-50 rounded text-center">
                  {errorMsg}

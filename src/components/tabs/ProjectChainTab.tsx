@@ -1,4 +1,5 @@
 import { toast } from '../common/Toaster';
+import { confirmDialog } from '../common/ConfirmDialog';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Plus, Trash2, Play, Save, Check, AlertCircle, ArrowRight, Settings, 
@@ -533,9 +534,9 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
       .catch(err => toast('Không thể xuất template: ' + err.message));
   };
 
-  const handleImportTemplateIntoNode = (template: PromptTemplate) => {
+  const handleImportTemplateIntoNode = async (template: PromptTemplate) => {
     if (!activeNode) return;
-    if (!confirm(`Bạn có muốn thay thế các khối Prompt hiện tại của node "${activeNode.title}" bằng mẫu "${template.title}" không?`)) return;
+    if (!(await confirmDialog({ message: `Bạn có muốn thay thế các khối Prompt hiện tại của node "${activeNode.title}" bằng mẫu "${template.title}" không?` }))) return;
 
     handleUpdateNodeFields({
       title: `${activeNode.title.split('.')[0] || 'Node'}. ${template.title}`,
@@ -592,7 +593,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
     setSelectedNodeId(newChild.id);
   };
 
-  const handleDeleteNodeCanvas = (nodeId: string) => {
+  const handleDeleteNodeCanvas = async (nodeId: string) => {
     if (!activeProject) return;
     const node = activeProject.nodes.find(n => n.id === nodeId);
     if (!node) return;
@@ -602,7 +603,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
       return;
     }
 
-    if (!confirm(`Bạn có chắc chắn muốn xóa Node "${node.title}" và mọi node phụ thuộc?`)) return;
+    if (!(await confirmDialog({ message: `Bạn có chắc chắn muốn xóa Node "${node.title}" và mọi node phụ thuộc?`, danger: true, confirmText: 'Xoá' }))) return;
 
     const idsToDelete = new Set<string>([nodeId]);
     let checking = true;
@@ -1072,9 +1073,9 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
     setSelectedNodeIndex(newIdx);
   };
 
-  const handleDeleteNode = (idx: number) => {
+  const handleDeleteNode = async (idx: number) => {
     if (!activeProject || (activeProject.nodes || []).length <= 1) return;
-    if (!confirm('Bạn có chắc chắn muốn xóa bước này khỏi chuỗi prompt?')) return;
+    if (!(await confirmDialog({ message: 'Bạn có chắc chắn muốn xóa bước này khỏi chuỗi prompt?', danger: true, confirmText: 'Xoá' }))) return;
 
     let updatedNodes = [...(activeProject.nodes || [])];
     updatedNodes.splice(idx, 1);
@@ -1176,9 +1177,9 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
     setCurrentStep(1);
   };
 
-  const handleDeleteProject = (id: string, e: React.MouseEvent) => {
+  const handleDeleteProject = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('Bạn có chắc chắn muốn xóa dự án này?')) return;
+    if (!(await confirmDialog({ message: 'Bạn có chắc chắn muốn xóa dự án này?', danger: true, confirmText: 'Xoá' }))) return;
 
     const nextProjects = projects.filter(p => p.id !== id);
     setProjects(nextProjects);
@@ -1368,9 +1369,9 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
   };
 
   // Restore previous version
-  const handleRestoreVersion = (ver: PromptVersion) => {
+  const handleRestoreVersion = async (ver: PromptVersion) => {
     if (!activeProject) return;
-    if (!confirm(`Bạn có chắc chắn muốn khôi phục về phiên bản ngày ${new Date(ver.timestamp).toLocaleString()}?`)) return;
+    if (!(await confirmDialog({ message: `Bạn có chắc chắn muốn khôi phục về phiên bản ngày ${new Date(ver.timestamp).toLocaleString()}?` }))) return;
 
     const backupVersion: PromptVersion = {
       id: `ver-${Date.now()}`,

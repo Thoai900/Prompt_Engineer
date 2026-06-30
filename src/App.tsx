@@ -4,7 +4,7 @@
  */
 
 import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { Brain, Briefcase, Drama, GraduationCap, Home, Library, LogIn, LogOut, Loader2, Moon, Sparkles, Sun, Zap, Menu, X, ScrollText, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Brain, Briefcase, Drama, FlaskConical, GraduationCap, Home, Library, LogIn, LogOut, Loader2, Moon, Sparkles, Sun, Zap, Menu, X, ScrollText, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, getDocFromServer, getDocs, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
@@ -23,17 +23,20 @@ const LibraryTab = lazy(() => import('./components/tabs/LibraryTab'));
 const UtilityBeltTab = lazy(() => import('./components/tabs/UtilityBeltTab'));
 const RulesSkillsTab = lazy(() => import('./components/tabs/RulesSkillsTab'));
 const ProjectChainTab = lazy(() => import('./components/tabs/ProjectChainTab'));
+const LabTab = lazy(() => import('./components/tabs/LabTab'));
 import AuroraBackground from './components/common/AuroraBackground';
 import GrainOverlay from './components/common/GrainOverlay';
 import { Toaster, toast } from './components/common/Toaster';
+import { ConfirmDialogHost } from './components/common/ConfirmDialog';
 import CommandPalette from './components/common/CommandPalette';
 import { auth, db, handleFirestoreError, loginWithGoogle, logoutUser } from './firebase';
 import { initSuggestionSync } from './services/suggestionSync';
+import { learnFromTemplate } from './services/suggestionStore';
 import { DEFAULT_REASONING_MODEL } from './config/models';
 
 // Deep-linking: đồng bộ tab hiện tại với URL hash (vd: #builder) để chia sẻ link
 // và dùng nút back/forward của trình duyệt. Không phụ thuộc thư viện router.
-const VALID_TABS: TabType[] = ['home', 'builder', 'projectchain', 'rulesskills', 'utilitybelt', 'library', 'enhancer', 'learn', 'aifuture'];
+const VALID_TABS: TabType[] = ['home', 'builder', 'projectchain', 'rulesskills', 'utilitybelt', 'library', 'enhancer', 'learn', 'lab', 'aifuture'];
 
 function getTabFromHash(): TabType {
   const raw = window.location.hash.replace(/^#\/?/, '');
@@ -114,6 +117,7 @@ export default function App() {
     { tab: 'library' as TabType, label: 'Library', icon: <Library size={18} />, active: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-900/50', iconColor: 'text-emerald-500' },
     { tab: 'enhancer' as TabType, label: 'AI Enhancer', icon: <Sparkles size={18} />, active: 'bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border-teal-100 dark:border-teal-900/50', iconColor: 'text-teal-500' },
     { tab: 'learn' as TabType, label: 'Learn', icon: <GraduationCap size={18} />, active: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-900/50', iconColor: 'text-blue-500' },
+    { tab: 'lab' as TabType, label: 'Lab', icon: <FlaskConical size={18} />, active: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-900/50', iconColor: 'text-emerald-500' },
     { tab: 'aifuture' as TabType, label: 'AI Future', icon: <Brain size={18} />, active: 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-100 dark:border-purple-900/50', iconColor: 'text-purple-500' },
   ], []);
 
@@ -255,6 +259,9 @@ export default function App() {
         await setDoc(templateRef, { ...baseData, createdAt: serverTimestamp() });
       }
 
+      // Cá nhân hoá: dạy taste model từ chính prompt người dùng lưu (sync tự ghi sau).
+      learnFromTemplate(template.blocks);
+
       // Upsert vào state cục bộ (kèm workspaceId vừa đóng dấu để lọc đúng ngay, không cần refetch).
       const stampedTemplate = { ...template, workspaceId };
       setCustomTemplates((current) => {
@@ -279,6 +286,7 @@ export default function App() {
     <div className="flex h-full w-full flex-1 flex-col overflow-hidden bg-surface font-sans text-ink md:flex-row">
       <GrainOverlay />
       <Toaster />
+      <ConfirmDialogHost />
       <CommandPalette
         items={navigationItems.map((it) => ({ tab: it.tab, label: it.label, icon: it.icon }))}
         onNavigate={setActiveTab}
@@ -589,6 +597,9 @@ export default function App() {
           </TabPanel>
           <TabPanel isActive={activeTab === 'projectchain'} mounted={visitedTabs.has('projectchain')}>
             <ProjectChainTab theme={theme} user={user} customTemplates={visibleTemplates} onSaveTemplate={handleSaveTemplate} />
+          </TabPanel>
+          <TabPanel isActive={activeTab === 'lab'} mounted={visitedTabs.has('lab')}>
+            <LabTab />
           </TabPanel>
         </Suspense>
       </main>

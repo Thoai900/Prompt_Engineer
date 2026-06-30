@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Check, Drama, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import { useWorkspace, isPresetPersona } from '../../context/WorkspaceContext';
+import { confirmDialog } from './ConfirmDialog';
 
 interface PersonaManagerModalProps {
   isOpen: boolean;
@@ -20,6 +21,20 @@ export const PersonaManagerModal: React.FC<PersonaManagerModalProps> = ({ isOpen
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formName, setFormName] = useState('');
   const [formInstructions, setFormInstructions] = useState('');
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Đóng bằng phím Escape.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
+  // Đưa focus vào hộp thoại khi mở (cho người dùng bàn phím / screen reader).
+  useEffect(() => {
+    if (isOpen) dialogRef.current?.focus();
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -41,7 +56,7 @@ export const PersonaManagerModal: React.FC<PersonaManagerModalProps> = ({ isOpen
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (window.confirm(`Xoá persona "${name}"?`)) {
+    if (await confirmDialog({ message: `Xoá persona "${name}"?`, danger: true, confirmText: 'Xoá' })) {
       await deletePersona(id);
       if (editingId === id) resetForm();
     }
@@ -52,7 +67,12 @@ export const PersonaManagerModal: React.FC<PersonaManagerModalProps> = ({ isOpen
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-955/70 p-4 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl border border-slate-200/50 bg-white/90 p-6 text-slate-900 shadow-2xl backdrop-blur-md dark:border-slate-800/50 dark:bg-slate-900/90 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-200"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="persona-modal-title"
+        tabIndex={-1}
+        className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl border border-slate-200/50 bg-white/90 p-6 text-slate-900 shadow-2xl backdrop-blur-md outline-none dark:border-slate-800/50 dark:bg-slate-900/90 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-1 flex items-center justify-between">
@@ -60,9 +80,9 @@ export const PersonaManagerModal: React.FC<PersonaManagerModalProps> = ({ isOpen
             <div className="flex h-10 w-10 items-center justify-center rounded-full border border-violet-500/20 bg-violet-500/10 text-violet-600 dark:text-violet-400">
               <Drama size={20} />
             </div>
-            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Quản lý Persona</h3>
+            <h3 id="persona-modal-title" className="text-xl font-bold text-slate-800 dark:text-slate-100">Quản lý Persona</h3>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" title="Đóng"><X size={18} /></button>
+          <button onClick={onClose} aria-label="Đóng" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" title="Đóng"><X size={18} /></button>
         </div>
         <p className="mb-5 text-xs text-slate-500 dark:text-slate-400">
           Persona đang chọn sẽ được chèn làm chỉ dẫn hệ thống cho mọi lần chạy AI (Builder, Enhancer, Project Chain).

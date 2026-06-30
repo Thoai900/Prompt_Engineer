@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, FolderPlus, Pencil, Trash2, X } from 'lucide-react';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { DEFAULT_WORKSPACE_ID } from '../../context/WorkspaceContext';
+import { confirmDialog } from './ConfirmDialog';
 
 /**
  * Bộ chọn Workspace có CRUD: chọn / thêm / đổi tên / xoá.
@@ -32,8 +33,15 @@ export const WorkspaceSwitcher: React.FC = () => {
         setCreating(false);
       }
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setOpen(false); setEditingId(null); setCreating(false); }
+    };
     document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
   }, [open]);
 
   const startRename = (id: string, current: string) => {
@@ -56,8 +64,8 @@ export const WorkspaceSwitcher: React.FC = () => {
     }
   };
 
-  const handleDelete = (id: string, name: string) => {
-    if (window.confirm(`Xoá workspace "${name}"? Các template/dự án bên trong sẽ chuyển về workspace mặc định.`)) {
+  const handleDelete = async (id: string, name: string) => {
+    if (await confirmDialog({ message: `Xoá workspace "${name}"? Các template/dự án bên trong sẽ chuyển về workspace mặc định.`, danger: true, confirmText: 'Xoá' })) {
       deleteWorkspace(id);
     }
   };
@@ -68,6 +76,9 @@ export const WorkspaceSwitcher: React.FC = () => {
       <div className="relative">
         <button
           onClick={() => setOpen((v) => !v)}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label={`Workspace hiện tại: ${active?.name}. Mở danh sách workspace`}
           className="flex w-full cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-850"
         >
           <span className="flex items-center gap-2 truncate">
@@ -78,7 +89,7 @@ export const WorkspaceSwitcher: React.FC = () => {
         </button>
 
         {open && (
-          <div className="absolute left-0 right-0 top-full z-[90] mt-1.5 max-h-80 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900">
+          <div role="menu" aria-label="Danh sách workspace" className="absolute left-0 right-0 top-full z-[90] mt-1.5 max-h-80 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900">
             {workspaces.map((w) => (
               <div key={w.id} className="group flex items-center gap-1">
                 {editingId === w.id ? (

@@ -1,11 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
 import { TEMPLATES } from '../../data';
 import { PromptTemplate } from '../../types';
-import { Search, Filter, TrendingUp, Sparkles, Clock, History, Layout, FileText, Code2, Video, GitMerge, GraduationCap, Play, Eye, BookOpen, Brain, Briefcase, Workflow } from 'lucide-react';
+import { Search, TrendingUp, Sparkles, Bookmark, History, Play, Eye, Brain, Code2, Video, GraduationCap } from 'lucide-react';
 import PromptCard from '../common/PromptCard';
 import PromptDetailModal from '../modals/PromptDetailModal';
 import ExamplePreviewModal from '../modals/ExamplePreviewModal';
 import AddToProjectModal from '../modals/AddToProjectModal';
+import { useBookmarks } from '../../hooks/useBookmarks';
+import { toast } from '../common/Toaster';
+import { seededCount, buildShareUrl, parseSharedTemplateId } from '../../utils/libraryUtils';
 
 const MOCK_RESULTS: PromptTemplate[] = [
   {
@@ -129,12 +134,20 @@ const CATEGORIES = ['Tất cả', 'Công thức Prompt', 'Học sinh/Sinh viên'
 export default function LibraryTab({ onSelectTemplate, customTemplates = [], user, onNavigateToTab }: LibraryTabProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
-  const [activeTab, setActiveTab] = useState<'trending' | 'new' | 'following'>('trending');
-  
+  const [activeTab, setActiveTab] = useState<'trending' | 'new' | 'saved'>('trending');
+
   const [selectedPrompt, setSelectedPrompt] = useState<PromptTemplate | null>(null);
   const [previewPrompt, setPreviewPrompt] = useState<PromptTemplate | null>(null);
   const [isAddToProjOpen, setIsAddToProjOpen] = useState(false);
   const [addToProjTemplate, setAddToProjTemplate] = useState<PromptTemplate | null>(null);
+
+  const { savedIds, isSaved, toggleSave } = useBookmarks(user);
+
+  const handleShare = (template: PromptTemplate) => {
+    navigator.clipboard.writeText(buildShareUrl(window.location.origin, window.location.pathname, template.id))
+      .then(() => toast.success('Đã sao chép liên kết chia sẻ.'))
+      .catch(() => toast.error('Không sao chép được liên kết.'));
+  };
 
   const [userResults, setUserResults] = useState<PromptTemplate[]>(() => {
     const saved = localStorage.getItem('my_prompt_results');
@@ -150,7 +163,7 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], use
   });
 
   // Process custom templates to always have a category
-  const processedCustomTemplates = customTemplates.map(t => ({
+  const processedCustomTemplates = useMemo(() => customTemplates.map(t => ({
     ...t,
     category: t.category || 'Mẫu của tôi',
     authorName: t.authorName || 'Tôi (Chính bạn)',
@@ -158,33 +171,35 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], use
     isVerified: true,
     metrics: t.metrics || { usageCount: 0, upvotes: 0, likes: 0, saves: 0 },
     createdAt: t.createdAt || new Date().toISOString()
-  }));
+  })), [customTemplates]);
 
-  // Mock social data for standard templates
-  const enrichedTemplates = TEMPLATES.map((t, i) => ({
+  // Số liệu mẫu cho template chuẩn (demo) — ổn định theo id, KHÔNG random mỗi render.
+  const enrichedTemplates = useMemo(() => TEMPLATES.map((t, i) => ({
     ...t,
     authorName: ['Alex Nguyen', 'Sarah Ha', 'Prompt Wizard', 'Tech Guru'][i % 4],
     authorAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${i}`,
     isVerified: i % 3 === 0,
     metrics: {
-      usageCount: Math.floor(Math.random() * 5000),
-      upvotes: Math.floor(Math.random() * 1000),
-      likes: Math.floor(Math.random() * 800),
-      saves: Math.floor(Math.random() * 300)
+      usageCount: seededCount(t.id + 'u', 5000),
+      upvotes: seededCount(t.id + 'v', 1000),
+      likes: seededCount(t.id + 'l', 800),
+      saves: seededCount(t.id + 's', 300)
     },
-    createdAt: new Date(Date.now() - Math.floor(Math.random() * 10000000000)).toISOString()
-  }));
+    createdAt: t.createdAt || new Date(Date.now() - seededCount(t.id, 10000000) * 1000).toISOString()
+  })), []);
 
-  const allTemplates = [...processedCustomTemplates, ...enrichedTemplates];
+  const allTemplates = useMemo(() => [...processedCustomTemplates, ...enrichedTemplates], [processedCustomTemplates, enrichedTemplates]);
 
   const filteredTemplates = useMemo(() => {
     let result = allTemplates.filter(template => {
-      const matchesSearch = template.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      const matchesSearch = template.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             template.description.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       const matchesCategory = selectedCategory === 'Tất cả' || template.category === selectedCategory;
 
-      return matchesSearch && matchesCategory;
+      const matchesSaved = activeTab !== 'saved' || savedIds.has(template.id);
+
+      return matchesSearch && matchesCategory && matchesSaved;
     });
 
     if (activeTab === 'trending') {
@@ -194,7 +209,34 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], use
     }
 
     return result;
-  }, [allTemplates, searchTerm, selectedCategory, activeTab]);
+  }, [allTemplates, searchTerm, selectedCategory, activeTab, savedIds]);
+
+  // Deep-link: mở chi tiết template khi URL có ?t=<id> (kể cả template công khai chưa nạp sẵn).
+  useEffect(() => {
+    const id = parseSharedTemplateId(window.location.search);
+    if (!id) return;
+
+    const local = allTemplates.find((tpl) => tpl.id === id);
+    if (local) {
+      setSelectedPrompt(local as PromptTemplate);
+    } else {
+      getDoc(doc(db, 'templates', id))
+        .then((snap) => {
+          if (snap.exists()) {
+            const data = snap.data() as any;
+            setSelectedPrompt({ id: snap.id, ...data } as PromptTemplate);
+          } else {
+            toast.error('Không tìm thấy template được chia sẻ.');
+          }
+        })
+        .catch(() => toast.error('Không tải được template được chia sẻ.'));
+    }
+
+    // Dọn query param để không mở lại khi đổi tab / tải lại.
+    const cleanUrl = `${window.location.pathname}${window.location.hash || '#library'}`;
+    window.history.replaceState(null, '', cleanUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allTemplates]);
 
   return (
     <div className="flex-1 p-6 flex flex-col overflow-y-auto bg-[#fafafa]">
@@ -362,12 +404,12 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], use
             <Sparkles className="w-4 h-4" /> Mới nhất
             {activeTab === 'new' && <span className="absolute bottom-[-1px] left-0 w-full h-0.5 bg-indigo-600 rounded-t-full"></span>}
           </button>
-          <button 
-            onClick={() => setActiveTab('following')}
-            className={`pb-3 text-sm font-bold flex items-center gap-2 transition-colors relative ${activeTab === 'following' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
+          <button
+            onClick={() => setActiveTab('saved')}
+            className={`pb-3 text-sm font-bold flex items-center gap-2 transition-colors relative ${activeTab === 'saved' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
           >
-            <Clock className="w-4 h-4" /> Đang theo dõi
-            {activeTab === 'following' && <span className="absolute bottom-[-1px] left-0 w-full h-0.5 bg-indigo-600 rounded-t-full"></span>}
+            <Bookmark className="w-4 h-4" /> Đã lưu{savedIds.size > 0 ? ` (${savedIds.size})` : ''}
+            {activeTab === 'saved' && <span className="absolute bottom-[-1px] left-0 w-full h-0.5 bg-indigo-600 rounded-t-full"></span>}
           </button>
         </div>
 
@@ -391,14 +433,17 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], use
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20">
         {filteredTemplates.map((template) => (
-          <PromptCard 
-            key={template.id} 
-            template={template as PromptTemplate} 
+          <PromptCard
+            key={template.id}
+            template={template as PromptTemplate}
             onSelect={(t) => setSelectedPrompt(t)}
             onRemix={(t) => {
               onSelectTemplate(t);
             }}
             onPreview={(t) => setPreviewPrompt(t)}
+            isSaved={isSaved(template.id)}
+            onToggleSave={toggleSave}
+            onShare={handleShare}
           />
         ))}
         
@@ -414,18 +459,21 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], use
       </div>
 
       {selectedPrompt && (
-        <PromptDetailModal 
-          template={selectedPrompt} 
-          onClose={() => setSelectedPrompt(null)} 
+        <PromptDetailModal
+          template={selectedPrompt}
+          onClose={() => setSelectedPrompt(null)}
           onRemix={(t) => {
             setSelectedPrompt(null);
             onSelectTemplate(t);
-          }} 
+          }}
           onAddToProject={(t) => {
             setSelectedPrompt(null);
             setAddToProjTemplate(t);
             setIsAddToProjOpen(true);
           }}
+          isSaved={isSaved(selectedPrompt.id)}
+          onToggleSave={toggleSave}
+          onShare={handleShare}
         />
       )}
 

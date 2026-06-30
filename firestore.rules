@@ -95,6 +95,26 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    function isValidBookmark(data) {
+      return data.keys().hasAll(['userId', 'templateId', 'createdAt'])
+        && data.userId is string && data.userId.size() <= 128
+        && data.templateId is string && data.templateId.size() > 0 && data.templateId.size() <= 128
+        && data.createdAt is timestamp;
+    }
+
+    function isValidHealthSuite(data) {
+      return data.keys().hasAll(['userId', 'name', 'createdAt', 'updatedAt'])
+        && data.userId is string && data.userId.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && ( !('prompt' in data.keys()) || (data.prompt is string && data.prompt.size() <= 50000) )
+        && ( !('model' in data.keys()) || (data.model is string && data.model.size() <= 60) )
+        && ( !('workspaceId' in data.keys()) || (data.workspaceId is string && data.workspaceId.size() <= 128) )
+        && ( !('testCases' in data.keys()) || (data.testCases is list && data.testCases.size() <= 50) )
+        && ( !('runs' in data.keys()) || (data.runs is list && data.runs.size() <= 50) )
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     match /templates/{templateId} {
       allow get: if isValidId(templateId) && (isOwner(resource.data.userId) || resource.data.get('isPublic', false) == true);
       
@@ -221,6 +241,36 @@ service cloud.firestore {
         && incoming().createdAt == existing().createdAt
         && incoming().updatedAt == request.time;
       allow delete: if isValidId(personaId) && isOwner(existing().userId);
+    }
+
+    match /bookmarks/{bookmarkId} {
+      allow get: if isValidId(bookmarkId) && isOwner(resource.data.userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isValidId(bookmarkId)
+        && isSignedIn()
+        && isValidBookmark(incoming())
+        && incoming().userId == request.auth.uid
+        && incoming().createdAt == request.time;
+      allow delete: if isValidId(bookmarkId) && isOwner(existing().userId);
+    }
+
+    match /healthSuites/{suiteId} {
+      allow get: if isValidId(suiteId) && isOwner(resource.data.userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isValidId(suiteId)
+        && isSignedIn()
+        && isValidHealthSuite(incoming())
+        && incoming().userId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(suiteId)
+        && isSignedIn()
+        && isOwner(existing().userId)
+        && isValidHealthSuite(incoming())
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+      allow delete: if isValidId(suiteId) && isOwner(existing().userId);
     }
   }
 }

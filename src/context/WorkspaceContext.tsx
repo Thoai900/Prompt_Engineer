@@ -6,6 +6,7 @@ import {
 import { auth, db, handleFirestoreError } from '../firebase';
 import { toast } from '../components/common/Toaster';
 import { AiPersona, Workspace } from '../types';
+import { DEFAULT_WORKSPACE_ID, matchesActiveWorkspace } from '../utils/workspaceUtils';
 
 // ----------------------------------------------------------------------------
 // Workspaces & Personas (mô hình CÁ NHÂN — mỗi doc thuộc về 1 userId)
@@ -16,7 +17,7 @@ import { AiPersona, Workspace } from '../types';
 // (khi đăng nhập) hoặc localStorage (khi chưa đăng nhập).
 // ----------------------------------------------------------------------------
 
-export const DEFAULT_WORKSPACE_ID = 'default';
+export { DEFAULT_WORKSPACE_ID };
 
 // 3 persona preset giữ lại từ bản cũ — luôn hiển thị, không sửa/xoá được.
 const PRESET_PERSONAS: AiPersona[] = [
@@ -184,12 +185,10 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     localStorage.setItem(LS.activePersona, id);
   }, []);
 
-  const isInActiveWorkspace = useCallback((workspaceId?: string) => {
-    if (activeWorkspaceId === DEFAULT_WORKSPACE_ID) {
-      return !workspaceId || workspaceId === DEFAULT_WORKSPACE_ID;
-    }
-    return workspaceId === activeWorkspaceId;
-  }, [activeWorkspaceId]);
+  const isInActiveWorkspace = useCallback(
+    (workspaceId?: string) => matchesActiveWorkspace(activeWorkspaceId, workspaceId, DEFAULT_WORKSPACE_ID),
+    [activeWorkspaceId],
+  );
 
   // ---- Workspace CRUD --------------------------------------------------------
   const persistLocalWorkspaces = (next: Workspace[]) => {

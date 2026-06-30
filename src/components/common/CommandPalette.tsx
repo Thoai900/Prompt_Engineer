@@ -7,7 +7,7 @@
  * qua props nên gắn vào App với footprint tối thiểu.
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { Search, Moon, Sun, CornerDownLeft } from 'lucide-react';
 import { TabType } from '../../types';
 
@@ -102,20 +102,18 @@ export default function CommandPalette({ items, onNavigate, theme, onToggleTheme
     }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <AnimatePresence>
-      {isOpen && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
           onClick={() => setIsOpen(false)}
           className="fixed inset-0 z-[150] flex items-start justify-center bg-black/50 backdrop-blur-sm p-4 pt-[12vh]"
         >
           <motion.div
             initial={{ opacity: 0, y: -12, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 380, damping: 30 }}
             onClick={(e) => e.stopPropagation()}
             onKeyDown={onListKeyDown}
@@ -161,7 +159,5 @@ export default function CommandPalette({ items, onNavigate, theme, onToggleTheme
             </ul>
           </motion.div>
         </motion.div>
-      )}
-    </AnimatePresence>
   );
 }

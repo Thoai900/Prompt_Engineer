@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { PromptTemplate } from '../../types';
-import { Heart, Bookmark, Copy, Users, CheckCircle, Layout, FileText, Code2, Video, GitMerge, GraduationCap, FlaskConical } from 'lucide-react';
+import { Bookmark, Copy, Users, CheckCircle, Layout, FileText, Code2, Video, GitMerge, GraduationCap, FlaskConical, Share2 } from 'lucide-react';
 
 interface PromptCardProps {
   template: PromptTemplate;
   onSelect: (template: PromptTemplate) => void;
   onRemix?: (template: PromptTemplate) => void;
   onPreview?: (template: PromptTemplate) => void;
+  isSaved?: boolean;
+  onToggleSave?: (template: PromptTemplate) => void;
+  onShare?: (template: PromptTemplate) => void;
 }
 
 interface StepperStep {
@@ -91,7 +94,7 @@ const detectFramework = (template: PromptTemplate): { name: string; steps: Stepp
   return null;
 };
 
-export default function PromptCard({ template, onSelect, onRemix, onPreview }: PromptCardProps) {
+export default function PromptCard({ template, onSelect, onRemix, onPreview, isSaved, onToggleSave, onShare }: PromptCardProps) {
   const [activeStepIndex, setActiveStepIndex] = useState<number | null>(null);
   const metrics = template.metrics || { usageCount: 0, upvotes: 0, likes: 0, saves: 0 };
   const getAvatarFallback = (name: string) => name ? name.charAt(0).toUpperCase() : '?';
@@ -331,18 +334,28 @@ export default function PromptCard({ template, onSelect, onRemix, onPreview }: P
         {/* Footer Actions */}
         <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between shrink-0">
            <div className="flex items-center gap-3 text-slate-400">
-             <div className="flex items-center gap-1 cursor-pointer hover:text-rose-500 transition-colors" title="Likes">
-               <Heart className="w-3.5 h-3.5" />
-               <span className="text-xs font-semibold">{metrics.likes || metrics.upvotes || 0}</span>
-             </div>
-             <div className="flex items-center gap-1 cursor-pointer hover:text-indigo-500 transition-colors" title="Saves">
-               <Bookmark className="w-3.5 h-3.5" />
-               <span className="text-xs font-semibold">{metrics.saves || 0}</span>
-             </div>
-             <div className="flex items-center gap-1" title="Uses">
+             <div className="flex items-center gap-1" title="Lượt dùng (demo)">
                <Users className="w-3.5 h-3.5" />
                <span className="text-xs font-semibold">{metrics.usageCount || 0}</span>
              </div>
+             <button
+               onClick={(e) => { e.stopPropagation(); onToggleSave?.(template); }}
+               aria-pressed={!!isSaved}
+               aria-label={isSaved ? 'Bỏ lưu' : 'Lưu vào bộ sưu tập của bạn'}
+               className={`flex items-center gap-1 transition-colors ${isSaved ? 'text-indigo-600' : 'cursor-pointer hover:text-indigo-500'}`}
+               title={isSaved ? 'Bỏ lưu' : 'Lưu vào bộ sưu tập của bạn'}
+             >
+               <Bookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-current' : ''}`} />
+               <span className="text-xs font-semibold">{isSaved ? 'Đã lưu' : 'Lưu'}</span>
+             </button>
+             <button
+               onClick={(e) => { e.stopPropagation(); onShare?.(template); }}
+               aria-label="Chia sẻ liên kết"
+               className="flex items-center gap-1 cursor-pointer hover:text-emerald-500 transition-colors"
+               title="Chia sẻ liên kết"
+             >
+               <Share2 className="w-3.5 h-3.5" />
+             </button>
            </div>
 
            <button 

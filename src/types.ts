@@ -1,4 +1,4 @@
-export type TabType = 'home' | 'aifuture' | 'library' | 'builder' | 'enhancer' | 'learn' | 'utilitybelt' | 'rulesskills' | 'projectchain';
+export type TabType = 'home' | 'aifuture' | 'library' | 'builder' | 'enhancer' | 'learn' | 'utilitybelt' | 'rulesskills' | 'projectchain' | 'lab';
 
 export type BlockType = 'role' | 'task' | 'context' | 'format' | 'tone' | 'constraints' | 'example' | 'thinking' | 'anchor' | 'self_correction' | 'input_data' | 'custom' | 'objective' | 'audience' | 'experience' | 'challenge' | 'steps';
 
@@ -228,4 +228,37 @@ export interface SystemRole {
   description: string;
   rolePrompt: string;
   variables: PromptVariable[];
+}
+
+// ── Prompt Health/CI (Lab · Tầng 1 #2) ──────────────────────────────────────
+export interface HealthTest {
+  id: string;
+  input: string;        // đầu vào thử
+  criteria: string[];   // tiêu chí chấm cho test này
+}
+
+export interface HealthTestResult {
+  testId: string;
+  score: number;        // 0–100
+  feedback?: string;
+}
+
+export interface HealthRun {
+  at: string;           // ISO date string
+  model: string;        // model đã chạy lần này (để phát hiện "đổi model")
+  avgScore: number;     // điểm trung bình toàn suite
+  results: HealthTestResult[];
+}
+
+export interface HealthSuite {
+  id: string;
+  name: string;
+  prompt: string;       // prompt/hệ thống được kiểm thử
+  model: string;        // model mặc định của suite
+  testCases: HealthTest[];
+  runs: HealthRun[];    // mới nhất ở đầu, giữ tối đa ~10 lần
+  userId?: string;
+  workspaceId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }

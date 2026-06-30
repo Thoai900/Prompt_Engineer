@@ -1,4 +1,5 @@
 import { toast } from '../common/Toaster';
+import { confirmDialog } from '../common/ConfirmDialog';
 import React, { useState, useEffect } from 'react';
 import { 
   Zap, Brain, Settings, Sliders, Copy, Check, RotateCcw, 
@@ -154,13 +155,13 @@ export default function UtilityBeltTab({ user, onSaveTemplate }: UtilityBeltTabP
   };
 
   // Delete current profile
-  const handleDeleteProfile = (idToDelete: string, e: React.MouseEvent) => {
+  const handleDeleteProfile = async (idToDelete: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (profiles.length <= 1) {
       toast("Bạn phải giữ lại ít nhất một cấu hình.");
       return;
     }
-    if (confirm("Bạn có chắc chắn muốn xóa cấu hình này?")) {
+    if (await confirmDialog({ message: "Bạn có chắc chắn muốn xóa cấu hình này?", danger: true, confirmText: 'Xoá' })) {
       const updated = profiles.filter(p => p.id !== idToDelete);
       setProfiles(updated);
       saveToLocalStorage(updated);
@@ -172,17 +173,17 @@ export default function UtilityBeltTab({ user, onSaveTemplate }: UtilityBeltTabP
   };
 
   // Reset current profile to preset default if it matches preset ID
-  const handleResetToPresetDefault = () => {
+  const handleResetToPresetDefault = async () => {
     const defaultPreset = PRESETS.find(p => p.id === activeProfileId);
     if (defaultPreset) {
-      if (confirm("Khôi phục lại nội dung mặc định của mẫu thiết lập này?")) {
+      if (await confirmDialog({ message: "Khôi phục lại nội dung mặc định của mẫu thiết lập này?" })) {
         const updated = profiles.map(p => p.id === activeProfileId ? { ...defaultPreset } : p);
         setProfiles(updated);
         saveToLocalStorage(updated);
       }
     } else {
       // For custom ones, just clear fields
-      if (confirm("Bạn muốn xóa sạch nội dung các ô nhập liệu?")) {
+      if (await confirmDialog({ message: "Bạn muốn xóa sạch nội dung các ô nhập liệu?" })) {
         const updated = profiles.map(p => p.id === activeProfileId ? {
           ...p,
           role: '',

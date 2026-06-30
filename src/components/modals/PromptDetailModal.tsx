@@ -8,11 +8,13 @@ interface PromptDetailModalProps {
   onClose: () => void;
   onRemix: (template: PromptTemplate) => void;
   onAddToProject?: (template: PromptTemplate) => void;
+  isSaved?: boolean;
+  onToggleSave?: (template: PromptTemplate) => void;
+  onShare?: (template: PromptTemplate) => void;
 }
 
-export default function PromptDetailModal({ template, onClose, onRemix, onAddToProject }: PromptDetailModalProps) {
+export default function PromptDetailModal({ template, onClose, onRemix, onAddToProject, isSaved = false, onToggleSave, onShare }: PromptDetailModalProps) {
   const [isLiked, setIsLiked] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
   const [newComment, setNewComment] = useState('');
 
   const metrics = template.metrics || { usageCount: 0, upvotes: 0, likes: 0, saves: 0 };
@@ -26,7 +28,7 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
   ]);
 
   const handleLike = () => setIsLiked(!isLiked);
-  const handleSave = () => setIsSaved(!isSaved);
+  const handleSave = () => onToggleSave?.(template);
 
   const handleAddComment = () => {
     if (!newComment.trim()) return;
@@ -148,7 +150,7 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
                      <Bookmark className={`w-5 h-5 ${isSaved ? 'fill-current' : ''}`} />
                    </div>
                    <span className={`text-[10px] font-bold ${isSaved ? 'text-indigo-600' : 'text-slate-500'}`}>
-                     {(metrics.saves || 0) + (isSaved ? 1 : 0)} Lưus
+                     {isSaved ? 'Đã lưu' : 'Lưu'}
                    </span>
                  </button>
                  <div className={`flex flex-col items-center gap-1`}>
@@ -161,7 +163,11 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
                  </div>
                </div>
                
-               <button className="p-2.5 bg-white border border-slate-200 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+               <button
+                 onClick={() => onShare?.(template)}
+                 title="Chia sẻ liên kết"
+                 className="p-2.5 bg-white border border-slate-200 rounded-full text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 transition-colors shadow-sm"
+               >
                  <Share2 className="w-5 h-5" />
                </button>
             </div>

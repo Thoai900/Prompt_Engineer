@@ -28,6 +28,11 @@ export interface ProxyRequest {
 // trỏ tới URL đầy đủ của hàm trên Vercel.
 const env = (import.meta as any).env || {};
 const PROXY_URL: string = env.VITE_AI_PROXY_URL || '/api/ai';
+// Endpoint Auto-Optimizer (api/optimize.ts). Mặc định cùng-origin; nếu proxy đặt
+// cross-origin qua VITE_AI_PROXY_URL thì suy ra endpoint optimize tương ứng.
+const OPTIMIZE_URL: string =
+  env.VITE_AI_OPTIMIZE_URL ||
+  (env.VITE_AI_PROXY_URL ? String(env.VITE_AI_PROXY_URL).replace(/\/ai$/, '/optimize') : '/api/optimize');
 
 async function authHeaders(): Promise<Record<string, string>> {
   const user = auth.currentUser;
@@ -55,6 +60,46 @@ export async function proxyGenerate(req: ProxyRequest): Promise<string> {
   const data = await response.json();
   if (data?.error) throw new Error(data.error);
   return data?.text || (req.json ? '{}' : '');
+}
+
+// ── Auto-Optimizer (Lab · Tầng 1) ───────────────────────────────────────────
+export interface OptimizeRequest {
+  basePrompt: string;
+  criteria?: string[];
+  testInput?: string;
+  populationN?: number;
+  rounds?: number;
+}
+
+export interface OptimizeCandidate {
+  prompt: string;
+  score: number;
+  feedback: string;
+  output: string;
+}
+
+export interface OptimizeResult {
+  bestPrompt: string;
+  bestScore: number;
+  baselineScore: number;
+  improvement: number;
+  history: { round: number; best: OptimizeCandidate; candidates: OptimizeCandidate[] }[];
+}
+
+/** Gọi vòng tối ưu prompt ở backend (api/optimize.ts). Cần đăng nhập (Firebase token). */
+export async function optimizePrompt(req: OptimizeRequest): Promise<OptimizeResult> {
+  const response = await fetch(OPTIMIZE_URL, {
+    method: 'POST',
+    headers: await authHeaders(),
+    body: JSON.stringify(req),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Optimize error ${response.status}: ${errorText}`);
+  }
+  const data = await response.json();
+  if (data?.error) throw new Error(data.error);
+  return data as OptimizeResult;
 }
 
 export async function proxyGenerateStream(
