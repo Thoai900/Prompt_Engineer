@@ -18,6 +18,11 @@ interface RulesSkillsTabProps {
   onApplyTemplate?: (template: PromptTemplate) => void;
 }
 
+// Preset IDs always win: stored items (localStorage/Firestore) that reuse a preset
+// id would otherwise duplicate it after merging, causing React duplicate-key errors.
+const PRESET_RULE_IDS = new Set(PRESET_RULES.map(r => r.id));
+const PRESET_SKILL_IDS = new Set(PRESET_SKILLS.map(s => s.id));
+
 // Safely parse a localStorage JSON array; corrupt/legacy data returns [] instead of crashing the tab.
 function safeParseArray<T>(raw: string | null): T[] {
   if (!raw) return [];
@@ -101,9 +106,9 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
     let parsedRules = safeParseArray<AiRule>(localStorage.getItem('custom_rules'));
     let parsedSkills = safeParseArray<AiSkill>(localStorage.getItem('custom_skills'));
 
-    // Filter out preset duplicates from legacy saves
-    parsedRules = parsedRules.filter(r => !r.isPreset);
-    parsedSkills = parsedSkills.filter(s => !s.isPreset);
+    // Filter out preset duplicates from legacy saves (by flag or by colliding id)
+    parsedRules = parsedRules.filter(r => !r.isPreset && !PRESET_RULE_IDS.has(r.id));
+    parsedSkills = parsedSkills.filter(s => !s.isPreset && !PRESET_SKILL_IDS.has(s.id));
 
     // Merge presets
     setRules([...PRESET_RULES, ...parsedRules]);
@@ -160,21 +165,21 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
         });
       });
 
-      // Merge local with DB
-      const localRules = safeParseArray<AiRule>(localStorage.getItem('custom_rules')).filter(r => !r.isPreset);
-      const localSkills = safeParseArray<AiSkill>(localStorage.getItem('custom_skills')).filter(s => !s.isPreset);
+      // Merge local with DB (drop any item colliding with a preset id so presets stay unique)
+      const localRules = safeParseArray<AiRule>(localStorage.getItem('custom_rules')).filter(r => !r.isPreset && !PRESET_RULE_IDS.has(r.id));
+      const localSkills = safeParseArray<AiSkill>(localStorage.getItem('custom_skills')).filter(s => !s.isPreset && !PRESET_SKILL_IDS.has(s.id));
 
       // Deduplicate rules by ID (DB takes priority)
       const mergedRulesMap = new Map<string, AiRule>();
       localRules.forEach(r => mergedRulesMap.set(r.id, r));
       dbRules.forEach(r => mergedRulesMap.set(r.id, r));
-      const mergedRules = Array.from(mergedRulesMap.values());
+      const mergedRules = Array.from(mergedRulesMap.values()).filter(r => !PRESET_RULE_IDS.has(r.id));
 
       // Deduplicate skills by ID (DB takes priority)
       const mergedSkillsMap = new Map<string, AiSkill>();
       localSkills.forEach(s => mergedSkillsMap.set(s.id, s));
       dbSkills.forEach(s => mergedSkillsMap.set(s.id, s));
-      const mergedSkills = Array.from(mergedSkillsMap.values());
+      const mergedSkills = Array.from(mergedSkillsMap.values()).filter(s => !PRESET_SKILL_IDS.has(s.id));
 
       // Save back to local storage
       localStorage.setItem('custom_rules', JSON.stringify(mergedRules));
