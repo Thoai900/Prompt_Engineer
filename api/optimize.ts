@@ -12,9 +12,22 @@ export const config = { maxDuration: 60 };
 
 const PROJECT_ID = 'eduai-nexus';
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
-const CANDIDATE_MODEL = 'gemini-2.5-flash';
-const JUDGE_MODEL = 'gemini-2.5-flash';
 const TRIGGER = 'Hãy thực hiện theo chỉ dẫn hệ thống ở trên.';
+
+// Chuỗi model dự phòng: mỗi model free-tier có HẠN MỨC RIÊNG (Gemini) + Groq quota
+// riêng. Khi một model chạm giới hạn (429), tự xoay sang model kế tiếp thay vì chờ.
+const MODEL_CHAIN: { provider: 'gemini' | 'groq'; model: string }[] = [
+  { provider: 'gemini', model: 'gemini-2.5-flash' },
+  { provider: 'gemini', model: 'gemini-3.5-flash' },
+  { provider: 'gemini', model: 'gemini-2.5-pro' },
+  { provider: 'groq', model: 'llama-3.1-8b-instant' },
+];
+
+function isRateLimitError(e: any): boolean {
+  const msg = (e?.message || String(e || '')).toLowerCase();
+  return msg.includes('429') || msg.includes('resource_exhausted') || msg.includes('quota')
+    || msg.includes('exceeded') || msg.includes('rate limit') || msg.includes('rate-limit');
+}
 
 // JWKS tạo lười để không ném lỗi lúc nạp module.
 let _jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
@@ -42,7 +55,7 @@ async function verifyFirebaseToken(authHeader?: string): Promise<boolean> {
   }
 }
 
-async function callGemini(model: string, system: string, user: string, temperature: number, json: boolean): Promise<string> {
+async function callGeminiModel(model: string, system: string, user: string, temperature: number, json: boolean): Promise<string> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error('Server thiếu GEMINI_API_KEY (đặt trong Vercel → Settings → Environment Variables, rồi redeploy).');
   const ai = new GoogleGenAI({ apiKey: key });
@@ -50,6 +63,45 @@ async function callGemini(model: string, system: string, user: string, temperatu
   if (json) config.responseMimeType = 'application/json';
   const resp = await ai.models.generateContent({ model, contents: user, config });
   return resp.text || (json ? '{}' : '');
+}
+
+async function callGroqModel(model: string, system: string, user: string, temperature: number, json: boolean): Promise<string> {
+  const key = process.env.GROQ_API_KEY;
+  if (!key) throw new Error('Server thiếu GROQ_API_KEY.');
+  const body: any = {
+    model,
+    messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+    temperature,
+  };
+  if (json) body.response_format = { type: 'json_object' };
+  const r = await fetch(GROQ_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`Groq API ${r.status}: ${await r.text()}`);
+  const data: any = await r.json();
+  return data?.choices?.[0]?.message?.content || (json ? '{}' : '');
+}
+
+// Gọi AI có XOAY VÒNG model: gặp lỗi (đặc biệt 429/giới hạn) thì thử model kế tiếp
+// trong MODEL_CHAIN. Nhờ vậy chạm hạn mức một model không làm hỏng cả lượt chạy.
+async function callAny(system: string, user: string, temperature: number, json: boolean): Promise<string> {
+  let lastErr: any = null;
+  for (const { provider, model } of MODEL_CHAIN) {
+    try {
+      return provider === 'groq'
+        ? await callGroqModel(model, system, user, temperature, json)
+        : await callGeminiModel(model, system, user, temperature, json);
+    } catch (e) {
+      lastErr = e;
+      // Lỗi giới hạn → chắc chắn thử model khác; lỗi khác cũng thử tiếp cho bền.
+    }
+  }
+  if (isRateLimitError(lastErr)) {
+    throw new Error('Tất cả model khả dụng đều đang chạm giới hạn hạn mức (free tier). Thử lại sau ít phút, hoặc giảm "Số biến thể/vòng".');
+  }
+  throw lastErr || new Error('Tất cả model đều thất bại.');
 }
 
 function extractJsonSafe<T = any>(text: string): T | null {
@@ -98,7 +150,7 @@ ${criteriaText(criteria)}
 Mỗi biến thể là một prompt HOÀN CHỈNH, dùng được ngay. Đa dạng cách tiếp cận.
 CHỈ trả về JSON, không markdown: {"variants": ["<prompt 1>", "<prompt 2>", ...]}`;
 
-  const text = await callGemini(CANDIDATE_MODEL, system, user, 0.9, true);
+  const text = await callAny(system, user, 0.9, true);
   const parsed = extractJsonSafe<{ variants?: string[] }>(text);
   const variants = (parsed?.variants || []).filter((v) => typeof v === 'string' && v.trim().length > 0);
   return variants.slice(0, n);
@@ -107,14 +159,14 @@ CHỈ trả về JSON, không markdown: {"variants": ["<prompt 1>", "<prompt 2>"
 async function scoreCandidate(output: string, criteria: string[]): Promise<{ score: number; feedback: string }> {
   const system = 'Bạn là giám khảo trung lập chấm chất lượng đầu ra theo tiêu chí. Khắt khe, nhất quán.';
   const user = `[BỘ TIÊU CHÍ]\n${criteriaText(criteria)}\n\n[ĐẦU RA CẦN CHẤM]\n${output}\n\nChỉ trả về JSON: {"score": <0-100>, "feedback": "<ngắn gọn>"}`;
-  const text = await callGemini(JUDGE_MODEL, system, user, 0.2, true);
+  const text = await callAny(system, user, 0.2, true);
   const parsed = extractJsonSafe<{ score?: number; feedback?: string }>(text);
   const score = typeof parsed?.score === 'number' ? Math.max(0, Math.min(100, Math.round(parsed.score))) : 50;
   return { score, feedback: typeof parsed?.feedback === 'string' ? parsed.feedback : '' };
 }
 
 async function evaluate(prompt: string, testInput: string, criteria: string[]): Promise<Candidate> {
-  const output = await callGemini(CANDIDATE_MODEL, prompt, testInput, 0.7, false);
+  const output = await callAny(prompt, testInput, 0.7, false);
   const { score, feedback } = await scoreCandidate(output, criteria);
   return { prompt, score, feedback, output: output.slice(0, 600) };
 }
