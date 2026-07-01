@@ -80,24 +80,26 @@ export default async function handler(req: any, res: any) {
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Chỉ hỗ trợ POST.' }); return; }
 
-  const ok = await verifyFirebaseToken(req.headers.authorization);
-  if (!ok) { res.status(401).json({ error: 'Chưa xác thực: vui lòng đăng nhập để dùng AI.' }); return; }
-
-  let body: OptimizeBody = req.body;
-  if (typeof body === 'string') {
-    try { body = JSON.parse(body); } catch { res.status(400).json({ error: 'Body JSON không hợp lệ.' }); return; }
-  }
-  if (!body || !body.basePrompt || !body.basePrompt.trim()) {
-    res.status(400).json({ error: 'Thiếu basePrompt.' }); return;
-  }
-
-  const basePrompt = body.basePrompt.trim();
-  const criteria = Array.isArray(body.criteria) ? body.criteria.filter((c) => typeof c === 'string' && c.trim()) : [];
-  const testInput = (body.testInput && body.testInput.trim()) || TRIGGER;
-  const populationN = clampInt(body.populationN, 3, 2, 5);
-  const rounds = clampInt(body.rounds, 2, 1, 3);
-
+  // Bọc TOÀN BỘ (auth + parse + vòng lặp) để mọi lỗi trả JSON có thông báo rõ,
+  // thay vì crash thành 500 FUNCTION_INVOCATION_FAILED mù mịt.
   try {
+    const ok = await verifyFirebaseToken(req.headers.authorization);
+    if (!ok) { res.status(401).json({ error: 'Chưa xác thực: vui lòng đăng nhập để dùng AI.' }); return; }
+
+    let body: OptimizeBody = req.body;
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body); } catch { res.status(400).json({ error: 'Body JSON không hợp lệ.' }); return; }
+    }
+    if (!body || !body.basePrompt || !body.basePrompt.trim()) {
+      res.status(400).json({ error: 'Thiếu basePrompt.' }); return;
+    }
+
+    const basePrompt = body.basePrompt.trim();
+    const criteria = Array.isArray(body.criteria) ? body.criteria.filter((c) => typeof c === 'string' && c.trim()) : [];
+    const testInput = (body.testInput && body.testInput.trim()) || TRIGGER;
+    const populationN = clampInt(body.populationN, 3, 2, 5);
+    const rounds = clampInt(body.rounds, 2, 1, 3);
+
     const history: { round: number; best: Candidate; candidates: Candidate[] }[] = [];
 
     // Ứng viên nền tảng = chính prompt gốc (để đo mức cải thiện).
@@ -123,6 +125,8 @@ export default async function handler(req: any, res: any) {
       history,
     });
   } catch (err: any) {
-    res.status(502).json({ error: err?.message || 'Lỗi khi tối ưu prompt.' });
+    if (!res.headersSent) {
+      res.status(500).json({ error: err?.message || 'Lỗi máy chủ khi tối ưu prompt.' });
+    }
   }
 }

@@ -8,9 +8,18 @@ import { createRemoteJWKSet, jwtVerify } from 'jose';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PROJECT_ID = 'eduai-nexus';
-const JWKS = createRemoteJWKSet(
-  new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'),
-);
+
+// Tạo JWKS LƯỜI (chỉ khi gọi lần đầu) — tránh mọi rủi ro ném lỗi lúc load module,
+// vốn sẽ khiến serverless function crash với FUNCTION_INVOCATION_FAILED.
+let _jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+function getJwks() {
+  if (!_jwks) {
+    _jwks = createRemoteJWKSet(
+      new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'),
+    );
+  }
+  return _jwks;
+}
 
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 const DEFAULT_GROQ_MODEL = 'llama-3.1-8b-instant';
@@ -21,7 +30,7 @@ export async function verifyFirebaseToken(authHeader?: string): Promise<boolean>
   const m = authHeader.match(/^Bearer (.+)$/);
   if (!m) return false;
   try {
-    await jwtVerify(m[1], JWKS, {
+    await jwtVerify(m[1], getJwks(), {
       issuer: `https://securetoken.google.com/${PROJECT_ID}`,
       audience: PROJECT_ID,
     });
