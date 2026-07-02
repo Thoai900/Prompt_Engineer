@@ -14,6 +14,7 @@ import { useWorkspace } from '../../context/WorkspaceContext';
 import { usePromptBlocks } from '../../hooks/usePromptBlocks';
 import { usePlaygroundSession } from '../../hooks/usePlaygroundSession';
 import { BuilderSidebar } from '../builder/BuilderSidebar';
+import { OpenInAiBar } from '../builder/OpenInAiBar';
 import { PromptBlockList } from '../builder/PromptBlockList';
 import { EmptyStateGenerator } from '../builder/EmptyStateGenerator';
 import { PlaygroundPanel } from '../builder/PlaygroundPanel';
@@ -1061,8 +1062,12 @@ export default function BuilderTab({
                     </div>
                  </div>
 
+                 {blocks.length > 0 && (
+                   <OpenInAiBar getPrompt={() => generatePreviewContent(false, 'combined')} />
+                 )}
+
                  <div className="flex gap-2 relative">
-                    <button 
+                    <button
                        onClick={() => setIsModalOpen(true)}
                        className="flex-1 touch-manipulation py-2.5 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-violet-900/10 active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 h-10"
                     >
