@@ -169,8 +169,11 @@ async function callGroqChatStream(
   }
 }
 
-// Sinh JSON cho tác vụ tạo prompt: ưu tiên Llama-3-8B (Groq), fallback Gemini.
-// callGroqChat tự định tuyến (key riêng → gọi thẳng; không có key → backend proxy).
+// Sinh JSON cho tác vụ tạo prompt: Gemini trước, fallback Llama-3-8B (Groq).
+// Llama 8B ở JSON mode hay lỗi `json_validate_failed` với JSON tiếng Việt dài
+// (đứt trước khi hợp lệ → proxy trả 502) nên chỉ giữ làm dự phòng, kèm maxTokens
+// chặn vòng lặp sinh vô hạn. callGroqChat tự định tuyến (key riêng → gọi thẳng;
+// không có key → backend proxy).
 async function generatePromptJson(
   systemInstruction: string,
   userContent: string,
@@ -180,15 +183,6 @@ async function generatePromptJson(
   options?: AiGenParams
 ): Promise<string> {
   try {
-    return await callGroqChat(systemInstruction, userContent, {
-      apiKey: options?.groqApiKey,
-      model: options?.groqModel,
-      temperature,
-      topP,
-      json: true,
-    });
-  } catch (groqError) {
-    console.warn('Groq (Llama-3-8B) thất bại, chuyển về Gemini:', groqError);
     return await geminiGenerate({
       model: options?.model || geminiModel,
       systemInstruction,
@@ -197,6 +191,16 @@ async function generatePromptJson(
       topP,
       json: true,
       options,
+    });
+  } catch (geminiError) {
+    console.warn('Gemini thất bại, chuyển về Groq (Llama-3-8B):', geminiError);
+    return await callGroqChat(systemInstruction, userContent, {
+      apiKey: options?.groqApiKey,
+      model: options?.groqModel,
+      temperature,
+      topP,
+      maxTokens: 4096,
+      json: true,
     });
   }
 }

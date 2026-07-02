@@ -126,7 +126,13 @@ service cloud.firestore {
     }
 
     match /templates/{templateId} {
-      allow get: if isValidId(templateId) && (isOwner(resource.data.userId) || resource.data.get('isPublic', false) == true);
+      // resource == null: doc chưa tồn tại — cho user đã đăng nhập get (trả exists=false)
+      // để client kiểm tra trước khi tạo mới; nếu không, resource.data sẽ lỗi → permission-denied.
+      allow get: if isValidId(templateId) && (
+        (resource == null && isSignedIn())
+        || isOwner(resource.data.userId)
+        || resource.data.get('isPublic', false) == true
+      );
       
       allow list: if resource.data.get('isPublic', false) == true || (isSignedIn() && resource.data.userId == request.auth.uid);
       
