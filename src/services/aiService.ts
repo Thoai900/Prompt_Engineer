@@ -536,7 +536,9 @@ Các phần khác trong Prompt (Ngữ cảnh):
 ${optimizedContext}
 
 Nội dung hiện tại cho [${blockTitle}]: "${currentText}".
-Sinh ra chính xác đoạn nội dung trực tiếp cần thiết để điền vào. Ưu tiên súc tích, đi thẳng trọng tâm, không lặp ý, không thêm lời dẫn. KHÔNG GIẢI THÍCH, KHÔNG CHÀO HỎI.`;
+Sinh ra chính xác đoạn nội dung trực tiếp cần thiết để điền vào.
+QUAN TRỌNG: Nội dung này là VĂN BẢN PROMPT THẬT — viết như đang RA LỆNH TRỰC TIẾP cho AI sẽ thực thi prompt (xưng "Bạn", dùng câu mệnh lệnh "Hãy...", "Bạn là..."). TUYỆT ĐỐI KHÔNG viết theo kiểu mô tả/khuyên người dùng nên điền gì (SAI: "Khai báo vai trò..."; ĐÚNG: "Bạn là...").
+Ưu tiên súc tích, đi thẳng trọng tâm, không lặp ý, không thêm lời dẫn. KHÔNG GIẢI THÍCH, KHÔNG CHÀO HỎI.`;
 
     // Dynamic model routing for speed and reasoning
     let modelName = options?.model;
@@ -697,6 +699,10 @@ Các khối hiện tại đang có trong Prompt:
 ${blocksInfo.map(b => `- ID: ${b.id} | Phân loại: ${b.type} | Tiêu đề: ${b.title}`).join('\n')}
 
 Bạn phải trả lại một JSON Object. Mỗi key là ID của khối (block ID), value là nội dung tương ứng của khối đó.
+
+QUY TẮC VIẾT NỘI DUNG (QUAN TRỌNG NHẤT):
+- Nội dung mỗi khối chính là VĂN BẢN PROMPT THẬT — viết như đang RA LỆNH TRỰC TIẾP cho AI sẽ thực thi prompt (xưng "Bạn", dùng câu mệnh lệnh "Hãy...", "Bạn là...").
+- TUYỆT ĐỐI KHÔNG viết theo kiểu mô tả/khuyên người dùng nên điền gì (SAI: "Khai báo vai trò...", "Mô tả nhiệm vụ..."; ĐÚNG: "Bạn là...", "Hãy...").
 Nội dung mỗi khối phải sát chủ đề "${topic}", súc tích và đi thẳng trọng tâm, không lan man, không lặp ý.
 Với thẻ 'thinking', 'anchor', 'self_correction', 'input_data' hãy viết nội dung đặc thù phù hợp nội dung.
 
@@ -732,21 +738,29 @@ export async function generateStructuredTemplateFromTopic(
     const systemInstruction = `Bạn là một chuyên gia Prompt Engineering đẳng cấp quốc tế.
 Nhiệm vụ của bạn là nhận vào chủ đề hoặc nhiệm vụ từ người dùng và xây dựng nên một cấu trúc Prompt chuyên nghiệp và tinh vi bậc nhất theo cấu trúc nhiều mảnh ghép (Multi-block Framework).
 
+QUY TẮC VIẾT NỘI DUNG (QUAN TRỌNG NHẤT):
+- Nội dung mỗi khối chính là VĂN BẢN PROMPT THẬT — hãy viết như đang RA LỆNH TRỰC TIẾP cho AI sẽ thực thi prompt.
+- Xưng hô với AI đó bằng "Bạn" và dùng câu mệnh lệnh ("Hãy...", "Bạn là...", "Tuyệt đối không...").
+- TUYỆT ĐỐI KHÔNG viết theo kiểu mô tả/hướng dẫn người dùng nên điền gì.
+  · SAI (mô tả cho người dùng): "Khai báo vai trò chuyên gia phù hợp", "Mô tả chi tiết nhiệm vụ cần làm", "Cung cấp ngữ cảnh liên quan".
+  · ĐÚNG (ra lệnh cho AI): "Bạn là một chuyên gia... với nhiều năm kinh nghiệm...", "Hãy viết một kịch bản...", "Bối cảnh: người dùng đang...".
+- Điền nội dung cụ thể, sát chủ đề "${topic}", sẵn sàng dùng ngay — không để lại chỗ trống hay câu hướng dẫn chung chung.
+
 Bạn phải chọn phân loại phù hợp nhất cho prompt này trong số: 'Học sinh/Sinh viên', 'Người đi làm', 'Sáng tạo nội dung', 'Phát triển cá nhân', 'Lập trình viên'.
 Tạo từ 3 đến 5 tags liên quan. Khối blocks gồm: role, task, context, constraints, format.
 
-Hãy trả về CHỈ MỘT JSON OBJECT khớp với định dạng cấu trúc sau:
+Hãy trả về CHỈ MỘT JSON OBJECT khớp với định dạng cấu trúc sau (phần "content" bên dưới chỉ minh hoạ VĂN PHONG ra lệnh trực tiếp cho AI — hãy thay bằng nội dung thật, sát chủ đề):
 {
   "title": "Tên Prompt ngắn gọn, thu hút (ví dụ: Chuyên gia sáng tạo kịch bản TikTok ngắn)",
   "description": "Mô tả mục đích và cách sử dụng cấu trúc prompt này",
   "category": "Chọn 1 trong các mục trên",
   "tags": ["tag1", "tag2", "tag3"],
   "blocks": [
-    { "type": "role", "title": "🎭 Vai trò (Role)", "content": "Khai báo vai trò chuyên gia có năng lực vượt trội phù hợp..." },
-    { "type": "task", "title": "🎯 Nhiệm vụ (Task)", "content": "Mô tả chi tiết và chính xác hành động cần thực hiện đối với chủ đề..." },
-    { "type": "context", "title": "📌 Bối cảnh (Context)", "content": "Cung cấp ngữ cảnh, tình huống thực tế hoặc thông tin nền..." },
-    { "type": "constraints", "title": "⚠️ Ràng buộc (Constraints)", "content": "Quy định quy chuẩn chặt chẽ, các điều cấm kỵ (ví dụ: Không dùng từ sáo rỗng, không dông dài)..." },
-    { "type": "format", "title": "📋 Định dạng cấu trúc (Format)", "content": "Cấu trúc hiển thị kết quả đầu ra rõ ràng, sắp xếp khoa học..." }
+    { "type": "role", "title": "🎭 Vai trò (Role)", "content": "Bạn là một [chuyên gia...] với chuyên môn sâu về [lĩnh vực] và khả năng [năng lực nổi bật]." },
+    { "type": "task", "title": "🎯 Nhiệm vụ (Task)", "content": "Hãy [hành động cụ thể] cho [đối tượng], bao gồm [các bước/thành phần bắt buộc có]." },
+    { "type": "context", "title": "📌 Bối cảnh (Context)", "content": "Bối cảnh: [tình huống thực tế, đối tượng người đọc, thông tin nền mà bạn cần biết để thực hiện]." },
+    { "type": "constraints", "title": "⚠️ Ràng buộc (Constraints)", "content": "Tuyệt đối không dùng từ sáo rỗng, không dông dài. Chỉ tập trung vào [phạm vi]. Giữ giọng văn [phong cách]." },
+    { "type": "format", "title": "📋 Định dạng cấu trúc (Format)", "content": "Trình bày kết quả theo [cấu trúc: các mục/bảng/gạch đầu dòng], mở đầu bằng [...], kết thúc bằng [...]." }
   ]
 }
 
@@ -792,13 +806,21 @@ export async function enhancePromptWithAi(
 
     const systemInstruction = `Bạn là một chuyên gia Prompt Engineer đẳng cấp quốc tế.
 Nhiệm vụ của bạn là nhận một prompt cơ bản từ người dùng và nâng cấp nó thành một prompt chuyên nghiệp, rõ ràng, và mang lại hiệu quả cao nhất.
+
+QUY TẮC VIẾT NỘI DUNG (QUAN TRỌNG NHẤT):
+- Nội dung "content" mỗi khối chính là VĂN BẢN PROMPT THẬT — viết như đang RA LỆNH TRỰC TIẾP cho AI sẽ thực thi prompt (xưng "Bạn", dùng câu mệnh lệnh "Hãy...", "Bạn là...").
+- TUYỆT ĐỐI KHÔNG viết theo kiểu mô tả/khuyên người dùng nên điền gì.
+  · SAI: "Khai báo vai trò chuyên gia phù hợp", "Bạn nên mô tả rõ nhiệm vụ".
+  · ĐÚNG: "Bạn là một chuyên gia...", "Hãy thực hiện...".
+- Bám sát ý định gốc trong prompt của người dùng, làm rõ và cụ thể hoá — không bịa thêm mục tiêu mới.
+
 BẠN PHẢI TRẢ VỀ ĐÚNG MỘT CHUỖI JSON THEO CẤU TRÚC BÊN DƯỚI, KHÔNG ĐƯỢC CHỨA TEXT NÀO KHÁC BÊN NGOÀI JSON (Không dùng markdown \`\`\`json):
 {
   "blocks": [
     {
-      "type": "role", 
+      "type": "role",
       "title": "Vai trò (Role)",
-      "content": "Nội dung..."
+      "content": "Bạn là một chuyên gia..."
     }
   ]
 }
@@ -839,10 +861,18 @@ export async function enhancePromptWithAiStream(
 
   const systemInstruction = `Bạn là một chuyên gia Prompt Engineer đẳng cấp quốc tế.
 Nhiệm vụ của bạn là nhận một prompt cơ bản từ người dùng và nâng cấp nó thành một prompt chuyên nghiệp, rõ ràng, và mang lại hiệu quả cao nhất.
+
+QUY TẮC VIẾT NỘI DUNG (QUAN TRỌNG NHẤT):
+- Nội dung "content" mỗi khối chính là VĂN BẢN PROMPT THẬT — viết như đang RA LỆNH TRỰC TIẾP cho AI sẽ thực thi prompt (xưng "Bạn", dùng câu mệnh lệnh "Hãy...", "Bạn là...").
+- TUYỆT ĐỐI KHÔNG viết theo kiểu mô tả/khuyên người dùng nên điền gì.
+  · SAI: "Khai báo vai trò chuyên gia phù hợp", "Bạn nên mô tả rõ nhiệm vụ".
+  · ĐÚNG: "Bạn là một chuyên gia...", "Hãy thực hiện...".
+- Bám sát ý định gốc trong prompt của người dùng, làm rõ và cụ thể hoá — không bịa thêm mục tiêu mới.
+
 BẠN PHẢI TRẢ VỀ ĐÚNG MỘT CHUỖI JSON THEO CẤU TRÚC BÊN DƯỚI, KHÔNG ĐƯỢC CHỨA TEXT NÀO KHÁC BÊN NGOÀI JSON (không bọc trong khối mã markdown):
 {
   "blocks": [
-    { "type": "role", "title": "Vai trò (Role)", "content": "Nội dung..." }
+    { "type": "role", "title": "Vai trò (Role)", "content": "Bạn là một chuyên gia..." }
   ]
 }
 Chú ý, trường 'type' bắt buộc phải là MỘT TRONG CÁC GIÁ TRỊ SAU: 'role', 'task', 'context', 'format', 'tone', 'constraints', 'example'.
@@ -998,6 +1028,67 @@ Nếu prompt đã tốt, trả {"issues":[]}.`;
       message: String(i.message),
       suggestion: typeof i.suggestion === 'string' ? i.suggestion : '',
     } as LintIssue));
+}
+
+// ── Gia sư thích ứng (Lab · Tầng 2 #6) ──────────────────────────────────────
+// Chẩn đoán kỹ năng viết prompt từ CHÍNH prompt thật của người dùng → bài học nhắm đúng yếu.
+export interface SkillGap {
+  skill: string;
+  level: 'yếu' | 'trung bình' | 'tốt';
+  evidence: string;
+}
+export interface TutorLesson {
+  title: string;
+  why: string;
+  tip: string;
+  exercise: string;
+}
+export interface TutorDiagnosis {
+  skills: SkillGap[];
+  lessons: TutorLesson[];
+}
+
+export async function diagnosePromptSkills(prompts: string[], options?: AiGenParams): Promise<TutorDiagnosis> {
+  const model = options?.model || GEMINI_FLASH;
+  const sample = prompts
+    .filter((p) => p && p.trim())
+    .slice(0, 8)
+    .map((p, i) => `--- Prompt ${i + 1} ---\n${p.slice(0, 800)}`)
+    .join('\n\n');
+
+  const systemInstruction = `Bạn là gia sư Prompt Engineering. Dựa trên CÁC PROMPT THẬT của người dùng, chẩn đoán kỹ năng viết prompt của họ rồi soạn bài học nhắm đúng điểm yếu.
+Đánh giá các kỹ năng cốt lõi: xác định vai trò, mô tả nhiệm vụ rõ ràng, cung cấp ngữ cảnh, quy định định dạng đầu ra, dùng ví dụ/few-shot, đặt ràng buộc đo lường được.
+Với mỗi kỹ năng: mức 'yếu' | 'trung bình' | 'tốt' + BẰNG CHỨNG ngắn trích từ chính prompt của họ.
+Sau đó soạn 2–4 bài học nhắm vào điểm yếu nhất: tiêu đề, vì sao quan trọng, mẹo cụ thể, và một bài tập thực hành ngắn.
+Chỉ trả về JSON, KHÔNG markdown: {"skills":[{"skill":"...","level":"yếu|trung bình|tốt","evidence":"..."}],"lessons":[{"title":"...","why":"...","tip":"...","exercise":"..."}]}`;
+
+  const text = await geminiGenerateWithFallback({
+    model,
+    systemInstruction,
+    userContent: `Các prompt của người dùng:\n\n${sample}`,
+    temperature: TASK_DEFAULTS.evaluation.temperature,
+    json: true,
+    options,
+  });
+
+  const parsed = safeJsonParse(text);
+  const levels = ['yếu', 'trung bình', 'tốt'];
+  const skills: SkillGap[] = Array.isArray(parsed?.skills)
+    ? parsed.skills.filter((s: any) => s?.skill).map((s: any) => ({
+        skill: String(s.skill),
+        level: levels.includes(s.level) ? s.level : 'trung bình',
+        evidence: typeof s.evidence === 'string' ? s.evidence : '',
+      }))
+    : [];
+  const lessons: TutorLesson[] = Array.isArray(parsed?.lessons)
+    ? parsed.lessons.filter((l: any) => l?.title).map((l: any) => ({
+        title: String(l.title),
+        why: typeof l.why === 'string' ? l.why : '',
+        tip: typeof l.tip === 'string' ? l.tip : '',
+        exercise: typeof l.exercise === 'string' ? l.exercise : '',
+      }))
+    : [];
+  return { skills, lessons };
 }
 
 export interface CustomInstructionsParams {

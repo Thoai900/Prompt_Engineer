@@ -1,7 +1,18 @@
-import React, { useState } from 'react';
-import { Sparkles, Loader2, Plus, X, Copy, Check, AlertCircle, TrendingUp, ChevronDown } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Sparkles, Loader2, Plus, X, Copy, Check, AlertCircle, TrendingUp, ChevronDown, Briefcase, Save } from 'lucide-react';
 import { optimizePrompt, type OptimizeResult } from '../../services/aiProxy';
+import { PromptTemplate } from '../../types';
+import { promptToTemplate } from '../../utils/labUtils';
 import { toast } from '../common/Toaster';
+
+interface OptimizerPanelProps {
+  /** Prompt mồi (vd gửi sang từ Linter) — điền sẵn vào ô prompt gốc. */
+  initialPrompt?: string;
+  /** Mở prompt kết quả trong Builder. */
+  onApplyTemplate?: (t: PromptTemplate) => void;
+  /** Lưu prompt kết quả vào thư viện. */
+  onSaveTemplate?: (t: PromptTemplate) => void;
+}
 
 function scoreColor(score: number): string {
   if (score >= 80) return 'text-emerald-600 dark:text-emerald-400';
@@ -13,8 +24,13 @@ function scoreColor(score: number): string {
  * Auto-Optimizer (mũi nhọn Tầng 1): mô tả "thế nào là tốt" (tiêu chí + input thử),
  * backend tự sinh biến thể prompt → chấm điểm → tiến hoá → trả prompt tốt nhất.
  */
-export default function OptimizerPanel() {
-  const [basePrompt, setBasePrompt] = useState('');
+export default function OptimizerPanel({ initialPrompt, onApplyTemplate, onSaveTemplate }: OptimizerPanelProps) {
+  const [basePrompt, setBasePrompt] = useState(initialPrompt || '');
+
+  // Prompt mồi thay đổi (gửi lại từ Linter) → cập nhật ô nhập.
+  useEffect(() => {
+    if (initialPrompt) setBasePrompt(initialPrompt);
+  }, [initialPrompt]);
   const [testInput, setTestInput] = useState('');
   const [criteria, setCriteria] = useState<string[]>([]);
   const [criterionDraft, setCriterionDraft] = useState('');
@@ -157,11 +173,29 @@ export default function OptimizerPanel() {
 
           {/* Prompt tốt nhất */}
           <div className="rounded-2xl border border-line bg-panel p-5">
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-bold text-ink">Prompt tốt nhất</h3>
-              <button onClick={copyBest} className="flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-muted hover:bg-hover">
-                {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />} {copied ? 'Đã chép' : 'Sao chép'}
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button onClick={copyBest} className="flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-muted hover:bg-hover">
+                  {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />} {copied ? 'Đã chép' : 'Sao chép'}
+                </button>
+                {onApplyTemplate && (
+                  <button
+                    onClick={() => onApplyTemplate(promptToTemplate(result.bestPrompt, 'auto-optimizer'))}
+                    className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-500"
+                  >
+                    <Briefcase size={13} /> Dùng ở Builder
+                  </button>
+                )}
+                {onSaveTemplate && (
+                  <button
+                    onClick={() => onSaveTemplate(promptToTemplate(result.bestPrompt, 'auto-optimizer'))}
+                    className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500"
+                  >
+                    <Save size={13} /> Lưu vào thư viện
+                  </button>
+                )}
+              </div>
             </div>
             <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-lg bg-surface p-3 font-mono text-xs leading-relaxed text-ink">{result.bestPrompt}</pre>
           </div>

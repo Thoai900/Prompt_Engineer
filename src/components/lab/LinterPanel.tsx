@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Loader2, AlertCircle, AlertTriangle, Info, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Loader2, AlertCircle, AlertTriangle, Info, CheckCircle2, Sparkles } from 'lucide-react';
 import { lintPrompt, type LintIssue } from '../../services/aiService';
 import { toast } from '../common/Toaster';
+
+interface LinterPanelProps {
+  /** Gửi prompt hiện tại sang Auto-Optimizer (LabTab chuyển mode + mồi sẵn). */
+  onOptimize?: (prompt: string) => void;
+}
 
 const SEV_ORDER: Record<LintIssue['severity'], number> = { high: 0, medium: 1, low: 2 };
 
@@ -12,7 +17,7 @@ function sevStyle(sev: LintIssue['severity']) {
 }
 
 /** Phân tích tĩnh một prompt và chỉ ra điểm yếu trước khi chạy (như ESLint cho prompt). */
-export default function LinterPanel() {
+export default function LinterPanel({ onOptimize }: LinterPanelProps) {
   const [prompt, setPrompt] = useState('');
   const [running, setRunning] = useState(false);
   const [issues, setIssues] = useState<LintIssue[] | null>(null);
@@ -50,10 +55,22 @@ export default function LinterPanel() {
           placeholder="Dán prompt của bạn vào đây…"
           className="mb-4 w-full resize-y rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
         />
-        <button onClick={run} disabled={running} className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-500 disabled:opacity-60">
-          {running ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
-          {running ? 'Đang phân tích…' : 'Phân tích prompt'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={run} disabled={running} className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-500 disabled:opacity-60">
+            {running ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
+            {running ? 'Đang phân tích…' : 'Phân tích prompt'}
+          </button>
+          {onOptimize && (
+            <button
+              onClick={() => onOptimize(prompt.trim())}
+              disabled={running || !prompt.trim()}
+              title="Gửi prompt này sang Auto-Optimizer để tự tiến hoá"
+              className="flex items-center gap-2 rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-muted hover:bg-hover disabled:opacity-50"
+            >
+              <Sparkles size={15} /> Tối ưu bằng Auto-Optimizer
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (

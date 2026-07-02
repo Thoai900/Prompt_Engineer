@@ -1,20 +1,43 @@
-import React, { useState } from 'react';
-import { FlaskConical, Scale, Sparkles, Activity, ShieldCheck, Fingerprint } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { FlaskConical, Scale, Sparkles, Activity, ShieldCheck, Fingerprint, GraduationCap, AppWindow } from 'lucide-react';
+import { PromptTemplate } from '../../types';
 import BakeoffPanel from '../lab/BakeoffPanel';
 import OptimizerPanel from '../lab/OptimizerPanel';
 import HealthPanel from '../lab/HealthPanel';
 import LinterPanel from '../lab/LinterPanel';
 import TastePanel from '../lab/TastePanel';
+import TutorPanel from '../lab/TutorPanel';
+import AppPanel from '../lab/AppPanel';
 
-type LabMode = 'bakeoff' | 'optimizer' | 'health' | 'linter' | 'taste';
+type LabMode = 'bakeoff' | 'optimizer' | 'health' | 'linter' | 'taste' | 'tutor' | 'app';
 
 /**
  * Lab (Tầng 1 · trung tâm chất lượng prompt). Chứa các công cụ "đo & cải thiện":
  * - Bake-off: so tài cùng prompt trên nhiều model (chất lượng × chi phí × tốc độ).
  * - Auto-Optimizer: tự tiến hoá prompt theo tiêu chí (chạy ở backend).
  */
-export default function LabTab() {
+interface LabTabProps {
+  libraryTemplates?: PromptTemplate[];
+  /** Mở một template trong Builder (App.tsx điều hướng). */
+  onApplyTemplate?: (t: PromptTemplate) => void;
+  /** Lưu một template vào thư viện (App.tsx xử lý Firestore). */
+  onSaveTemplate?: (t: PromptTemplate) => void;
+}
+
+export default function LabTab({ libraryTemplates = [], onApplyTemplate, onSaveTemplate }: LabTabProps) {
   const [mode, setMode] = useState<LabMode>('bakeoff');
+  // Prompt gửi từ Linter sang Auto-Optimizer (mồi sẵn ô prompt gốc).
+  const [optimizerSeed, setOptimizerSeed] = useState('');
+
+  const sendToOptimizer = (prompt: string) => {
+    setOptimizerSeed(prompt);
+    setMode('optimizer');
+  };
+
+  // Link chia sẻ app (?app=<id>) → mở thẳng chế độ Chain → App.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('app')) setMode('app');
+  }, []);
 
   return (
     <div className="flex-1 overflow-y-auto bg-surface p-6">
@@ -60,13 +83,27 @@ export default function LabTab() {
           >
             <Fingerprint size={15} /> Cá nhân hoá
           </button>
+          <button
+            onClick={() => setMode('tutor')}
+            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${mode === 'tutor' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
+          >
+            <GraduationCap size={15} /> Gia sư
+          </button>
+          <button
+            onClick={() => setMode('app')}
+            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${mode === 'app' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
+          >
+            <AppWindow size={15} /> Chain → App
+          </button>
         </div>
 
         {mode === 'bakeoff' && <BakeoffPanel />}
-        {mode === 'optimizer' && <OptimizerPanel />}
+        {mode === 'optimizer' && <OptimizerPanel initialPrompt={optimizerSeed} onApplyTemplate={onApplyTemplate} onSaveTemplate={onSaveTemplate} />}
         {mode === 'health' && <HealthPanel />}
-        {mode === 'linter' && <LinterPanel />}
+        {mode === 'linter' && <LinterPanel onOptimize={sendToOptimizer} />}
         {mode === 'taste' && <TastePanel />}
+        {mode === 'tutor' && <TutorPanel libraryTemplates={libraryTemplates} />}
+        {mode === 'app' && <AppPanel />}
       </div>
     </div>
   );

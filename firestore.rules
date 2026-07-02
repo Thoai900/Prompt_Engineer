@@ -102,6 +102,16 @@ service cloud.firestore {
         && data.createdAt is timestamp;
     }
 
+    function isValidSharedApp(data) {
+      return data.keys().hasAll(['userId', 'name', 'nodes', 'createdAt', 'updatedAt'])
+        && data.userId is string && data.userId.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && ( !('description' in data.keys()) || (data.description is string && data.description.size() <= 2000) )
+        && data.nodes is list && data.nodes.size() <= 100
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     function isValidHealthSuite(data) {
       return data.keys().hasAll(['userId', 'name', 'createdAt', 'updatedAt'])
         && data.userId is string && data.userId.size() <= 128
@@ -252,6 +262,27 @@ service cloud.firestore {
         && incoming().userId == request.auth.uid
         && incoming().createdAt == request.time;
       allow delete: if isValidId(bookmarkId) && isOwner(existing().userId);
+    }
+
+    // App chia sẻ: bất kỳ ai có link đều ĐỌC được (để chạy client bằng auth của họ);
+    // chỉ chủ sở hữu mới xuất bản/sửa/xoá.
+    match /sharedApps/{appId} {
+      allow get: if isValidId(appId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isValidId(appId)
+        && isSignedIn()
+        && isValidSharedApp(incoming())
+        && incoming().userId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(appId)
+        && isSignedIn()
+        && isOwner(existing().userId)
+        && isValidSharedApp(incoming())
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+      allow delete: if isValidId(appId) && isOwner(existing().userId);
     }
 
     match /healthSuites/{suiteId} {

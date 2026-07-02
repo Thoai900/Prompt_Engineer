@@ -599,7 +599,7 @@ export default function App() {
             <ProjectChainTab theme={theme} user={user} customTemplates={visibleTemplates} onSaveTemplate={handleSaveTemplate} />
           </TabPanel>
           <TabPanel isActive={activeTab === 'lab'} mounted={visitedTabs.has('lab')}>
-            <LabTab />
+            <LabTab libraryTemplates={visibleTemplates} onApplyTemplate={handleSelectTemplate} onSaveTemplate={handleSaveTemplate} />
           </TabPanel>
         </Suspense>
       </main>
