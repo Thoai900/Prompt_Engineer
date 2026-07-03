@@ -40,19 +40,66 @@ function getJwks() {
   return _jwks;
 }
 
-async function verifyFirebaseToken(authHeader?: string): Promise<boolean> {
-  if (!authHeader) return false;
+/** Xác thực Firebase ID token; trả uid (payload.sub) nếu hợp lệ, null nếu không. */
+async function verifyFirebaseToken(authHeader?: string): Promise<string | null> {
+  if (!authHeader) return null;
   const m = authHeader.match(/^Bearer (.+)$/);
-  if (!m) return false;
+  if (!m) return null;
   try {
-    await jwtVerify(m[1], getJwks(), {
+    const { payload } = await jwtVerify(m[1], getJwks(), {
       issuer: `https://securetoken.google.com/${PROJECT_ID}`,
       audience: PROJECT_ID,
     });
-    return true;
+    return typeof payload.sub === 'string' && payload.sub ? payload.sub : null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+// ── Gia cố (C1) — trùng lặp CÓ CHỦ ĐÍCH với api/ai.ts (function tự chứa, xem đầu file).
+// Optimize đắt hơn nhiều lần /api/ai (mỗi run = hàng chục lời gọi model) → ngưỡng thấp hơn.
+const RL_PER_MIN = Math.max(1, Number(process.env.OPTIMIZE_RATE_LIMIT_PER_MIN) || 3);
+const RL_PER_HOUR = Math.max(1, Number(process.env.OPTIMIZE_RATE_LIMIT_PER_HOUR) || 20);
+const MAX_PROMPT_CHARS = 50_000;
+const MAX_CRITERIA = 10;
+const rlBuckets = new Map<string, number[]>();
+
+function checkRateLimit(uid: string): { ok: boolean; retryAfterSec: number } {
+  const now = Date.now();
+  if (rlBuckets.size > 5000) rlBuckets.clear();
+  const stamps = (rlBuckets.get(uid) || []).filter((t) => now - t < 3_600_000);
+  const lastMinute = stamps.filter((t) => now - t < 60_000);
+  if (lastMinute.length >= RL_PER_MIN) {
+    return { ok: false, retryAfterSec: Math.ceil((60_000 - (now - lastMinute[0])) / 1000) };
+  }
+  if (stamps.length >= RL_PER_HOUR) {
+    return { ok: false, retryAfterSec: Math.ceil((3_600_000 - (now - stamps[0])) / 1000) };
+  }
+  stamps.push(now);
+  rlBuckets.set(uid, stamps);
+  return { ok: true, retryAfterSec: 0 };
+}
+
+function resolveCorsOrigin(req: any): string | null {
+  const origin: string | undefined = req.headers?.origin;
+  if (!origin) return null;
+  try {
+    const o = new URL(origin);
+    if (req.headers?.host && o.host === req.headers.host) return origin;
+    if (o.hostname === 'localhost' || o.hostname === '127.0.0.1') return origin;
+  } catch { return null; }
+  const extra = (process.env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
+  return extra.includes(origin) ? origin : null;
+}
+
+function applyCors(req: any, res: any): void {
+  const origin = resolveCorsOrigin(req);
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
 }
 
 async function callGeminiModel(model: string, system: string, user: string, temperature: number, json: boolean): Promise<string> {
@@ -172,15 +219,20 @@ async function evaluate(prompt: string, testInput: string, criteria: string[]): 
 }
 
 export default async function handler(req: any, res: any) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  applyCors(req, res);
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Chỉ hỗ trợ POST.' }); return; }
 
   try {
-    const ok = await verifyFirebaseToken(req.headers.authorization);
-    if (!ok) { res.status(401).json({ error: 'Chưa xác thực: vui lòng đăng nhập để dùng AI.' }); return; }
+    const uid = await verifyFirebaseToken(req.headers.authorization);
+    if (!uid) { res.status(401).json({ error: 'Chưa xác thực: vui lòng đăng nhập để dùng AI.' }); return; }
+
+    const rl = checkRateLimit(uid);
+    if (!rl.ok) {
+      res.setHeader('Retry-After', String(rl.retryAfterSec));
+      res.status(429).json({ error: `Auto-Optimizer đang bị giới hạn tần suất — thử lại sau ~${rl.retryAfterSec}s.` });
+      return;
+    }
 
     let body: OptimizeBody = req.body;
     if (typeof body === 'string') {
@@ -189,9 +241,17 @@ export default async function handler(req: any, res: any) {
     if (!body || !body.basePrompt || !body.basePrompt.trim()) {
       res.status(400).json({ error: 'Thiếu basePrompt.' }); return;
     }
+    if (body.basePrompt.length > MAX_PROMPT_CHARS) {
+      res.status(400).json({ error: `Prompt quá dài (> ${MAX_PROMPT_CHARS} ký tự).` }); return;
+    }
+    if (body.testInput && body.testInput.length > MAX_PROMPT_CHARS) {
+      res.status(400).json({ error: `Input thử quá dài (> ${MAX_PROMPT_CHARS} ký tự).` }); return;
+    }
 
     const basePrompt = body.basePrompt.trim();
-    const criteria = Array.isArray(body.criteria) ? body.criteria.filter((c) => typeof c === 'string' && c.trim()) : [];
+    const criteria = (Array.isArray(body.criteria) ? body.criteria.filter((c) => typeof c === 'string' && c.trim()) : [])
+      .slice(0, MAX_CRITERIA)
+      .map((c) => c.slice(0, 500));
     const testInput = (body.testInput && body.testInput.trim()) || TRIGGER;
     const populationN = clampInt(body.populationN, 3, 2, 5);
     const rounds = clampInt(body.rounds, 2, 1, 3);

@@ -98,6 +98,15 @@ export interface AiConfig {
   topP?: number;
 }
 
+// H2: một snapshot phiên bản của template (chụp blocks TRƯỚC mỗi lần ghi đè).
+export interface TemplateVersion {
+  id: string;
+  at: string;           // ISO date string — thời điểm snapshot
+  version?: string;     // nhãn version của template tại thời điểm đó (vd 'v1.0')
+  blocks: PromptBlock[];
+  note?: string;        // ghi chú ngắn (tuỳ chọn)
+}
+
 export interface PromptTemplate {
   id: string;
   title: string;
@@ -157,6 +166,9 @@ export interface PromptTemplate {
 
   // 8. Phân vùng theo Workspace (cá nhân). Rỗng = thuộc workspace mặc định.
   workspaceId?: string;
+
+  // 9. H2: lịch sử phiên bản (mới nhất ở đầu, giữ tối đa ~10 bản).
+  versions?: TemplateVersion[];
 }
 
 export type EvolutionType = 
@@ -257,6 +269,7 @@ export interface HealthSuite {
   model: string;        // model mặc định của suite
   testCases: HealthTest[];
   runs: HealthRun[];    // mới nhất ở đầu, giữ tối đa ~10 lần
+  cronEnabled?: boolean; // H3: bật chạy tự động hằng ngày (Vercel Cron, cần đăng nhập)
   userId?: string;
   workspaceId?: string;
   createdAt?: string;

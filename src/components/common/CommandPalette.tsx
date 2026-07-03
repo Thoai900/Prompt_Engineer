@@ -8,8 +8,9 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { Search, Moon, Sun, CornerDownLeft } from 'lucide-react';
+import { Search, Moon, Sun, CornerDownLeft, Library, Workflow, ScrollText, Wrench } from 'lucide-react';
 import { TabType } from '../../types';
+import { SearchEntry, SearchKind, KIND_LABELS, filterSearchEntries } from '../../utils/globalSearch';
 
 interface CommandItem {
   tab: TabType;
@@ -22,16 +23,29 @@ interface CommandPaletteProps {
   onNavigate: (tab: TabType) => void;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
+  /** Nguồn dữ liệu tìm kiếm toàn cục — gọi mỗi lần mở palette để lấy bản mới nhất. */
+  getSearchEntries?: () => SearchEntry[];
+  /** Xử lý khi chọn một kết quả tìm kiếm (template mở Builder, còn lại điều hướng tab). */
+  onSelectEntry?: (entry: SearchEntry) => void;
 }
+
+const KIND_ICONS: Record<SearchKind, React.ReactNode> = {
+  template: <Library size={16} />,
+  project: <Workflow size={16} />,
+  rule: <ScrollText size={16} />,
+  skill: <Wrench size={16} />,
+};
 
 type Action =
   | { kind: 'nav'; id: string; label: string; icon: React.ReactNode; tab: TabType }
-  | { kind: 'theme'; id: string; label: string; icon: React.ReactNode };
+  | { kind: 'theme'; id: string; label: string; icon: React.ReactNode }
+  | { kind: 'entry'; id: string; label: string; icon: React.ReactNode; entry: SearchEntry };
 
-export default function CommandPalette({ items, onNavigate, theme, onToggleTheme }: CommandPaletteProps) {
+export default function CommandPalette({ items, onNavigate, theme, onToggleTheme, getSearchEntries, onSelectEntry }: CommandPaletteProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [queryText, setQueryText] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
+  const [searchEntries, setSearchEntries] = useState<SearchEntry[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Phím tắt toàn cục mở/đóng palette.
@@ -48,14 +62,16 @@ export default function CommandPalette({ items, onNavigate, theme, onToggleTheme
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Reset truy vấn + focus input mỗi lần mở.
+  // Reset truy vấn + focus input + làm mới nguồn tìm kiếm mỗi lần mở.
   useEffect(() => {
     if (isOpen) {
       setQueryText('');
       setActiveIndex(0);
+      setSearchEntries(getSearchEntries ? getSearchEntries() : []);
       // focus sau khi modal gắn vào DOM
       requestAnimationFrame(() => inputRef.current?.focus());
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const actions = useMemo<Action[]>(() => {
@@ -74,8 +90,13 @@ export default function CommandPalette({ items, onNavigate, theme, onToggleTheme
   const filtered = useMemo(() => {
     const q = queryText.trim().toLowerCase();
     if (!q) return actions;
-    return actions.filter((a) => a.label.toLowerCase().includes(q));
-  }, [actions, queryText]);
+    const baseMatches = actions.filter((a) => a.label.toLowerCase().includes(q));
+    // Tìm kiếm toàn cục: template / chain / rule / skill khớp truy vấn (bỏ dấu).
+    const entryMatches: Action[] = filterSearchEntries(searchEntries, q).map((entry) => ({
+      kind: 'entry', id: entry.id, label: entry.title, icon: KIND_ICONS[entry.kind], entry,
+    }));
+    return [...baseMatches, ...entryMatches];
+  }, [actions, queryText, searchEntries]);
 
   // Giữ activeIndex hợp lệ khi danh sách lọc thay đổi.
   useEffect(() => {
@@ -86,6 +107,10 @@ export default function CommandPalette({ items, onNavigate, theme, onToggleTheme
     if (!action) return;
     if (action.kind === 'nav') onNavigate(action.tab);
     else if (action.kind === 'theme') onToggleTheme();
+    else if (action.kind === 'entry') {
+      if (onSelectEntry) onSelectEntry(action.entry);
+      else onNavigate(action.entry.tab);
+    }
     setIsOpen(false);
   };
 
@@ -127,7 +152,7 @@ export default function CommandPalette({ items, onNavigate, theme, onToggleTheme
                 ref={inputRef}
                 value={queryText}
                 onChange={(e) => setQueryText(e.target.value)}
-                placeholder="Đi tới… (gõ tên tab hoặc hành động)"
+                placeholder="Tìm tab, template, chain, rule, skill…"
                 className="w-full bg-transparent text-sm text-ink placeholder:text-slate-400 focus:outline-none"
               />
               <kbd className="hidden shrink-0 rounded-md border border-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 dark:border-slate-700 sm:block">ESC</kbd>
@@ -150,7 +175,12 @@ export default function CommandPalette({ items, onNavigate, theme, onToggleTheme
                       }`}
                     >
                       <span className="shrink-0 opacity-80">{action.icon}</span>
-                      <span className="flex-1 font-medium">{action.label}</span>
+                      <span className="flex-1 truncate font-medium">{action.label}</span>
+                      {action.kind === 'entry' && (
+                        <span className="shrink-0 rounded-md border border-slate-200 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-slate-400 dark:border-slate-700">
+                          {KIND_LABELS[action.entry.kind]}
+                        </span>
+                      )}
                       {idx === activeIndex && <CornerDownLeft size={14} className="shrink-0 opacity-60" />}
                     </button>
                   </li>

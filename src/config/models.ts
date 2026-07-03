@@ -22,6 +22,12 @@ export const GEMINI_PRO = 'gemini-2.5-pro';
 // --- Groq (Llama) ---
 export const GROQ_LLAMA_8B = 'llama-3.1-8b-instant';
 
+// --- Anthropic (Claude, qua proxy — M1) ---
+/** Model Opus mạnh nhất — mặc định khi chọn Claude. */
+export const CLAUDE_OPUS = 'claude-opus-4-8';
+/** Model Claude nhanh, rẻ — cho tác vụ đơn giản/so tài tiết kiệm. */
+export const CLAUDE_HAIKU = 'claude-haiku-4-5';
+
 // --- OpenAI-compatible (qua proxy) ---
 export const GPT_MINI = 'gpt-4o-mini';
 
@@ -50,6 +56,8 @@ export const ALL_MODEL_OPTIONS: readonly ModelOption[] = [
   { value: GEMINI_FLASH,  label: 'Gemini 2.5 Flash (Nhanh)',       provider: 'gemini', requiresUserKey: false },
   { value: GEMINI_PRO,    label: 'Gemini 2.5 Pro (Pro)',           provider: 'gemini', requiresUserKey: false },
   { value: GROQ_LLAMA_8B, label: 'Llama 3.1 8B (Groq · siêu nhanh)', provider: 'groq',  requiresUserKey: false },
+  { value: CLAUDE_OPUS,   label: 'Claude Opus 4.8 (Anthropic)',    provider: 'anthropic', requiresUserKey: false },
+  { value: CLAUDE_HAIKU,  label: 'Claude Haiku 4.5 (Anthropic · nhanh)', provider: 'anthropic', requiresUserKey: false },
   { value: GPT_MINI,      label: 'GPT-4o mini (OpenAI)',           provider: 'openai', requiresUserKey: true  },
 ];
 
@@ -98,6 +106,8 @@ export const MODEL_COSTS: Record<string, ModelCost> = {
   [GEMINI_FLASH]:        { inputPer1M: 0.075, outputPer1M: 0.30 },
   [GEMINI_PRO]:          { inputPer1M: 1.25, outputPer1M: 10.0 },
   [GROQ_LLAMA_8B]:       { inputPer1M: 0.05, outputPer1M: 0.08 },
+  [CLAUDE_OPUS]:         { inputPer1M: 5.00, outputPer1M: 25.0 },
+  [CLAUDE_HAIKU]:        { inputPer1M: 1.00, outputPer1M: 5.0 },
   [GPT_MINI]:            { inputPer1M: 0.15, outputPer1M: 0.60 },
 };
 

@@ -72,9 +72,26 @@ service cloud.firestore {
         && ( !('authorId' in data.keys()) || (data.authorId is string && data.authorId.size() <= 128) )
         && ( !('authorName' in data.keys()) || (data.authorName is string && data.authorName.size() <= 100) )
         && ( !('workspaceId' in data.keys()) || (data.workspaceId is string && data.workspaceId.size() <= 128) )
+        && ( !('versions' in data.keys()) || (data.versions is list && data.versions.size() <= 20) )
         && data.blocks is list && data.blocks.size() <= 50
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
+    }
+
+    // H1: một lượt "bump" metrics hợp lệ — chỉ các counter xã hội, mỗi counter đổi
+    // tối đa ±1/lần, usageCount không được giảm, averageRating không đổi qua đường này.
+    function counterDelta(newM, oldM, key) {
+      return newM.get(key, 0) - oldM.get(key, 0);
+    }
+
+    function isMetricsBump(newM, oldM) {
+      return newM is map
+        && newM.keys().hasOnly(['usageCount', 'upvotes', 'likes', 'saves', 'averageRating'])
+        && counterDelta(newM, oldM, 'usageCount') >= 0 && counterDelta(newM, oldM, 'usageCount') <= 1
+        && counterDelta(newM, oldM, 'upvotes') >= -1 && counterDelta(newM, oldM, 'upvotes') <= 1
+        && counterDelta(newM, oldM, 'likes') >= -1 && counterDelta(newM, oldM, 'likes') <= 1
+        && counterDelta(newM, oldM, 'saves') >= -1 && counterDelta(newM, oldM, 'saves') <= 1
+        && counterDelta(newM, oldM, 'averageRating') == 0;
     }
 
     function isValidWorkspace(data) {
@@ -152,8 +169,17 @@ service cloud.firestore {
         && incoming().createdAt == existing().createdAt
         && incoming().updatedAt == request.time
         // Action: Edit Template
-        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'category', 'blocks', 'variables', 'version', 'parentPromptId', 'changelog', 'tags', 'language', 'difficultyLevel', 'useCase', 'aiConfig', 'metrics', 'fewShots', 'isPublic', 'status', 'authorId', 'authorName', 'workspaceId', 'updatedAt']);
-        
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'category', 'blocks', 'variables', 'version', 'parentPromptId', 'changelog', 'tags', 'language', 'difficultyLevel', 'useCase', 'aiConfig', 'metrics', 'fewShots', 'isPublic', 'status', 'authorId', 'authorName', 'workspaceId', 'versions', 'updatedAt']);
+
+      // H1: bất kỳ user đã đăng nhập nào cũng được "bump" metrics của template PUBLIC
+      // (mở vào Builder +1 usageCount, thích/bỏ thích ±1 likes). Chỉ field metrics
+      // được đổi và delta bị chặn trong isMetricsBump.
+      allow update: if isValidId(templateId)
+        && isSignedIn()
+        && existing().get('isPublic', false) == true
+        && incoming().diff(existing()).affectedKeys().hasOnly(['metrics'])
+        && isMetricsBump(incoming().metrics, existing().get('metrics', {}));
+
       allow delete: if isValidId(templateId) && isOwner(existing().userId);
     }
 

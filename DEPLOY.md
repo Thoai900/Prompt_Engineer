@@ -30,9 +30,21 @@ Bắt buộc, Environment = **Production**:
 - `GEMINI_API_KEY` — key Gemini mặc định của server.
 - `GROQ_API_KEY` — key **Groq** (hãng inference, *không phải* "Grok"). Lấy free tại https://console.groq.com
 
+Tuỳ chọn:
+- `ANTHROPIC_API_KEY` — bật 2 model Claude (Opus 4.8, Haiku 4.5) trong dropdown/Bake-off. Thiếu key thì chọn Claude sẽ báo lỗi rõ ràng, các provider khác không ảnh hưởng. Lấy tại https://platform.claude.com
+
 > ⚠️ **Env var chỉ áp cho deployment build SAU khi bạn thêm nó.** Set key xong PHẢI **redeploy** thì function mới đọc được.
 
-Tùy chọn (khi frontend khác origin với backend — vd host frontend nơi khác): `VITE_AI_PROXY_URL`, `VITE_AI_OPTIMIZE_URL` trỏ tới URL đầy đủ của function trên Vercel. All-Vercel thì bỏ qua.
+Tùy chọn (khi frontend khác origin với backend — vd host frontend nơi khác): `VITE_AI_PROXY_URL`, `VITE_AI_OPTIMIZE_URL` trỏ tới URL đầy đủ của function trên Vercel. All-Vercel thì bỏ qua. Nếu frontend khác origin, thêm origin đó vào `ALLOWED_ORIGINS` (phân tách dấu phẩy) — proxy chỉ cho phép origin cùng host, localhost và danh sách này.
+
+Tùy chọn (giới hạn tần suất — có default hợp lý): `AI_RATE_LIMIT_PER_MIN` (20), `AI_RATE_LIMIT_PER_HOUR` (240), `OPTIMIZE_RATE_LIMIT_PER_MIN` (3), `OPTIMIZE_RATE_LIMIT_PER_HOUR` (20).
+
+### Cron health-check tự động (`/api/health-cron`, chạy 21:00 UTC hằng ngày)
+Bắt buộc nếu muốn bật (thiếu thì endpoint từ chối chạy, KHÔNG ảnh hưởng phần khác):
+- `CRON_SECRET` — chuỗi ngẫu nhiên bất kỳ; Vercel Cron tự đính kèm khi gọi endpoint.
+- `FIREBASE_SERVICE_ACCOUNT` — TOÀN BỘ file JSON service account (Firebase Console → Project Settings → Service accounts → Generate new private key), dán nguyên văn làm giá trị env. Cần role mặc định (Editor) hoặc tối thiểu **Cloud Datastore User**.
+
+Sau khi set 2 env này + redeploy, các Health suite bật "Tự động chạy hằng ngày" (Lab → Prompt Health) sẽ được server tự chạy và ghi kết quả vào lịch sử run.
 
 ---
 

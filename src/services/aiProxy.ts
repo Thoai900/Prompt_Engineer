@@ -1,4 +1,6 @@
 import { auth } from '../firebase';
+import { recordUsage } from '../utils/usageStats';
+import { CLAUDE_OPUS, GEMINI_FLASH_LATEST, GROQ_LLAMA_8B } from '../config/models';
 
 // Client gọi backend proxy (Firebase Cloud Function `aiProxy`) để dùng key MẶC ĐỊNH
 // của ứng dụng mà KHÔNG lộ key ra bundle trình duyệt. Bắt buộc đăng nhập: mỗi request
@@ -11,7 +13,7 @@ export interface ProxyMessage {
 }
 
 export interface ProxyRequest {
-  provider: 'gemini' | 'groq';
+  provider: 'gemini' | 'groq' | 'anthropic';
   model?: string;
   system?: string;
   user?: string;
@@ -33,6 +35,19 @@ const PROXY_URL: string = env.VITE_AI_PROXY_URL || '/api/ai';
 const OPTIMIZE_URL: string =
   env.VITE_AI_OPTIMIZE_URL ||
   (env.VITE_AI_PROXY_URL ? String(env.VITE_AI_PROXY_URL).replace(/\/ai$/, '/optimize') : '/api/optimize');
+
+// Thống kê usage (M2): model hiệu dụng + tổng ký tự đầu vào của một request proxy.
+function effectiveModel(req: ProxyRequest): string {
+  if (req.model) return req.model;
+  if (req.provider === 'groq') return GROQ_LLAMA_8B;
+  if (req.provider === 'anthropic') return CLAUDE_OPUS;
+  return GEMINI_FLASH_LATEST;
+}
+
+function requestInputChars(req: ProxyRequest): number {
+  return (req.system?.length || 0) + (req.user?.length || 0)
+    + (req.messages || []).reduce((s, m) => s + (m.content?.length || 0), 0);
+}
 
 async function authHeaders(): Promise<Record<string, string>> {
   const user = auth.currentUser;
@@ -59,7 +74,9 @@ export async function proxyGenerate(req: ProxyRequest): Promise<string> {
 
   const data = await response.json();
   if (data?.error) throw new Error(data.error);
-  return data?.text || (req.json ? '{}' : '');
+  const text = data?.text || (req.json ? '{}' : '');
+  recordUsage(effectiveModel(req), requestInputChars(req), text.length);
+  return text;
 }
 
 // ── Auto-Optimizer (Lab · Tầng 1) ───────────────────────────────────────────
@@ -122,24 +139,33 @@ export async function proxyGenerateStream(
 
   const decoder = new TextDecoder('utf-8');
   let buffer = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-    for (const line of lines) {
-      const cleaned = line.trim();
-      if (!cleaned || cleaned === 'data: [DONE]') continue;
-      if (!cleaned.startsWith('data: ')) continue;
-      let json: any;
-      try {
-        json = JSON.parse(cleaned.substring(6));
-      } catch {
-        continue; // bỏ qua dòng SSE lẻ không parse được
+  let outChars = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        const cleaned = line.trim();
+        if (!cleaned || cleaned === 'data: [DONE]') continue;
+        if (!cleaned.startsWith('data: ')) continue;
+        let json: any;
+        try {
+          json = JSON.parse(cleaned.substring(6));
+        } catch {
+          continue; // bỏ qua dòng SSE lẻ không parse được
+        }
+        if (json.error) throw new Error(json.error);
+        if (json.text) {
+          outChars += json.text.length;
+          onChunk(json.text);
+        }
       }
-      if (json.error) throw new Error(json.error);
-      if (json.text) onChunk(json.text);
     }
+  } finally {
+    // Ghi cả khi stream đứt giữa chừng — phần đã phát vẫn là usage thật.
+    recordUsage(effectiveModel(req), requestInputChars(req), outChars);
   }
 }

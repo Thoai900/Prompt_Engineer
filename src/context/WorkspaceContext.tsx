@@ -56,6 +56,74 @@ function toIso(value: any): string {
   return new Date().toISOString();
 }
 
+// ── C2: Di trú dữ liệu tạo lúc ẨN DANH vào tài khoản khi đăng nhập ───────────
+// Workspace/persona tạo trước khi đăng nhập nằm trong localStorage và trước đây
+// bị "bỏ rơi" sau khi đăng nhập (context chỉ đổi nguồn đọc sang Firestore).
+// Hàm này upsert chúng lên Firestore; chỉ khi TẤT CẢ thành công mới chuyển key
+// localStorage thành bản backup (idempotent: doc đã tồn tại thì bỏ qua, lỗi giữa
+// chừng thì giữ nguyên local để lần đăng nhập sau thử tiếp).
+async function migrateLocalToAccount(
+  user: User,
+  existingWs: Workspace[],
+  existingPs: AiPersona[],
+): Promise<{ ws: Workspace[]; ps: AiPersona[] }> {
+  const localWs = readLS<Workspace[]>(LS.workspaces, []);
+  const localPs = readLS<AiPersona[]>(LS.personas, []);
+  const migrated = { ws: [] as Workspace[], ps: [] as AiPersona[] };
+  if (localWs.length === 0 && localPs.length === 0) return migrated;
+
+  const wsIds = new Set(existingWs.map((w) => w.id));
+  const psIds = new Set(existingPs.map((p) => p.id));
+  let failed = false;
+
+  for (const w of localWs) {
+    const name = (w?.name || '').trim();
+    if (!w?.id || !name || wsIds.has(w.id)) continue;
+    try {
+      const data: any = { userId: user.uid, name, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+      if (typeof w.color === 'string' && w.color) data.color = w.color;
+      await setDoc(doc(db, 'workspaces', w.id), data);
+      migrated.ws.push({ ...w, name, userId: user.uid });
+    } catch (err) {
+      failed = true;
+      try { handleFirestoreError(err, 'create', `workspaces/${w.id}`); } catch (e: any) { console.error('Di trú workspace lỗi:', e.message); }
+    }
+  }
+
+  for (const p of localPs) {
+    const name = (p?.name || '').trim();
+    if (!p?.id || !name || psIds.has(p.id)) continue;
+    try {
+      await setDoc(doc(db, 'personas', p.id), {
+        userId: user.uid,
+        name,
+        systemInstructions: p.systemInstructions || '',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      migrated.ps.push({ ...p, name, userId: user.uid });
+    } catch (err) {
+      failed = true;
+      try { handleFirestoreError(err, 'create', `personas/${p.id}`); } catch (e: any) { console.error('Di trú persona lỗi:', e.message); }
+    }
+  }
+
+  if (!failed) {
+    // Giữ bản backup thay vì xoá hẳn — dữ liệu người dùng không bao giờ mất trắng.
+    try {
+      if (localWs.length) {
+        localStorage.setItem(`${LS.workspaces}_migrated_backup`, JSON.stringify(localWs));
+        localStorage.removeItem(LS.workspaces);
+      }
+      if (localPs.length) {
+        localStorage.setItem(`${LS.personas}_migrated_backup`, JSON.stringify(localPs));
+        localStorage.removeItem(LS.personas);
+      }
+    } catch { /* quota — bỏ qua */ }
+  }
+  return migrated;
+}
+
 interface WorkspaceContextType {
   user: User | null;
   authReady: boolean;
@@ -148,6 +216,19 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         ps.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
         setCustomWorkspaces(ws);
         setCustomPersonas(ps);
+
+        // C2: kéo dữ liệu tạo lúc ẩn danh vào tài khoản (không chặn UI nếu rỗng).
+        const migrated = await migrateLocalToAccount(user, ws, ps);
+        if (cancelled) return;
+        if (migrated.ws.length || migrated.ps.length) {
+          if (migrated.ws.length) setCustomWorkspaces((prev) => [...prev, ...migrated.ws]);
+          if (migrated.ps.length) setCustomPersonas((prev) => [...prev, ...migrated.ps]);
+          const parts = [
+            migrated.ws.length ? `${migrated.ws.length} workspace` : '',
+            migrated.ps.length ? `${migrated.ps.length} persona` : '',
+          ].filter(Boolean).join(' & ');
+          toast.success(`Đã chuyển ${parts} tạo lúc chưa đăng nhập vào tài khoản của bạn.`);
+        }
       } catch (err) {
         try { handleFirestoreError(err, 'list'); } catch (e: any) { console.error('Load workspaces/personas failed:', e.message); }
       }

@@ -11,6 +11,8 @@ import AddToProjectModal from '../modals/AddToProjectModal';
 import { useBookmarks } from '../../hooks/useBookmarks';
 import { toast } from '../common/Toaster';
 import { seededCount, buildShareUrl, parseSharedTemplateId } from '../../utils/libraryUtils';
+import { loadLikedIds } from '../../utils/likedTemplates';
+import { toggleTemplateLike } from '../../services/metricsService';
 
 const MOCK_RESULTS: PromptTemplate[] = [
   {
@@ -143,6 +145,19 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], use
 
   const { savedIds, isSaved, toggleSave } = useBookmarks(user);
 
+  // H1: like THẬT — trạng thái "tôi đã thích" giữ cục bộ, tổng đếm nằm ở Firestore.
+  const [likedIds, setLikedIds] = useState<Set<string>>(() => loadLikedIds());
+  const handleToggleLike = async (template: PromptTemplate): Promise<boolean | null> => {
+    if (!user) {
+      toast.info('Đăng nhập để thích template.');
+      return null;
+    }
+    const result = await toggleTemplateLike(template.id);
+    if (result !== null) setLikedIds(loadLikedIds());
+    else toast.error('Không cập nhật được lượt thích — thử lại sau.');
+    return result;
+  };
+
   const handleShare = (template: PromptTemplate) => {
     navigator.clipboard.writeText(buildShareUrl(window.location.origin, window.location.pathname, template.id))
       .then(() => toast.success('Đã sao chép liên kết chia sẻ.'))
@@ -173,18 +188,14 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], use
     createdAt: t.createdAt || new Date().toISOString()
   })), [customTemplates]);
 
-  // Số liệu mẫu cho template chuẩn (demo) — ổn định theo id, KHÔNG random mỗi render.
+  // H1: metrics THẬT — template built-in (demo) không còn số liệu seeded giả;
+  // hiển thị đúng giá trị thực (mặc định 0). Ngày tạo giữ seeded chỉ để sort ổn định.
   const enrichedTemplates = useMemo(() => TEMPLATES.map((t, i) => ({
     ...t,
     authorName: ['Alex Nguyen', 'Sarah Ha', 'Prompt Wizard', 'Tech Guru'][i % 4],
     authorAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${i}`,
     isVerified: i % 3 === 0,
-    metrics: {
-      usageCount: seededCount(t.id + 'u', 5000),
-      upvotes: seededCount(t.id + 'v', 1000),
-      likes: seededCount(t.id + 'l', 800),
-      saves: seededCount(t.id + 's', 300)
-    },
+    metrics: t.metrics || { usageCount: 0, upvotes: 0, likes: 0, saves: 0 },
     createdAt: t.createdAt || new Date(Date.now() - seededCount(t.id, 10000000) * 1000).toISOString()
   })), []);
 
@@ -474,6 +485,8 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], use
           isSaved={isSaved(selectedPrompt.id)}
           onToggleSave={toggleSave}
           onShare={handleShare}
+          liked={likedIds.has(selectedPrompt.id)}
+          onToggleLike={selectedPrompt.isPublic ? () => handleToggleLike(selectedPrompt) : undefined}
         />
       )}
 

@@ -9,6 +9,8 @@ import {
 import { User } from 'firebase/auth';
 import { optimizeCustomInstructions } from '../../services/aiService';
 import { useWorkspace } from '../../context/WorkspaceContext';
+import BackupPanel from '../common/BackupPanel';
+import UsageStatsPanel from '../common/UsageStatsPanel';
 
 // Interfaces
 interface CustomProfile {
@@ -465,6 +467,10 @@ ${outputFormat || '(Chưa điền)'}`;
                 className="w-full min-h-[90px] px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-orange-500 text-xs text-slate-600 font-medium leading-relaxed shadow-sm bg-white"
               />
             </div>
+
+            {/* Công cụ dữ liệu: sao lưu/khôi phục (H6) + thống kê sử dụng AI (M2) */}
+            <BackupPanel />
+            <UsageStatsPanel />
           </div>
 
           {/* Action Row Editor */}

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { PromptTemplate } from '../../types';
-import { X, Heart, Bookmark, Copy, Users, CheckCircle, MessageSquare, Share2, Star, Workflow } from 'lucide-react';
+import { PromptTemplate, TemplateVersion } from '../../types';
+import { X, Heart, Bookmark, Copy, Users, CheckCircle, MessageSquare, Share2, Star, Workflow, History, RotateCcw, ChevronDown, ChevronRight } from 'lucide-react';
 import InteractiveFewShotPanel from '../common/InteractiveFewShotPanel';
+import { computeUnifiedDiff } from '../../utils/chainUtils';
+import { blocksToText } from '../../utils/templateVersionUtils';
 
 interface PromptDetailModalProps {
   template: PromptTemplate;
@@ -11,23 +13,43 @@ interface PromptDetailModalProps {
   isSaved?: boolean;
   onToggleSave?: (template: PromptTemplate) => void;
   onShare?: (template: PromptTemplate) => void;
+  /** H1: trạng thái "tôi đã thích" hiện tại (đọc từ localStorage ở tab cha). */
+  liked?: boolean;
+  /** H1: persist like lên Firestore. Không truyền = template không like được (demo/built-in). */
+  onToggleLike?: () => Promise<boolean | null>;
 }
 
-export default function PromptDetailModal({ template, onClose, onRemix, onAddToProject, isSaved = false, onToggleSave, onShare }: PromptDetailModalProps) {
-  const [isLiked, setIsLiked] = useState(false);
+export default function PromptDetailModal({ template, onClose, onRemix, onAddToProject, isSaved = false, onToggleSave, onShare, liked = false, onToggleLike }: PromptDetailModalProps) {
+  const [isLiked, setIsLiked] = useState(liked);
+  // Trạng thái ban đầu để hiệu chỉnh số đếm hiển thị (metrics là snapshot lúc mở modal).
+  const [initialLiked] = useState(liked);
   const [newComment, setNewComment] = useState('');
 
   const metrics = template.metrics || { usageCount: 0, upvotes: 0, likes: 0, saves: 0 };
+  const likeCount = Math.max(0, (metrics.likes || metrics.upvotes || 0) + (isLiked === initialLiked ? 0 : isLiked ? 1 : -1));
   const avatarName = template.authorName || 'Anonymous';
   const getAvatarFallback = (name: string) => name ? name.charAt(0).toUpperCase() : '?';
 
-  const [comments, setComments] = useState([
-    { id: 1, user: 'Hoàng Trần', text: 'Prompt này rất hiệu quả cho việc viết blog SEO! Cảm ơn tác giả.', time: '2 giờ trước', likes: 12 },
-    { id: 2, user: 'Linh Nguyễn', text: 'Mình đã remix thêm phần tone of voice, kết quả xuất ra tự nhiên hơn hẳn.', time: '5 giờ trước', likes: 8 },
-    { id: 3, user: 'Bảo Anh', text: 'Chuẩn! Framework này giải quyết được vấn đề lan man của AI.', time: '1 ngày trước', likes: 4 },
-  ]);
+  // H1: bỏ bình luận mock — thảo luận bắt đầu rỗng, chỉ lưu trong phiên xem.
+  const [comments, setComments] = useState<{ id: number; user: string; text: string; time: string; likes: number }[]>([]);
 
-  const handleLike = () => setIsLiked(!isLiked);
+  // H2: phiên bản đang mở diff (so với bản hiện tại).
+  const [expandedVersionId, setExpandedVersionId] = useState<string | null>(null);
+  const versions = template.versions || [];
+
+  // Khôi phục: mở Builder với blocks của bản cũ (giữ nguyên id/metadata để lưu đè).
+  const handleRestoreVersion = (v: TemplateVersion) => {
+    onRemix({ ...template, blocks: (v.blocks || []).map((b) => ({ ...b })) });
+  };
+
+  const handleLike = async () => {
+    if (!onToggleLike) {
+      setIsLiked((v) => !v); // template demo: chỉ đổi giao diện cục bộ
+      return;
+    }
+    const result = await onToggleLike();
+    if (result !== null) setIsLiked(result);
+  };
   const handleSave = () => onToggleSave?.(template);
 
   const handleAddComment = () => {
@@ -126,6 +148,66 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
                  </div>
               </div>
             </div>
+            {/* H2: Lịch sử phiên bản — diff so với bản hiện tại + khôi phục. */}
+            {versions.length > 0 && (
+              <div className="mt-6 border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
+                <div className="px-4 py-3 border-b border-slate-200 bg-white flex items-center gap-2">
+                  <History className="w-4 h-4 text-indigo-500" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Lịch sử phiên bản ({versions.length})</h4>
+                </div>
+                <div className="p-3 flex flex-col gap-2">
+                  {versions.map((v) => {
+                    const isOpen = expandedVersionId === v.id;
+                    return (
+                      <div key={v.id} className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="flex items-center justify-between gap-2 p-2.5">
+                          <button
+                            onClick={() => setExpandedVersionId(isOpen ? null : v.id)}
+                            className="flex flex-1 items-center gap-2 text-left cursor-pointer"
+                            title="Xem khác biệt so với bản hiện tại"
+                          >
+                            {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold text-slate-700">
+                                {v.version ? `${v.version} · ` : ''}{new Date(v.at).toLocaleString('vi-VN')}
+                              </span>
+                              <span className="text-[10px] text-slate-400">{(v.blocks || []).length} khối{v.note ? ` · ${v.note}` : ''}</span>
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => handleRestoreVersion(v)}
+                            className="flex shrink-0 items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10px] font-bold text-amber-700 transition-colors hover:bg-amber-100 cursor-pointer"
+                            title="Mở bản này trong Builder — bấm Lưu Template để chốt khôi phục"
+                          >
+                            <RotateCcw className="w-3 h-3" /> Khôi phục
+                          </button>
+                        </div>
+                        {isOpen && (
+                          <div className="max-h-56 overflow-y-auto border-t border-slate-100 bg-slate-950 p-3 font-mono text-[10px] leading-relaxed">
+                            {computeUnifiedDiff(blocksToText(v.blocks), blocksToText(template.blocks)).map((line, idx) => (
+                              <div
+                                key={idx}
+                                className={
+                                  line.type === 'added' ? 'text-emerald-400 whitespace-pre-wrap' :
+                                  line.type === 'removed' ? 'text-rose-400 whitespace-pre-wrap line-through/50' :
+                                  'text-slate-500 whitespace-pre-wrap'
+                                }
+                              >
+                                {line.type === 'added' ? '+ ' : line.type === 'removed' ? '− ' : '  '}{line.text}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <p className="text-[10px] text-slate-400 font-medium px-1">
+                    Diff hiển thị: <span className="text-rose-500">− bản cũ</span> → <span className="text-emerald-600">+ bản hiện tại</span>. "Khôi phục" mở bản cũ trong Builder; bấm Lưu Template để chốt.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <InteractiveFewShotPanel
               template={template}
               onRemixWithFewShots={(fewShotTemplate) => onRemix(fewShotTemplate)}
@@ -142,7 +224,7 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
                      <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
                    </div>
                    <span className={`text-[10px] font-bold ${isLiked ? 'text-rose-600' : 'text-slate-500'}`}>
-                     {(metrics.likes || metrics.upvotes || 0) + (isLiked ? 1 : 0)}
+                     {likeCount}
                    </span>
                  </button>
                  <button onClick={handleSave} className={`flex flex-col items-center gap-1 group`}>
@@ -172,22 +254,28 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
                </button>
             </div>
 
-            {/* Assessment / Rating */}
+            {/* Assessment / Rating — H1: hiển thị số THẬT, chưa có thì nói thẳng. */}
             <div className="mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-1 mb-1">
-                  <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                  <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                  <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                  <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                  <Star className="w-4 h-4 text-slate-200" />
-                  <span className="text-sm font-bold text-slate-700 ml-1">4.2</span>
+              {metrics.averageRating ? (
+                <div>
+                  <div className="flex items-center gap-1 mb-1">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Star key={i} className={`w-4 h-4 ${i <= Math.round(metrics.averageRating || 0) ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}`} />
+                    ))}
+                    <span className="text-sm font-bold text-slate-700 ml-1">{(metrics.averageRating || 0).toFixed(1)}</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-medium">Điểm đánh giá trung bình</span>
                 </div>
-                <span className="text-[10px] text-slate-400 font-medium">Từ 128 đánh giá</span>
-              </div>
-              <button className="text-xs font-bold text-indigo-600 hover:text-indigo-700 px-3 py-1.5 bg-indigo-50 rounded-lg transition-colors">
-                Đánh giá
-              </button>
+              ) : (
+                <div>
+                  <div className="flex items-center gap-1 mb-1">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Star key={i} className="w-4 h-4 text-slate-200" />
+                    ))}
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-medium">Chưa có đánh giá</span>
+                </div>
+              )}
             </div>
 
             {/* Comments Section */}

@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { proxyGenerate, proxyGenerateStream } from "./aiProxy";
 import { GEMINI_FLASH, GEMINI_FLASH_LATEST, GEMINI_PRO, GROQ_LLAMA_8B, GPT_MINI, TASK_DEFAULTS, type ModelProvider } from "../config/models";
+import { recordUsage } from "../utils/usageStats";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Quản lý API key:
@@ -100,7 +101,9 @@ async function callGroqChat(
   }
 
   const data = await response.json();
-  return data?.choices?.[0]?.message?.content || '';
+  const text = data?.choices?.[0]?.message?.content || '';
+  recordUsage(opts.model || GROQ_LLAMA_8B, systemInstruction.length + userContent.length, text.length);
+  return text;
 }
 
 // Bản streaming cho các tác vụ sinh nội dung khối theo luồng (SSE tương thích OpenAI).
@@ -147,25 +150,33 @@ async function callGroqChatStream(
 
   const decoder = new TextDecoder('utf-8');
   let buffer = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-    for (const line of lines) {
-      const cleaned = line.trim();
-      if (!cleaned || cleaned === 'data: [DONE]') continue;
-      if (cleaned.startsWith('data: ')) {
-        try {
-          const json = JSON.parse(cleaned.substring(6));
-          const text = json.choices?.[0]?.delta?.content || '';
-          if (text) onChunk(text);
-        } catch {
-          /* bỏ qua dòng SSE lẻ không parse được */
+  let outChars = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        const cleaned = line.trim();
+        if (!cleaned || cleaned === 'data: [DONE]') continue;
+        if (cleaned.startsWith('data: ')) {
+          try {
+            const json = JSON.parse(cleaned.substring(6));
+            const text = json.choices?.[0]?.delta?.content || '';
+            if (text) {
+              outChars += text.length;
+              onChunk(text);
+            }
+          } catch {
+            /* bỏ qua dòng SSE lẻ không parse được */
+          }
         }
       }
     }
+  } finally {
+    recordUsage(opts.model || GROQ_LLAMA_8B, systemInstruction.length + userContent.length, outChars);
   }
 }
 
@@ -242,7 +253,9 @@ async function geminiGenerate(params: GeminiCallParams): Promise<string> {
         ...(json ? { responseMimeType: 'application/json' } : {}),
       },
     });
-    return response.text || (json ? '{}' : '');
+    const text = response.text || (json ? '{}' : '');
+    recordUsage(model, systemInstruction.length + userContent.length, text.length);
+    return text;
   }
   return await proxyGenerate({
     provider: 'gemini',
@@ -276,8 +289,16 @@ async function geminiStream(
         ...(maxOutputTokens ? { maxOutputTokens } : {}),
       },
     });
-    for await (const chunk of stream) {
-      if (chunk.text) onChunk(chunk.text);
+    let outChars = 0;
+    try {
+      for await (const chunk of stream) {
+        if (chunk.text) {
+          outChars += chunk.text.length;
+          onChunk(chunk.text);
+        }
+      }
+    } finally {
+      recordUsage(model, systemInstruction.length + userContent.length, outChars);
     }
     return;
   }
@@ -936,6 +957,15 @@ export async function runPromptOnModel(params: {
     text = await geminiGenerate({
       model, systemInstruction, userContent, temperature, topP,
       options: { apiKey: params.apiKeys?.gemini },
+    });
+  } else if (provider === 'anthropic') {
+    // Claude (M1): luôn qua backend proxy (key server); Opus 4.8 từ chối sampling
+    // param nên KHÔNG truyền temperature/topP cho nhánh này.
+    text = await proxyGenerate({
+      provider: 'anthropic',
+      model,
+      system: systemInstruction,
+      user: userContent,
     });
   } else {
     // openai (và provider tương thích OpenAI khác): gom chunk từ stream.

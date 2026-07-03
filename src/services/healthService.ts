@@ -42,6 +42,7 @@ export async function loadHealthSuites(user: { uid: string } | null | undefined)
         model: data.model || '',
         testCases: data.testCases || [],
         runs: data.runs || [],
+        cronEnabled: data.cronEnabled === true,
         userId: data.userId,
         workspaceId: data.workspaceId,
         createdAt: toIso(data.createdAt),
@@ -73,6 +74,7 @@ export async function saveHealthSuite(user: { uid: string } | null | undefined, 
     model: suite.model,
     testCases: suite.testCases,
     runs: trimmedRuns,
+    cronEnabled: suite.cronEnabled === true, // H3: cờ cho Vercel Cron quét
     updatedAt: serverTimestamp(),
   };
   if (suite.workspaceId) base.workspaceId = suite.workspaceId;

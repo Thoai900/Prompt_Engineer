@@ -137,6 +137,20 @@ export default function HealthPanel() {
               <button onClick={() => removeSuite(active.id, active.name)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/30" title="Xoá suite" aria-label="Xoá suite"><Trash2 size={15} /></button>
             </div>
 
+            {/* H3: bật cron — Vercel Cron chạy suite này hằng ngày, kết quả tự cộng vào lịch sử run. */}
+            <label className="mb-4 flex cursor-pointer items-center gap-2 text-xs font-semibold text-muted">
+              <input
+                type="checkbox"
+                checked={active.cronEnabled === true}
+                onChange={(e) => patchActive({ cronEnabled: e.target.checked })}
+                className="h-4 w-4 accent-emerald-600"
+              />
+              <span>
+                Tự động chạy hằng ngày (server)
+                {!user && <span className="ml-1 text-[10px] text-amber-500">— cần đăng nhập &amp; bấm Lưu để suite lên cloud</span>}
+              </span>
+            </label>
+
             <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Prompt được kiểm thử</label>
             <textarea
               value={active.prompt}

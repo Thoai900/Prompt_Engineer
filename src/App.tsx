@@ -7,7 +7,7 @@ import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Brain, Briefcase, Drama, FlaskConical, GraduationCap, Home, Library, LogIn, LogOut, Loader2, Moon, Sparkles, Sun, Zap, Menu, X, ScrollText, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { collection, doc, getDocFromServer, getDocs, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
+import { collection, doc, getDocFromServer, getDocs, limit, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
 import { PromptTemplate, TabType } from './types';
 import { useWorkspace } from './context/WorkspaceContext';
 import WorkspaceSwitcher from './components/common/WorkspaceSwitcher';
@@ -33,6 +33,12 @@ import { auth, db, handleFirestoreError, loginWithGoogle, logoutUser } from './f
 import { initSuggestionSync } from './services/suggestionSync';
 import { learnFromTemplate } from './services/suggestionStore';
 import { DEFAULT_REASONING_MODEL } from './config/models';
+import { buildSearchEntries, type SearchEntry } from './utils/globalSearch';
+import { loadLocalProjects } from './services/chainAppService';
+import { bumpTemplateUsage } from './services/metricsService';
+import { blocksChanged, pushVersion, snapshotVersion } from './utils/templateVersionUtils';
+import { PRESET_RULES, PRESET_SKILLS } from './presets';
+import type { AiRule, AiSkill } from './types';
 
 // Deep-linking: đồng bộ tab hiện tại với URL hash (vd: #builder) để chia sẻ link
 // và dùng nút back/forward của trình duyệt. Không phụ thuộc thư viện router.
@@ -150,8 +156,11 @@ export default function App() {
 
     async function fetchTemplates() {
       try {
+        // C3: chặn tải KHÔNG GIỚI HẠN — cap số template public (cố tình không orderBy
+        // để khỏi cần composite index; phân trang cursor là bước nâng cấp sau).
+        const PUBLIC_TEMPLATES_LIMIT = 100;
         const queriesToRun = [
-          query(collection(db, 'templates'), where('isPublic', '==', true)),
+          query(collection(db, 'templates'), where('isPublic', '==', true), limit(PUBLIC_TEMPLATES_LIMIT)),
         ];
 
         if (user) {
@@ -183,6 +192,7 @@ export default function App() {
               aiConfig: data.aiConfig,
               authorName: data.authorName,
               workspaceId: data.workspaceId,
+              versions: data.versions,
             });
           });
         }
@@ -203,6 +213,46 @@ export default function App() {
   const handleSelectTemplate = (template: PromptTemplate) => {
     setLoadedTemplate(template);
     setActiveTab('builder');
+
+    // H1: đếm lượt dùng THẬT — chỉ với template public nằm trên Firestore
+    // (template built-in/demo không có doc để bump). Fire-and-forget + optimistic.
+    const isFirestoreTemplate = customTemplates.some((t) => t.id === template.id);
+    if (user && isFirestoreTemplate && template.isPublic) {
+      bumpTemplateUsage(template.id).then((ok) => {
+        if (!ok) return;
+        setCustomTemplates((current) => current.map((t) => t.id === template.id
+          ? { ...t, metrics: { ...(t.metrics || { usageCount: 0, upvotes: 0 }), usageCount: (t.metrics?.usageCount || 0) + 1 } }
+          : t));
+      });
+    }
+  };
+
+  // Tìm kiếm toàn cục (H4): gom template hiển thị + chain/rule/skill cục bộ.
+  // Gọi mỗi lần MỞ palette (không phải mỗi render) nên đọc localStorage tại chỗ là rẻ.
+  const getSearchEntries = (): SearchEntry[] => {
+    const readLs = <T,>(key: string): T[] => {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(key) || '[]');
+        return Array.isArray(parsed) ? (parsed as T[]) : [];
+      } catch { return []; }
+    };
+    const localRules = readLs<AiRule>('custom_rules');
+    const localSkills = readLs<AiSkill>('custom_skills');
+    const dedupe = <T extends { id: string }>(preset: T[], custom: T[]): T[] => {
+      const ids = new Set(custom.map((x) => x.id));
+      return [...custom, ...preset.filter((p) => !ids.has(p.id))];
+    };
+    return buildSearchEntries({
+      templates: visibleTemplates,
+      projects: loadLocalProjects(),
+      rules: dedupe(PRESET_RULES, localRules),
+      skills: dedupe(PRESET_SKILLS, localSkills),
+    });
+  };
+
+  const handleSelectSearchEntry = (entry: SearchEntry) => {
+    if (entry.kind === 'template' && entry.template) handleSelectTemplate(entry.template);
+    else setActiveTab(entry.tab);
   };
 
   const handleSaveTemplate = async (template: PromptTemplate) => {
@@ -216,8 +266,11 @@ export default function App() {
     // Xác định tạo mới hay cập nhật: rules giữ createdAt bất biến, nên khi
     // cập nhật ta KHÔNG được ghi đè createdAt (incoming().createdAt phải == existing().createdAt).
     let isUpdate = false;
+    let existingData: any = null;
     try {
-      isUpdate = (await getDocFromServer(templateRef)).exists();
+      const snap = await getDocFromServer(templateRef);
+      isUpdate = snap.exists();
+      if (isUpdate) existingData = snap.data();
     } catch (err) {
       try {
         handleFirestoreError(err, 'get', `templates/${template.id}`);
@@ -230,6 +283,16 @@ export default function App() {
 
     // Đóng dấu workspace: giữ workspaceId sẵn có, nếu chưa có thì gán workspace đang chọn.
     const workspaceId = template.workspaceId || activeWorkspaceId;
+
+    // H2: lịch sử phiên bản — TRƯỚC khi ghi đè bản đã có, chụp snapshot blocks CŨ
+    // đẩy vào đầu versions (bỏ qua nếu nội dung không đổi, giữ tối đa 10 bản).
+    let versions = existingData?.versions || template.versions || [];
+    if (isUpdate && existingData && blocksChanged(existingData.blocks, template.blocks)) {
+      versions = pushVersion(
+        existingData.versions,
+        snapshotVersion({ blocks: existingData.blocks || [], version: existingData.version }),
+      );
+    }
 
     const baseData = {
       userId: user.uid,
@@ -248,6 +311,7 @@ export default function App() {
       variables: template.variables || [],
       aiConfig: template.aiConfig || { recommendedModels: [DEFAULT_REASONING_MODEL], temperature: 0.7 },
       workspaceId,
+      versions,
       updatedAt: serverTimestamp(),
     };
 
@@ -262,8 +326,8 @@ export default function App() {
       // Cá nhân hoá: dạy taste model từ chính prompt người dùng lưu (sync tự ghi sau).
       learnFromTemplate(template.blocks);
 
-      // Upsert vào state cục bộ (kèm workspaceId vừa đóng dấu để lọc đúng ngay, không cần refetch).
-      const stampedTemplate = { ...template, workspaceId };
+      // Upsert vào state cục bộ (kèm workspaceId + versions vừa đóng dấu, không cần refetch).
+      const stampedTemplate = { ...template, workspaceId, versions };
       setCustomTemplates((current) => {
         const idx = current.findIndex((t) => t.id === template.id);
         if (idx === -1) return [...current, stampedTemplate];
@@ -292,6 +356,8 @@ export default function App() {
         onNavigate={setActiveTab}
         theme={theme}
         onToggleTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+        getSearchEntries={getSearchEntries}
+        onSelectEntry={handleSelectSearchEntry}
       />
       {/* Header tĩnh trên Mobile — ẩn ở trang chủ để landing page chiếm trọn màn hình */}
       {activeTab !== 'home' && (
