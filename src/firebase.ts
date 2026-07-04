@@ -1,11 +1,34 @@
 import { toast } from './components/common/Toaster';
 import { initializeApp } from 'firebase/app';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+// App Check (Phase 4 · bảo mật): chặn client giả mạo gọi Firestore bằng config app.
+// CHỈ kích hoạt khi có VITE_RECAPTCHA_SITE_KEY (đăng ký reCAPTCHA v3 + bật App Check
+// trong Firebase Console trước, để chế độ Monitor rồi mới Enforce — xem DEPLOY.md).
+// Không có env → bỏ qua hoàn toàn, app chạy như cũ.
+const recaptchaSiteKey = (import.meta as any).env?.VITE_RECAPTCHA_SITE_KEY as string | undefined;
+if (recaptchaSiteKey) {
+  try {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(recaptchaSiteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch (err) {
+    console.warn('App Check khởi tạo thất bại (bỏ qua):', err);
+  }
+}
+// M4 (PWA/offline): cache Firestore xuống IndexedDB — mở app offline vẫn đọc được
+// template/project đã tải; multi-tab để nhiều tab chia sẻ cùng cache không xung đột.
+export const db = initializeFirestore(
+  app,
+  { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) },
+  firebaseConfig.firestoreDatabaseId,
+);
 export const auth = getAuth(app);
 
 export const loginWithGoogle = async () => {

@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PromptTemplate, TemplateVersion } from '../../types';
-import { X, Heart, Bookmark, Copy, Users, CheckCircle, MessageSquare, Share2, Star, Workflow, History, RotateCcw, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, Heart, Bookmark, Copy, Users, CheckCircle, MessageSquare, Share2, Star, Workflow, History, RotateCcw, ChevronDown, ChevronRight, Flag, ShieldX } from 'lucide-react';
 import InteractiveFewShotPanel from '../common/InteractiveFewShotPanel';
 import { computeUnifiedDiff } from '../../utils/chainUtils';
 import { blocksToText } from '../../utils/templateVersionUtils';
+import { REPORT_REASONS, adminRemoveTemplate, isCurrentUserAdmin, reportTemplate } from '../../services/reportService';
+import { toast } from '../common/Toaster';
+import { confirmDialog } from '../common/ConfirmDialog';
 
 interface PromptDetailModalProps {
   template: PromptTemplate;
@@ -36,6 +39,44 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
   // H2: phiên bản đang mở diff (so với bản hiện tại).
   const [expandedVersionId, setExpandedVersionId] = useState<string | null>(null);
   const versions = template.versions || [];
+
+  // M5: báo cáo vi phạm + quyền admin (custom claim) — chỉ áp cho template public.
+  const [showReportMenu, setShowReportMenu] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    isCurrentUserAdmin().then((v) => { if (!cancelled) setIsAdmin(v); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleReport = async (reason: string) => {
+    setShowReportMenu(false);
+    const ok = await reportTemplate(template.id, reason);
+    if (ok) toast.success('Đã gửi báo cáo — cảm ơn bạn.');
+    else toast.error('Không gửi được báo cáo (cần đăng nhập).');
+  };
+
+  // a11y: đóng modal bằng phím Escape.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const handleAdminRemove = async () => {
+    const confirmed = await confirmDialog({
+      message: `GỠ template public "${template.title}" khỏi cộng đồng? Hành động admin, không hoàn tác được.`,
+      danger: true,
+      confirmText: 'Gỡ vĩnh viễn',
+    });
+    if (!confirmed) return;
+    if (await adminRemoveTemplate(template.id)) {
+      toast.success('Đã gỡ template.');
+      onClose();
+    } else {
+      toast.error('Gỡ thất bại — kiểm tra quyền admin.');
+    }
+  };
 
   // Khôi phục: mở Builder với blocks của bản cũ (giữ nguyên id/metadata để lưu đè).
   const handleRestoreVersion = (v: TemplateVersion) => {
@@ -73,10 +114,13 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-center items-end sm:items-center bg-slate-900/40 backdrop-blur-sm p-0 sm:p-6" onClick={onClose}>
-      <div 
+    <div className="fixed inset-0 z-50 flex justify-center items-end sm:items-center bg-slate-900/40 backdrop-blur-sm p-0 sm:p-6" onClick={onClose} role="presentation">
+      <div
         className="w-full sm:w-[800px] h-[90vh] sm:h-auto sm:max-h-[85vh] bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-slide-up sm:animate-fade-in"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={template.title}
       >
         {/* Header - Fixed */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0 bg-white z-10">
@@ -98,7 +142,7 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
               <span className="text-[11px] text-slate-400 font-medium">Xuất bản: {template.createdAt ? new Date(template.createdAt).toLocaleDateString() : 'Gần đây'}</span>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+          <button onClick={onClose} aria-label="Đóng chi tiết template" className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -245,13 +289,41 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
                  </div>
                </div>
                
-               <button
-                 onClick={() => onShare?.(template)}
-                 title="Chia sẻ liên kết"
-                 className="p-2.5 bg-white border border-slate-200 rounded-full text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 transition-colors shadow-sm"
-               >
-                 <Share2 className="w-5 h-5" />
-               </button>
+               <div className="flex items-center gap-2">
+                 {/* M5: báo cáo vi phạm (chỉ template public trên cộng đồng) */}
+                 {template.isPublic && (
+                   <div className="relative">
+                     <button
+                       onClick={() => setShowReportMenu((v) => !v)}
+                       title="Báo cáo vi phạm"
+                       className="p-2.5 bg-white border border-slate-200 rounded-full text-slate-400 hover:text-amber-600 hover:bg-amber-50 hover:border-amber-200 transition-colors shadow-sm"
+                     >
+                       <Flag className="w-5 h-5" />
+                     </button>
+                     {showReportMenu && (
+                       <div className="absolute right-0 top-12 z-20 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                         <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Lý do báo cáo</p>
+                         {REPORT_REASONS.map((r) => (
+                           <button
+                             key={r}
+                             onClick={() => handleReport(r)}
+                             className="block w-full rounded-lg px-2 py-1.5 text-left text-xs font-medium text-slate-600 hover:bg-amber-50 hover:text-amber-700"
+                           >
+                             {r}
+                           </button>
+                         ))}
+                       </div>
+                     )}
+                   </div>
+                 )}
+                 <button
+                   onClick={() => onShare?.(template)}
+                   title="Chia sẻ liên kết"
+                   className="p-2.5 bg-white border border-slate-200 rounded-full text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 transition-colors shadow-sm"
+                 >
+                   <Share2 className="w-5 h-5" />
+                 </button>
+               </div>
             </div>
 
             {/* Assessment / Rating — H1: hiển thị số THẬT, chưa có thì nói thẳng. */}
@@ -332,7 +404,18 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
         </div>
 
         <div className="px-6 py-4 border-t border-slate-100 bg-white shrink-0 flex justify-end gap-3 z-10 rounded-b-3xl">
-          <button 
+          {/* M5: moderation — chỉ hiện khi tài khoản có custom claim admin */}
+          {isAdmin && template.isPublic && (
+            <button
+              onClick={handleAdminRemove}
+              className="mr-auto flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors"
+              title="Gỡ template public khỏi cộng đồng (admin)"
+            >
+              <ShieldX className="w-4 h-4" />
+              Gỡ (Admin)
+            </button>
+          )}
+          <button
             onClick={onClose}
             className="px-5 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
           >

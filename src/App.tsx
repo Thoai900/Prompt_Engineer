@@ -7,7 +7,7 @@ import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Brain, Briefcase, Drama, FlaskConical, GraduationCap, Home, Library, LogIn, LogOut, Loader2, Moon, Sparkles, Sun, Zap, Menu, X, ScrollText, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { collection, doc, getDocFromServer, getDocs, limit, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
+import { collection, doc, getDocFromServer, limit, onSnapshot, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
 import { PromptTemplate, TabType } from './types';
 import { useWorkspace } from './context/WorkspaceContext';
 import WorkspaceSwitcher from './components/common/WorkspaceSwitcher';
@@ -154,60 +154,67 @@ export default function App() {
   useEffect(() => {
     if (!authReady) return;
 
-    async function fetchTemplates() {
-      try {
-        // C3: chặn tải KHÔNG GIỚI HẠN — cap số template public (cố tình không orderBy
-        // để khỏi cần composite index; phân trang cursor là bước nâng cấp sau).
-        const PUBLIC_TEMPLATES_LIMIT = 100;
-        const queriesToRun = [
-          query(collection(db, 'templates'), where('isPublic', '==', true), limit(PUBLIC_TEMPLATES_LIMIT)),
-        ];
+    // M3 (lát cắt real-time): onSnapshot thay cho getDocs một-lần — sửa/thêm template
+    // ở thiết bị khác (hoặc do cron/metrics bump) tự cập nhật UI, kèm latency
+    // compensation + offline cache (M4). C3: public vẫn cap limit(100), không orderBy
+    // để khỏi cần composite index.
+    const PUBLIC_TEMPLATES_LIMIT = 100;
 
-        if (user) {
-          queriesToRun.push(query(collection(db, 'templates'), where('userId', '==', user.uid), where('isPublic', '==', false)));
-        }
+    const toTemplate = (id: string, data: any): PromptTemplate => ({
+      id,
+      title: data.title,
+      description: data.description || '',
+      category: data.category,
+      blocks: data.blocks || [],
+      tags: data.tags || [],
+      language: data.language,
+      isPublic: data.isPublic,
+      status: data.status,
+      version: data.version,
+      metrics: data.metrics,
+      variables: data.variables,
+      aiConfig: data.aiConfig,
+      authorName: data.authorName,
+      workspaceId: data.workspaceId,
+      versions: data.versions,
+      forkedFrom: data.forkedFrom,
+    });
 
-        const templatesData: PromptTemplate[] = [];
-        const seenIds = new Set<string>();
+    // Hai listener ghi vào hai map riêng; publish gộp (doc của mình thắng bản public trùng id).
+    const publicMap = new Map<string, PromptTemplate>();
+    const ownMap = new Map<string, PromptTemplate>();
+    const publish = () => {
+      const merged = new Map(publicMap);
+      for (const [id, t] of ownMap) merged.set(id, t);
+      setCustomTemplates([...merged.values()]);
+    };
+    const onError = (err: unknown) => {
+      try { handleFirestoreError(err, 'list'); } catch (e: any) { console.error('Failed to load templates:', e.message); }
+    };
 
-        for (const templateQuery of queriesToRun) {
-          const querySnapshot = await getDocs(templateQuery);
-          querySnapshot.forEach((docSnap) => {
-            if (seenIds.has(docSnap.id)) return;
-            seenIds.add(docSnap.id);
-            const data = docSnap.data() as any;
-            templatesData.push({
-              id: docSnap.id,
-              title: data.title,
-              description: data.description || '',
-              category: data.category,
-              blocks: data.blocks || [],
-              tags: data.tags || [],
-              language: data.language,
-              isPublic: data.isPublic,
-              status: data.status,
-              version: data.version,
-              metrics: data.metrics,
-              variables: data.variables,
-              aiConfig: data.aiConfig,
-              authorName: data.authorName,
-              workspaceId: data.workspaceId,
-              versions: data.versions,
-            });
-          });
-        }
-
-        setCustomTemplates(templatesData);
-      } catch (err) {
-        try {
-          handleFirestoreError(err, 'list');
-        } catch (handlerErr: any) {
-          console.error('Failed to load templates:', handlerErr.message);
-        }
-      }
+    const unsubs: (() => void)[] = [];
+    unsubs.push(onSnapshot(
+      query(collection(db, 'templates'), where('isPublic', '==', true), limit(PUBLIC_TEMPLATES_LIMIT)),
+      (snap) => {
+        publicMap.clear();
+        snap.forEach((d) => publicMap.set(d.id, toTemplate(d.id, d.data())));
+        publish();
+      },
+      onError,
+    ));
+    if (user) {
+      unsubs.push(onSnapshot(
+        query(collection(db, 'templates'), where('userId', '==', user.uid), where('isPublic', '==', false)),
+        (snap) => {
+          ownMap.clear();
+          snap.forEach((d) => ownMap.set(d.id, toTemplate(d.id, d.data())));
+          publish();
+        },
+        onError,
+      ));
     }
 
-    fetchTemplates();
+    return () => unsubs.forEach((u) => u());
   }, [user, authReady]);
 
   const handleSelectTemplate = (template: PromptTemplate) => {
@@ -312,6 +319,8 @@ export default function App() {
       aiConfig: template.aiConfig || { recommendedModels: [DEFAULT_REASONING_MODEL], temperature: 0.7 },
       workspaceId,
       versions,
+      // Phase 4: giữ vết fork (remix từ template nào) nếu có.
+      ...(template.forkedFrom ? { forkedFrom: template.forkedFrom } : {}),
       updatedAt: serverTimestamp(),
     };
 

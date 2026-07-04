@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { proxyGenerate, proxyGenerateStream } from "./aiProxy";
 import { GEMINI_FLASH, GEMINI_FLASH_LATEST, GEMINI_PRO, GROQ_LLAMA_8B, GPT_MINI, TASK_DEFAULTS, type ModelProvider } from "../config/models";
 import { recordUsage } from "../utils/usageStats";
+import { sanitizeJsonString, extractJson, safeJsonParse } from "../utils/jsonUtils";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Quản lý API key:
@@ -362,114 +363,9 @@ async function geminiStreamWithFallback(
   }
 }
 
-export function sanitizeJsonString(str: string): string {
-  let result = '';
-  let inString = false;
-  let escaped = false;
-  
-  for (let i = 0; i < str.length; i++) {
-    const char = str[i];
-    
-    if (char === '"' && !escaped) {
-      inString = !inString;
-    }
-    
-    if (inString) {
-      if (char === '\n') {
-        result += '\\n';
-      } else if (char === '\r') {
-        result += '\\r';
-      } else if (char === '\t') {
-        result += '\\t';
-      } else {
-        result += char;
-      }
-    } else {
-      result += char;
-    }
-    
-    if (char === '\\' && !escaped) {
-      escaped = true;
-    } else {
-      escaped = false;
-    }
-  }
-  return result;
-}
-
-export function extractJson(text: string): string {
-  const firstBrace = text.indexOf('{');
-  const firstBracket = text.indexOf('[');
-  
-  if (firstBrace === -1 && firstBracket === -1) {
-    return text;
-  }
-  
-  let startIdx = -1;
-  let startChar = '';
-  let endChar = '';
-  
-  if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
-    startIdx = firstBrace;
-    startChar = '{';
-    endChar = '}';
-  } else {
-    startIdx = firstBracket;
-    startChar = '[';
-    endChar = ']';
-  }
-  
-  let count = 0;
-  let inString = false;
-  let escaped = false;
-  
-  for (let i = startIdx; i < text.length; i++) {
-    const char = text[i];
-    
-    if (char === '"' && !escaped) {
-      inString = !inString;
-    }
-    
-    if (!inString) {
-      if (char === startChar) {
-        count++;
-      } else if (char === endChar) {
-        count--;
-        if (count === 0) {
-          return text.substring(startIdx, i + 1);
-        }
-      }
-    }
-    
-    if (char === '\\' && !escaped) {
-      escaped = true;
-    } else {
-      escaped = false;
-    }
-  }
-  
-  // Fallback to last index if matching failed
-  if (startChar === '{') {
-    const lastBrace = text.lastIndexOf('}');
-    if (lastBrace > startIdx) {
-      return text.substring(startIdx, lastBrace + 1);
-    }
-  } else {
-    const lastBracket = text.lastIndexOf(']');
-    if (lastBracket > startIdx) {
-      return text.substring(startIdx, lastBracket + 1);
-    }
-  }
-  
-  return text;
-}
-
-export function safeJsonParse(text: string): any {
-  const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-  const extracted = extractJson(cleanedText);
-  const sanitized = sanitizeJsonString(extracted);
-  return JSON.parse(sanitized);
-}
+// M3: các hàm xử lý JSON thuần đã tách ra utils/jsonUtils.ts.
+// Re-export để mọi import cũ (`from './aiService'`) tiếp tục hoạt động.
+export { sanitizeJsonString, extractJson, safeJsonParse } from '../utils/jsonUtils';
 
 export type AiActionType = 'auto' | 'longer' | 'shorter' | 'professional' | 'casual' | 'fix_contradiction';
 

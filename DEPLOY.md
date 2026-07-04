@@ -32,6 +32,7 @@ Bắt buộc, Environment = **Production**:
 
 Tuỳ chọn:
 - `ANTHROPIC_API_KEY` — bật 2 model Claude (Opus 4.8, Haiku 4.5) trong dropdown/Bake-off. Thiếu key thì chọn Claude sẽ báo lỗi rõ ràng, các provider khác không ảnh hưởng. Lấy tại https://platform.claude.com
+- `VITE_RECAPTCHA_SITE_KEY` — bật **Firebase App Check** (chặn client giả mạo). Quy trình: (1) tạo site key reCAPTCHA v3, (2) Firebase Console → App Check → đăng ký app với key đó, (3) set env này + redeploy, (4) theo dõi ở chế độ **Monitor** vài ngày rồi mới bấm **Enforce** cho Firestore. Không set env = App Check tắt, app chạy như cũ.
 
 > ⚠️ **Env var chỉ áp cho deployment build SAU khi bạn thêm nó.** Set key xong PHẢI **redeploy** thì function mới đọc được.
 
@@ -59,7 +60,20 @@ npx firebase-tools deploy --only firestore:rules
 
 `.firebaserc` (project mặc định) và `firebase.json` (đường dẫn rules + database `ai-studio-...`) đã cấu hình sẵn — không cần cờ thêm.
 
-Các collection cần rules: `templates`, `projects`, `rules`, `skills`, `workspaces`, `personas`, `bookmarks`, `healthSuites`, `sharedApps`, `suggestionModels`.
+Các collection cần rules: `templates`, `projects`, `rules`, `skills`, `workspaces`, `personas`, `bookmarks`, `healthSuites`, `sharedApps`, `suggestionModels`, `reports`.
+
+### Cấp quyền admin (moderation — M5)
+Nút "Gỡ (Admin)" và việc đọc collection `reports` yêu cầu custom claim `admin: true` trên tài khoản. Đặt một lần bằng Admin SDK (chạy local với service account, hoặc Cloud Shell):
+
+```js
+// node set-admin.mjs (cần GOOGLE_APPLICATION_CREDENTIALS trỏ tới service account JSON)
+import { initializeApp, cert, applicationDefault } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+initializeApp({ credential: applicationDefault(), projectId: 'eduai-nexus' });
+const user = await getAuth().getUserByEmail('email-admin@gmail.com');
+await getAuth().setCustomUserClaims(user.uid, { admin: true });
+console.log('OK — đăng xuất/đăng nhập lại để token mới có claim.');
+```
 
 ---
 

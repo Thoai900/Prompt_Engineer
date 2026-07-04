@@ -26,6 +26,11 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // M5: admin qua Firebase custom claim (đặt bằng Admin SDK — xem DEPLOY.md).
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.get('admin', false) == true;
+    }
+
     function isValidRule(data) {
       return data.keys().hasAll(['userId', 'title', 'content', 'type', 'updatedAt'])
         && data.userId is string && data.userId.size() <= 128
@@ -73,6 +78,7 @@ service cloud.firestore {
         && ( !('authorName' in data.keys()) || (data.authorName is string && data.authorName.size() <= 100) )
         && ( !('workspaceId' in data.keys()) || (data.workspaceId is string && data.workspaceId.size() <= 128) )
         && ( !('versions' in data.keys()) || (data.versions is list && data.versions.size() <= 20) )
+        && ( !('forkedFrom' in data.keys()) || (data.forkedFrom is string && data.forkedFrom.size() <= 128) )
         && data.blocks is list && data.blocks.size() <= 50
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
@@ -169,7 +175,7 @@ service cloud.firestore {
         && incoming().createdAt == existing().createdAt
         && incoming().updatedAt == request.time
         // Action: Edit Template
-        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'category', 'blocks', 'variables', 'version', 'parentPromptId', 'changelog', 'tags', 'language', 'difficultyLevel', 'useCase', 'aiConfig', 'metrics', 'fewShots', 'isPublic', 'status', 'authorId', 'authorName', 'workspaceId', 'versions', 'updatedAt']);
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'category', 'blocks', 'variables', 'version', 'parentPromptId', 'changelog', 'tags', 'language', 'difficultyLevel', 'useCase', 'aiConfig', 'metrics', 'fewShots', 'isPublic', 'status', 'authorId', 'authorName', 'workspaceId', 'versions', 'forkedFrom', 'updatedAt']);
 
       // H1: bất kỳ user đã đăng nhập nào cũng được "bump" metrics của template PUBLIC
       // (mở vào Builder +1 usageCount, thích/bỏ thích ±1 likes). Chỉ field metrics
@@ -180,7 +186,24 @@ service cloud.firestore {
         && incoming().diff(existing()).affectedKeys().hasOnly(['metrics'])
         && isMetricsBump(incoming().metrics, existing().get('metrics', {}));
 
-      allow delete: if isValidId(templateId) && isOwner(existing().userId);
+      // M5: chủ sở hữu xoá template của mình; ADMIN được gỡ template PUBLIC (moderation).
+      allow delete: if isValidId(templateId)
+        && (isOwner(existing().userId)
+            || (isAdmin() && existing().get('isPublic', false) == true));
+    }
+
+    // M5: báo cáo template vi phạm — user đã đăng nhập tạo; chỉ admin đọc/xoá.
+    match /reports/{reportId} {
+      allow get, list: if isAdmin();
+      allow create: if isValidId(reportId)
+        && isSignedIn()
+        && incoming().keys().hasAll(['userId', 'templateId', 'reason', 'createdAt'])
+        && incoming().userId == request.auth.uid
+        && incoming().templateId is string && incoming().templateId.size() > 0 && incoming().templateId.size() <= 128
+        && incoming().reason is string && incoming().reason.size() > 0 && incoming().reason.size() <= 500
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isAdmin();
     }
 
     match /suggestionModels/{uid} {

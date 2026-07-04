@@ -1,9 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { Play, Loader2, Plus, X, Gauge, Trophy, BadgeCheck, AlertCircle, Coins } from 'lucide-react';
+import { Play, Loader2, Plus, X, Gauge, Trophy, BadgeCheck, AlertCircle, Coins, History, Download, Trash2 } from 'lucide-react';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { ALL_MODEL_OPTIONS, estimateCostUSD } from '../../config/models';
 import { runPromptOnModel, scoreOutputQuality } from '../../services/aiService';
 import { toast } from '../common/Toaster';
+import {
+  BakeoffEntry, bakeoffCsvFileName, clearBakeoffHistory, entryToCsv, loadBakeoffHistory, pushBakeoffEntry,
+} from '../../utils/bakeoffHistory';
 
 type RunState = 'running' | 'scoring' | 'done' | 'error';
 
@@ -44,6 +47,8 @@ export default function BakeoffPanel() {
   );
   const [results, setResults] = useState<Record<string, ModelResult>>({});
   const [running, setRunning] = useState(false);
+  // Phase 4: lịch sử các lần so tài (localStorage, mới nhất trước, cap 20).
+  const [history, setHistory] = useState<BakeoffEntry[]>(() => loadBakeoffHistory());
 
   const hasOpenAiKey = !!openaiApiKey;
 
@@ -90,6 +95,9 @@ export default function BakeoffPanel() {
       openai: openaiApiKey || undefined,
     };
 
+    // Gom kết quả cục bộ song song với state để lưu lịch sử sau khi xong.
+    const finalResults: Record<string, ModelResult> = {};
+
     await Promise.allSettled(models.map(async (m) => {
       try {
         const { text, latencyMs } = await runPromptOnModel({
@@ -99,13 +107,38 @@ export default function BakeoffPanel() {
         setResults((prev) => ({ ...prev, [m.value]: { ...prev[m.value], state: 'scoring', text, latencyMs, costUSD } }));
 
         const q = await scoreOutputQuality(text, criteria);
+        finalResults[m.value] = { state: 'done', text, latencyMs, costUSD, score: q.score, feedback: q.feedback };
         setResults((prev) => ({ ...prev, [m.value]: { ...prev[m.value], state: 'done', score: q.score, feedback: q.feedback } }));
       } catch (e: any) {
+        finalResults[m.value] = { state: 'error', error: e?.message || 'Lỗi không xác định' };
         setResults((prev) => ({ ...prev, [m.value]: { state: 'error', error: e?.message || 'Lỗi không xác định' } }));
       }
     }));
 
+    // Phase 4: tự lưu vào lịch sử để so sánh giữa các lần / xuất CSV.
+    setHistory(pushBakeoffEntry({
+      id: `bk_${Date.now().toString(36)}`,
+      at: new Date().toISOString(),
+      prompt: sys,
+      input: userContent,
+      criteria,
+      results: models.map((m) => {
+        const r: Partial<ModelResult> = finalResults[m.value] || {};
+        return { model: m.value, score: r.score, latencyMs: r.latencyMs, costUSD: r.costUSD, error: r.error };
+      }),
+    }));
+
     setRunning(false);
+  };
+
+  const downloadCsv = (entry: BakeoffEntry) => {
+    const blob = new Blob([entryToCsv(entry)], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = bakeoffCsvFileName(entry);
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const resultEntries = ALL_MODEL_OPTIONS.filter((m) => results[m.value]);
@@ -235,6 +268,47 @@ export default function BakeoffPanel() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Phase 4: lịch sử các lần so tài + xuất CSV */}
+      {history.length > 0 && (
+        <div className="mt-8 rounded-2xl border border-line bg-panel p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="flex items-center gap-2 text-sm font-bold text-ink">
+              <History size={15} className="text-emerald-500" /> Lịch sử so tài ({history.length})
+            </span>
+            <button
+              onClick={() => { clearBakeoffHistory(); setHistory([]); toast.success('Đã xoá lịch sử so tài.'); }}
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+            >
+              <Trash2 size={12} /> Xoá lịch sử
+            </button>
+          </div>
+          <div className="space-y-2">
+            {history.map((h) => {
+              const scored = h.results.filter((r) => typeof r.score === 'number');
+              const top = scored.length ? scored.reduce((a, b) => ((b.score ?? 0) > (a.score ?? 0) ? b : a)) : null;
+              return (
+                <div key={h.id} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3 py-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-xs font-semibold text-ink">{h.prompt.slice(0, 90) || '(prompt trống)'}</div>
+                    <div className="text-[10px] text-faint">
+                      {new Date(h.at).toLocaleString('vi-VN')} · {h.results.length} model
+                      {top && <> · tốt nhất: <span className={`font-bold ${scoreColor(top.score ?? 0)}`}>{top.model} ({top.score})</span></>}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => downloadCsv(h)}
+                    className="flex shrink-0 items-center gap-1 rounded-lg border border-line bg-panel px-2.5 py-1.5 text-[11px] font-bold text-muted hover:text-ink hover:bg-hover"
+                    title="Tải kết quả lần chạy này dạng CSV"
+                  >
+                    <Download size={12} /> CSV
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </>

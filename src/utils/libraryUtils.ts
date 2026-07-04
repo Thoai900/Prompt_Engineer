@@ -20,3 +20,31 @@ export function buildShareUrl(origin: string, pathname: string, templateId: stri
 export function parseSharedTemplateId(search: string): string | null {
   return new URLSearchParams(search).get('t');
 }
+
+// ── Fork/Remix (Phase 4) ─────────────────────────────────────────────────────
+import type { PromptTemplate } from '../types';
+
+/**
+ * Chuẩn bị template để MỞ TRONG BUILDER khi remix:
+ * - Template CỦA MÌNH → giữ nguyên (lưu là cập nhật bản gốc).
+ * - Template của người khác / built-in → BẢN FORK: id mới + `forkedFrom` trỏ về gốc,
+ *   isPublic false (nháp riêng), reset metrics/versions — lưu sẽ tạo doc MỚI,
+ *   không bao giờ đè lên template gốc.
+ */
+export function prepareRemixTemplate(template: PromptTemplate, currentUserId?: string | null): PromptTemplate {
+  const isOwn = !!currentUserId && (template as any).userId === currentUserId
+    || (!!currentUserId && template.authorId === currentUserId);
+  if (isOwn) return template;
+  return {
+    ...template,
+    id: `fork_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+    forkedFrom: template.id,
+    isPublic: false,
+    status: 'Draft',
+    authorId: undefined,
+    authorName: undefined,
+    metrics: { usageCount: 0, upvotes: 0, likes: 0, saves: 0 },
+    versions: [],
+    createdAt: undefined,
+  };
+}

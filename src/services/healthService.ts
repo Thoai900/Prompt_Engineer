@@ -29,11 +29,38 @@ export function newHealthSuite(name: string, model: string): HealthSuite {
   return { id: genId('health'), name, prompt: '', model, testCases: [], runs: [] };
 }
 
+// C2 mở rộng: kéo suite tạo lúc ẨN DANH (localStorage) lên tài khoản sau đăng nhập.
+// Idempotent: suite đã có trên cloud thì bỏ qua; TẤT CẢ thành công mới chuyển key
+// local thành bản backup (lỗi giữa chừng giữ nguyên để lần sau thử tiếp).
+async function migrateLocalSuites(user: { uid: string }, cloud: HealthSuite[]): Promise<HealthSuite[]> {
+  const local = readLocal();
+  if (local.length === 0) return [];
+  const cloudIds = new Set(cloud.map((s) => s.id));
+  const migrated: HealthSuite[] = [];
+  let failed = false;
+  for (const s of local) {
+    if (!s?.id || cloudIds.has(s.id)) continue;
+    try {
+      await saveHealthSuite(user, s);
+      migrated.push({ ...s, userId: user.uid });
+    } catch {
+      failed = true; // saveHealthSuite đã log; giữ local để retry lần sau
+    }
+  }
+  if (!failed) {
+    try {
+      localStorage.setItem(`${LS}_migrated_backup`, JSON.stringify(local));
+      localStorage.removeItem(LS);
+    } catch { /* quota — bỏ qua */ }
+  }
+  return migrated;
+}
+
 export async function loadHealthSuites(user: { uid: string } | null | undefined): Promise<HealthSuite[]> {
   if (!user) return readLocal();
   try {
     const snap = await getDocs(query(collection(db, 'healthSuites'), where('userId', '==', user.uid)));
-    return snap.docs.map((d) => {
+    const cloud = snap.docs.map((d) => {
       const data = d.data() as any;
       return {
         id: d.id,
@@ -48,7 +75,9 @@ export async function loadHealthSuites(user: { uid: string } | null | undefined)
         createdAt: toIso(data.createdAt),
         updatedAt: toIso(data.updatedAt),
       } as HealthSuite;
-    }).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+    });
+    const migrated = await migrateLocalSuites(user, cloud);
+    return [...cloud, ...migrated].sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
   } catch (err) {
     try { handleFirestoreError(err, 'list'); } catch (e: any) { console.error('Load health suites failed:', e.message); }
     return readLocal();

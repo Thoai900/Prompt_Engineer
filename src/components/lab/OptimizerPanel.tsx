@@ -41,6 +41,8 @@ export default function OptimizerPanel({ initialPrompt, onApplyTemplate, onSaveT
   const [error, setError] = useState('');
   const [result, setResult] = useState<OptimizeResult | null>(null);
   const [copied, setCopied] = useState(false);
+  // M6: dòng trạng thái tiến trình sống từ SSE (baseline → từng vòng).
+  const [progressText, setProgressText] = useState('');
 
   const addCriterion = () => {
     const c = criterionDraft.trim();
@@ -54,19 +56,31 @@ export default function OptimizerPanel({ initialPrompt, onApplyTemplate, onSaveT
     setRunning(true);
     setError('');
     setResult(null);
+    setProgressText('Đang chấm điểm prompt gốc (baseline)…');
     try {
-      const r = await optimizePrompt({
-        basePrompt: basePrompt.trim(),
-        criteria,
-        testInput: testInput.trim() || undefined,
-        populationN,
-        rounds,
-      });
+      const r = await optimizePrompt(
+        {
+          basePrompt: basePrompt.trim(),
+          criteria,
+          testInput: testInput.trim() || undefined,
+          populationN,
+          rounds,
+        },
+        (p) => {
+          if (p.type === 'baseline') {
+            setProgressText(`Baseline: ${p.score}/100 · đang sinh biến thể vòng 1/${p.rounds}…`);
+          } else if (p.type === 'round') {
+            const next = (p.round || 0) < (p.rounds || 0) ? ` · đang chạy vòng ${(p.round || 0) + 1}/${p.rounds}…` : ' · đang chốt kết quả…';
+            setProgressText(`Vòng ${p.round}/${p.rounds} xong — điểm tốt nhất ${p.bestScore}/100${next}`);
+          }
+        },
+      );
       setResult(r);
     } catch (e: any) {
       setError(e?.message || 'Tối ưu thất bại. Hãy đăng nhập và thử lại.');
     } finally {
       setRunning(false);
+      setProgressText('');
     }
   };
 
@@ -143,7 +157,12 @@ export default function OptimizerPanel({ initialPrompt, onApplyTemplate, onSaveT
           {running ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
           {running ? 'Đang tiến hoá prompt…' : 'Tối ưu prompt'}
         </button>
-        {running && <p className="mt-2 text-xs text-faint">Có thể mất 20–40 giây tuỳ số vòng/biến thể.</p>}
+        {running && (
+          <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+            <Loader2 size={12} className="animate-spin" />
+            {progressText || 'Đang khởi động…'}
+          </p>
+        )}
       </div>
 
       {error && (

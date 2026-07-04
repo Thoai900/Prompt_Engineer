@@ -32,6 +32,15 @@ export default function HealthPanel() {
       if (cancelled) return;
       setSuites(s);
       setActiveId((prev) => prev || s[0]?.id || null);
+
+      // H3 (thông báo hồi quy): suite nào lần chạy MỚI NHẤT tụt ≥10 điểm so với lần
+      // trước (kể cả run do cron chạy nền) → cảnh báo ngay khi mở panel.
+      for (const suite of s) {
+        const [latest, prev] = suite.runs || [];
+        if (latest && prev && latest.avgScore - prev.avgScore <= -10) {
+          toast.error(`⚠️ Suite "${suite.name}" tụt ${prev.avgScore - latest.avgScore} điểm (${prev.avgScore} → ${latest.avgScore}). Kiểm tra hồi quy!`);
+        }
+      }
     });
     return () => { cancelled = true; };
   }, [user]);

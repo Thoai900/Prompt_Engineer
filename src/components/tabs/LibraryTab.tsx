@@ -10,7 +10,7 @@ import ExamplePreviewModal from '../modals/ExamplePreviewModal';
 import AddToProjectModal from '../modals/AddToProjectModal';
 import { useBookmarks } from '../../hooks/useBookmarks';
 import { toast } from '../common/Toaster';
-import { seededCount, buildShareUrl, parseSharedTemplateId } from '../../utils/libraryUtils';
+import { seededCount, buildShareUrl, parseSharedTemplateId, prepareRemixTemplate } from '../../utils/libraryUtils';
 import { loadLikedIds } from '../../utils/likedTemplates';
 import { toggleTemplateLike } from '../../services/metricsService';
 
@@ -449,7 +449,8 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], use
             template={template as PromptTemplate}
             onSelect={(t) => setSelectedPrompt(t)}
             onRemix={(t) => {
-              onSelectTemplate(t);
+              // Phase 4: remix template người khác → bản fork (id mới + forkedFrom).
+              onSelectTemplate(prepareRemixTemplate(t, user?.uid));
             }}
             onPreview={(t) => setPreviewPrompt(t)}
             isSaved={isSaved(template.id)}
@@ -475,7 +476,7 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], use
           onClose={() => setSelectedPrompt(null)}
           onRemix={(t) => {
             setSelectedPrompt(null);
-            onSelectTemplate(t);
+            onSelectTemplate(prepareRemixTemplate(t, user?.uid));
           }}
           onAddToProject={(t) => {
             setSelectedPrompt(null);

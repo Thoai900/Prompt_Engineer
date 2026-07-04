@@ -169,6 +169,8 @@ interface OptimizeBody {
   testInput?: string;
   populationN?: number;
   rounds?: number;
+  /** M6: true → trả tiến trình từng vòng qua SSE thay vì im lặng tới khi xong. */
+  stream?: boolean;
 }
 
 interface Candidate { prompt: string; score: number; feedback: string; output: string; }
@@ -256,31 +258,58 @@ export default async function handler(req: any, res: any) {
     const populationN = clampInt(body.populationN, 3, 2, 5);
     const rounds = clampInt(body.rounds, 2, 1, 3);
 
-    const history: { round: number; best: Candidate; candidates: Candidate[] }[] = [];
-    const baseline = await evaluate(basePrompt, testInput, criteria);
-    let best: Candidate = baseline;
+    // M6: vòng tiến hoá có "emit" — chế độ SSE phát tiến trình sau baseline và
+    // sau MỖI vòng (UI không còn câm lặng tới 60s); chế độ cũ giữ nguyên JSON.
+    const runOptimization = async (emit?: (ev: Record<string, unknown>) => void) => {
+      const history: { round: number; best: Candidate; candidates: Candidate[] }[] = [];
+      const baseline = await evaluate(basePrompt, testInput, criteria);
+      emit?.({ type: 'baseline', score: baseline.score, rounds });
+      let best: Candidate = baseline;
 
-    for (let round = 1; round <= rounds; round++) {
-      const variants = await generateVariants(basePrompt, criteria, populationN, round === 1 ? undefined : best.prompt);
-      const evaluated = await Promise.all(variants.map((v) => evaluate(v, testInput, criteria)));
+      for (let round = 1; round <= rounds; round++) {
+        const variants = await generateVariants(basePrompt, criteria, populationN, round === 1 ? undefined : best.prompt);
+        const evaluated = await Promise.all(variants.map((v) => evaluate(v, testInput, criteria)));
 
-      const pool = [best, ...evaluated];
-      pool.sort((a, b) => b.score - a.score);
-      best = pool[0];
+        const pool = [best, ...evaluated];
+        pool.sort((a, b) => b.score - a.score);
+        best = pool[0];
 
-      history.push({ round, best, candidates: evaluated });
+        history.push({ round, best, candidates: evaluated });
+        emit?.({ type: 'round', round, rounds, bestScore: best.score, scores: evaluated.map((c) => c.score) });
+      }
+
+      return {
+        bestPrompt: best.prompt,
+        bestScore: best.score,
+        baselineScore: baseline.score,
+        improvement: best.score - baseline.score,
+        history,
+      };
+    };
+
+    if (body.stream) {
+      res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+      res.setHeader('Connection', 'keep-alive');
+      if (typeof res.flushHeaders === 'function') res.flushHeaders();
+      const send = (obj: Record<string, unknown>) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
+      try {
+        const result = await runOptimization(send);
+        send({ type: 'done', result });
+        res.write('data: [DONE]\n\n');
+      } catch (err: any) {
+        send({ error: err?.message || 'Lỗi máy chủ khi tối ưu prompt.' });
+      }
+      res.end();
+      return;
     }
 
-    res.status(200).json({
-      bestPrompt: best.prompt,
-      bestScore: best.score,
-      baselineScore: baseline.score,
-      improvement: best.score - baseline.score,
-      history,
-    });
+    res.status(200).json(await runOptimization());
   } catch (err: any) {
     if (!res.headersSent) {
       res.status(500).json({ error: err?.message || 'Lỗi máy chủ khi tối ưu prompt.' });
+    } else {
+      try { res.end(); } catch { /* đã đóng */ }
     }
   }
 }

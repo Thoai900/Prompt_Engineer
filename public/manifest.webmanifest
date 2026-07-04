@@ -1,0 +1,16 @@
+{
+  "name": "PromptBuilder — Xây dựng & tối ưu prompt AI",
+  "short_name": "PromptBuilder",
+  "description": "Xây dựng, kiểm thử và tối ưu prompt AI: Builder đa khối, Project Chain, Lab đo chất lượng, thư viện cộng đồng.",
+  "lang": "vi",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#10b981",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
