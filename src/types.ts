@@ -209,12 +209,44 @@ export interface PromptVersion {
   description: string;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Project Chain v3 — "Prompt Graph": prompt gốc là node trung tâm, các node
+// thuộc tính (vai trò, ràng buộc, ví dụ...) cắm dây vào các cổng của nó.
+// Mô hình DAG (GraphEdge) thay cho cây parentId của TreeNode (legacy v2).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Loại thuộc tính = tên cổng input trên Prompt Gốc, theo thứ tự compile. */
+export type AttrSlot = 'role' | 'context' | 'format' | 'tone' | 'constraints' | 'example' | 'fix' | 'custom';
+
+export interface GraphNode {
+  id: string;
+  kind: 'root' | 'attribute';
+  attrType: AttrSlot;          // với root: bỏ qua (giữ 'custom')
+  title: string;
+  content: string;             // văn bản thuộc tính / nội dung lõi (root)
+  variables: PromptVariable[];
+  position: { x: number; y: number };
+  enabled: boolean;            // false = mute (loại khỏi compile, dây mờ đi)
+}
+
+export interface GraphEdge {
+  id: string;
+  source: string;                   // node nguồn (cổng output)
+  target: string;                   // node đích
+  targetSlot: AttrSlot | 'append';  // cổng trên root, hoặc 'append' = cổng Ghép thêm của node thuộc tính
+}
+
 export interface PromptProject {
   id: string;
   name: string;
   description: string;
   globalEvalCriteria: string[]; // Bộ quy chuẩn đánh giá áp dụng cho toàn bộ dự án
+  /** Legacy v2 (cây parentId). Project v3 giữ [] — dữ liệu nằm ở graphNodes/edges. */
   nodes: TreeNode[];
+  /** v3: 3 = đã ở dạng Prompt Graph. Thiếu/khác 3 = legacy, sẽ được migrate khi mở. */
+  schemaVersion?: number;
+  graphNodes?: GraphNode[];
+  edges?: GraphEdge[];
   createdAt: string;
   updatedAt: string;
   userId?: string;

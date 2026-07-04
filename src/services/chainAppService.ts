@@ -2,12 +2,16 @@ import { collection, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, se
 import { db, handleFirestoreError } from '../firebase';
 import { PromptProject, TreeNode } from '../types';
 import { compileEvolutionPrompt, getRequiredInputsForNode } from '../utils/chainUtils';
+import { compileGraph, collectGraphVariables, findRootNode } from '../utils/graphCompile';
+import { isGraphProject } from '../utils/graphMigration';
 import { runPromptOnModel } from './aiService';
 import { ALL_MODEL_OPTIONS, GEMINI_FLASH } from '../config/models';
 
 // Chain → App (Lab · Tầng 3 #7): biến một Project Chain thành app chạy được — form
-// nhập biến → chạy cả chuỗi ở client → output. Chia sẻ qua `sharedApps` (public read),
+// nhập biến → chạy ở client → output. Chia sẻ qua `sharedApps` (public read),
 // người xem chạy bằng auth của CHÍNH họ (không mở endpoint AI công khai).
+// v3 (Prompt Graph): app = prompt compile DUY NHẤT + form biến (1 bước).
+// Project legacy (cây parentId) vẫn chạy đường cũ cho tới khi migrate hết.
 
 export interface ChainInputField {
   name: string;
@@ -24,6 +28,14 @@ export interface ChainStep {
 
 /** Các biến ĐẦU VÀO ngoài (không phải output tổ tiên) mà app cần người dùng nhập. */
 export function collectChainInputs(project: PromptProject): ChainInputField[] {
+  if (isGraphProject(project)) {
+    return collectGraphVariables(project).map((v) => ({
+      name: v.name,
+      description: v.description,
+      defaultValue: v.defaultValue,
+      required: v.required,
+    }));
+  }
   const seen = new Map<string, ChainInputField>();
   const allVars = project.nodes.flatMap((n) => n.variables || []);
   for (const node of project.nodes) {
@@ -64,18 +76,37 @@ function orderNodes(project: PromptProject): TreeNode[] {
   return ordered;
 }
 
-/** Chạy cả chuỗi ở client: mỗi node compile prompt (kèm output tổ tiên) → gọi AI → lưu output. */
+/** Chạy app ở client. v3: 1 bước duy nhất với prompt compile; legacy: chạy lần lượt cả cây. */
 export async function runChainApp(
   project: PromptProject,
   values: Record<string, string>,
   apiKeys?: { gemini?: string; groq?: string; openai?: string },
   onStep?: (step: ChainStep) => void,
 ): Promise<{ steps: ChainStep[]; finalOutput: string }> {
+  const model = GEMINI_FLASH;
+  const provider = ALL_MODEL_OPTIONS.find((m) => m.value === model)?.provider || 'gemini';
+
+  if (isGraphProject(project)) {
+    const { finalPrompt } = compileGraph(project, values);
+    const { text } = await runPromptOnModel({
+      model,
+      provider,
+      systemInstruction: finalPrompt,
+      userContent: 'Hãy thực hiện theo chỉ dẫn hệ thống ở trên.',
+      apiKeys,
+    });
+    const step: ChainStep = {
+      nodeId: findRootNode(project)?.id || 'root',
+      title: project.name,
+      output: text,
+    };
+    onStep?.(step);
+    return { steps: [step], finalOutput: text };
+  }
+
   // Bản sao có thể ghi: điền output ngược lại để node con tham chiếu được.
   const nodes = project.nodes.map((n) => ({ ...n }));
   const proj: PromptProject = { ...project, nodes };
-  const model = GEMINI_FLASH;
-  const provider = ALL_MODEL_OPTIONS.find((m) => m.value === model)?.provider || 'gemini';
 
   const steps: ChainStep[] = [];
   for (const node of orderNodes(proj)) {
@@ -118,6 +149,10 @@ export async function publishApp(user: { uid: string }, project: PromptProject):
     name: project.name,
     description: project.description || '',
     nodes: project.nodes,
+    // v3: snapshot cả đồ thị để app chia sẻ chạy được prompt compile.
+    schemaVersion: project.schemaVersion || null,
+    graphNodes: project.graphNodes || null,
+    edges: project.edges || null,
     updatedAt: serverTimestamp(),
   };
   const exists = (await getDoc(ref)).exists();
@@ -137,6 +172,9 @@ export async function loadSharedApp(appId: string): Promise<PromptProject | null
       name: data.name || 'App',
       description: data.description || '',
       nodes: data.nodes || [],
+      schemaVersion: data.schemaVersion || undefined,
+      graphNodes: data.graphNodes || undefined,
+      edges: data.edges || undefined,
       globalEvalCriteria: [],
       createdAt: '',
       updatedAt: '',

@@ -1,9 +1,10 @@
 import { toast } from '../common/Toaster';
 import React, { useState, useEffect } from 'react';
-import { X, FolderPlus, Database, ArrowRight, Play, CheckCircle } from 'lucide-react';
-import { TreeNode, PromptProject, PromptTemplate, PromptBlock, PromptVariable, TabType } from '../../types';
+import { X, FolderPlus, ArrowRight } from 'lucide-react';
+import { PromptProject, PromptBlock, PromptVariable, TabType } from '../../types';
 import { collection, doc, getDocs, query, where, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { addTemplateAsAttributeNode, createGraphProjectFromTemplate } from '../../utils/graphMigration';
 
 interface AddToProjectModalProps {
   isOpen: boolean;
@@ -22,8 +23,7 @@ export default function AddToProjectModal({
 }: AddToProjectModalProps) {
   const [projects, setProjects] = useState<PromptProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
-  const [selectedParentNodeId, setSelectedParentNodeId] = useState<string>('');
-  
+
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [newProjName, setNewProjName] = useState('');
   const [newProjDesc, setNewProjDesc] = useState('');
@@ -80,8 +80,6 @@ export default function AddToProjectModal({
           setProjects(merged);
           if (merged.length > 0) {
             setSelectedProjectId(merged[0].id);
-            const firstNodeId = merged[0].nodes[0]?.id || '';
-            setSelectedParentNodeId(firstNodeId);
           } else {
             setIsCreatingNew(true);
           }
@@ -90,7 +88,6 @@ export default function AddToProjectModal({
           setProjects(localProjects);
           if (localProjects.length > 0) {
             setSelectedProjectId(localProjects[0].id);
-            setSelectedParentNodeId(localProjects[0].nodes[0]?.id || '');
           } else {
             setIsCreatingNew(true);
           }
@@ -101,7 +98,6 @@ export default function AddToProjectModal({
       setProjects(localProjects);
       if (localProjects.length > 0) {
         setSelectedProjectId(localProjects[0].id);
-        setSelectedParentNodeId(localProjects[0].nodes[0]?.id || '');
       } else {
         setIsCreatingNew(true);
       }
@@ -110,79 +106,28 @@ export default function AddToProjectModal({
 
   const activeProject = projects.find(p => p.id === selectedProjectId) || null;
 
-  // Cập nhật node cha mặc định khi đổi dự án
-  useEffect(() => {
-    if (activeProject) {
-      setSelectedParentNodeId(activeProject.nodes[0]?.id || '');
-    } else {
-      setSelectedParentNodeId('');
-    }
-  }, [selectedProjectId, activeProject]);
-
   if (!isOpen || !template) return null;
 
   const handleConfirm = async () => {
     let targetProject: PromptProject;
-    let newNodes: TreeNode[] = [];
-    const newId = `node-${Date.now()}`;
 
     if (isCreatingNew) {
       if (!newProjName.trim()) {
         toast('Vui lòng điền tên dự án mới!');
         return;
       }
-      
-      const newProjId = `proj-${Date.now()}`;
-      const rootNode: TreeNode = {
-        id: newId,
-        parentId: null,
-        title: `1. ${template.title}`,
-        description: template.description || 'Node khởi đầu của chuỗi prompt.',
-        status: 'idle',
-        position: { x: 150, y: 200 },
-        blocks: template.blocks.map(b => ({ ...b })),
-        variables: template.variables ? template.variables.map(v => ({ ...v })) : []
-      };
-
-      targetProject = {
-        id: newProjId,
-        name: newProjName,
-        description: newProjDesc || 'Dự án chuỗi prompt.',
-        globalEvalCriteria: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        nodes: [rootNode]
-      };
-      
-      newNodes = [rootNode];
+      // v3: block `task` của template → nội dung lõi Prompt Gốc, block khác
+      // → node thuộc tính đã cắm dây sẵn.
+      targetProject = createGraphProjectFromTemplate(
+        newProjName,
+        newProjDesc || 'Dự án Prompt Graph.',
+        template,
+      );
     } else {
       if (!activeProject) return;
-
-      const parentNode = activeProject.nodes.find(n => n.id === selectedParentNodeId) || null;
-      const siblingCount = activeProject.nodes.filter(n => n.parentId === selectedParentNodeId).length;
-
-      // Tính vị trí node mới
-      const posX = parentNode ? parentNode.position.x + 280 : 150;
-      const posY = parentNode ? parentNode.position.y + (siblingCount * 140) : 200;
-
-      const newNode: TreeNode = {
-        id: newId,
-        parentId: selectedParentNodeId || null,
-        title: `${parentNode ? parentNode.title.split('.')[0] || 'Node' : 'Node'}.${siblingCount + 1} ${template.title}`,
-        description: template.description || 'Mô tả bước này',
-        status: 'idle',
-        position: { x: posX, y: posY },
-        blocks: template.blocks.map(b => ({ ...b })),
-        variables: template.variables ? template.variables.map(v => ({ ...v })) : []
-      };
-
-      targetProject = {
-        ...activeProject,
-        nodes: [...activeProject.nodes, newNode],
-        updatedAt: new Date().toISOString()
-      };
-      
-      newNodes = targetProject.nodes;
+      // v3: template trở thành node thuộc tính cắm sẵn vào Prompt Gốc
+      // (tự migrate nếu dự án còn ở định dạng cũ).
+      targetProject = addTemplateAsAttributeNode(activeProject, template, { connectToRoot: true });
     }
 
     // 1. Lưu LocalStorage danh sách
@@ -203,6 +148,9 @@ export default function AddToProjectModal({
           description: targetProject.description || '',
           globalEvalCriteria: targetProject.globalEvalCriteria || [],
           nodes: targetProject.nodes,
+          schemaVersion: targetProject.schemaVersion || null,
+          graphNodes: targetProject.graphNodes || null,
+          edges: targetProject.edges || null,
           createdAt: isCreatingNew ? new Date().toISOString() : targetProject.createdAt,
           updatedAt: new Date().toISOString()
         };
@@ -212,9 +160,8 @@ export default function AddToProjectModal({
       }
     }
 
-    // 3. Đánh dấu active project và selected node cho tab Project Chain đọc
-    localStorage.setItem('mentor_ai_active_project_id', targetProject.id);
-    localStorage.setItem('mentor_ai_selected_node_id', newId);
+    // 3. Đánh dấu active project cho tab Project Chain đọc khi mở
+    localStorage.setItem('active_project_id', targetProject.id);
 
     toast(`Đã thêm thành công prompt vào dự án "${targetProject.name}"!`);
     onClose();
@@ -308,21 +255,10 @@ export default function AddToProjectModal({
               </div>
 
               {activeProject && (
-                <div className="flex flex-col gap-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Chọn Node cha liên kết trực tiếp</label>
-                  <p className="text-[10px] text-slate-400 mb-1">Node mới sẽ được gắn bên phải của Node cha đã chọn.</p>
-                  <select
-                    value={selectedParentNodeId}
-                    onChange={(e) => setSelectedParentNodeId(e.target.value)}
-                    className="w-full rounded-lg border border-slate-250 bg-white px-3 py-2 text-xs focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-350 cursor-pointer"
-                  >
-                    {activeProject.nodes.map(node => (
-                      <option key={node.id} value={node.id}>
-                        {node.title} ({node.blocks.length} khối)
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <p className="text-[10px] text-slate-400 leading-relaxed">
+                  Prompt sẽ trở thành một <b>node thuộc tính</b> cắm sẵn vào Prompt Gốc của dự án.
+                  Bạn có thể đổi cổng, rút dây hoặc tắt node trên canvas sau khi thêm.
+                </p>
               )}
             </div>
           )}
