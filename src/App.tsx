@@ -4,7 +4,7 @@
  */
 
 import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { Brain, Briefcase, Drama, FlaskConical, GraduationCap, Home, Library, LogIn, LogOut, Loader2, Moon, Sparkles, Sun, Zap, Menu, X, ScrollText, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Brain, Briefcase, Drama, FlaskConical, GraduationCap, Home, Library, LogIn, LogOut, Loader2, Moon, Sparkles, Sun, Zap, Menu, X, ScrollText, Wand2, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, getDocFromServer, limit, onSnapshot, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
@@ -24,6 +24,7 @@ const UtilityBeltTab = lazy(() => import('./components/tabs/UtilityBeltTab'));
 const RulesSkillsTab = lazy(() => import('./components/tabs/RulesSkillsTab'));
 const ProjectChainTab = lazy(() => import('./components/tabs/ProjectChainTab'));
 const LabTab = lazy(() => import('./components/tabs/LabTab'));
+const StudioTab = lazy(() => import('./components/tabs/StudioTab'));
 import AuroraBackground from './components/common/AuroraBackground';
 import GrainOverlay from './components/common/GrainOverlay';
 import { Toaster, toast } from './components/common/Toaster';
@@ -42,11 +43,12 @@ import type { AiRule, AiSkill } from './types';
 
 // Deep-linking: đồng bộ tab hiện tại với URL hash (vd: #builder) để chia sẻ link
 // và dùng nút back/forward của trình duyệt. Không phụ thuộc thư viện router.
-const VALID_TABS: TabType[] = ['home', 'builder', 'projectchain', 'rulesskills', 'utilitybelt', 'library', 'enhancer', 'learn', 'lab', 'aifuture'];
+const VALID_TABS: TabType[] = ['studio', 'home', 'builder', 'projectchain', 'rulesskills', 'utilitybelt', 'library', 'enhancer', 'learn', 'lab', 'aifuture'];
 
+// Hash rỗng → Studio (màn hình chính mới); #home vẫn mở landing page cũ.
 function getTabFromHash(): TabType {
   const raw = window.location.hash.replace(/^#\/?/, '');
-  return (VALID_TABS as string[]).includes(raw) ? (raw as TabType) : 'home';
+  return (VALID_TABS as string[]).includes(raw) ? (raw as TabType) : 'studio';
 }
 
 export default function App() {
@@ -77,10 +79,10 @@ export default function App() {
     setVisitedTabs((prev) => (prev.has(activeTab) ? prev : new Set(prev).add(activeTab)));
   }, [activeTab]);
 
-  // Ghi tab hiện tại lên URL hash khi đổi tab (không tạo thêm entry rác cho 'home' lúc mới vào).
+  // Ghi tab hiện tại lên URL hash khi đổi tab (không tạo thêm entry rác cho 'studio' lúc mới vào).
   useEffect(() => {
-    const target = activeTab === 'home' ? '#' : `#${activeTab}`;
-    if (window.location.hash !== target && !(activeTab === 'home' && window.location.hash === '')) {
+    const target = activeTab === 'studio' ? '#' : `#${activeTab}`;
+    if (window.location.hash !== target && !(activeTab === 'studio' && window.location.hash === '')) {
       window.history.pushState(null, '', target);
     }
   }, [activeTab]);
@@ -115,6 +117,7 @@ export default function App() {
   );
 
   const navigationItems = useMemo(() => [
+    { tab: 'studio' as TabType, label: 'Studio', icon: <Wand2 size={18} />, active: 'bg-fuchsia-50 dark:bg-fuchsia-950/40 text-fuchsia-700 dark:text-fuchsia-300 border-fuchsia-100 dark:border-fuchsia-900/50', iconColor: 'text-fuchsia-500' },
     { tab: 'home' as TabType, label: 'Home', icon: <Home size={18} />, active: 'bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-800', iconColor: 'text-slate-400' },
     { tab: 'builder' as TabType, label: 'Prompt Builder', icon: <Briefcase size={18} />, active: 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-100 dark:border-indigo-900/50', iconColor: 'text-indigo-500' },
     { tab: 'projectchain' as TabType, label: 'Project Chain', icon: <Workflow size={18} />, active: 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border-cyan-100 dark:border-cyan-900/50', iconColor: 'text-cyan-500' },
@@ -675,6 +678,16 @@ export default function App() {
           </TabPanel>
           <TabPanel isActive={activeTab === 'lab'} mounted={visitedTabs.has('lab')}>
             <LabTab libraryTemplates={visibleTemplates} onApplyTemplate={handleSelectTemplate} onSaveTemplate={handleSaveTemplate} />
+          </TabPanel>
+          <TabPanel isActive={activeTab === 'studio'} mounted={visitedTabs.has('studio')}>
+            <StudioTab
+              user={user}
+              authReady={authReady}
+              onSaveTemplate={handleSaveTemplate}
+              onOpenInBuilder={handleSelectTemplate}
+              onNavigateToTab={setActiveTab}
+              onLogin={loginWithGoogle}
+            />
           </TabPanel>
         </Suspense>
       </main>

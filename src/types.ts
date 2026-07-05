@@ -1,4 +1,4 @@
-export type TabType = 'home' | 'aifuture' | 'library' | 'builder' | 'enhancer' | 'learn' | 'utilitybelt' | 'rulesskills' | 'projectchain' | 'lab';
+export type TabType = 'studio' | 'home' | 'aifuture' | 'library' | 'builder' | 'enhancer' | 'learn' | 'utilitybelt' | 'rulesskills' | 'projectchain' | 'lab';
 
 export type BlockType = 'role' | 'task' | 'context' | 'format' | 'tone' | 'constraints' | 'example' | 'thinking' | 'anchor' | 'self_correction' | 'input_data' | 'custom' | 'objective' | 'audience' | 'experience' | 'challenge' | 'steps';
 

@@ -30,7 +30,7 @@ Thanh tiến trình dọc bên trái; đi lui/tới tự do; trạng thái giữ
 - `src/components/studio/` — mỗi bước một component: `StepRail`, `StepIdea`, `StepDraft`, `StepEnhance`, `StepCheck`, `StepFinish`.
 - **`StudioDraft`** = `{ template: PromptTemplate, selectedRuleIds, appliedSkillIds, personaId, lintIssues, currentStep }`. Ruột là `PromptTemplate` nên bàn giao sang Builder/Library miễn phí.
 - Lưu draft: localStorage theo uid (`studio_draft_<uid>`); đồng bộ Firestore để đợt sau.
-- Logic thuần tách ra **`src/utils/studioFlow.ts`**: lắp ráp prompt cuối (persona → rules → blocks), máy trạng thái bước (next/prev/canGo), tạo/serialize draft, heuristic gợi ý rule ban đầu. Unit-test được.
+- Logic thuần tách ra **`src/utils/studioFlow.ts`**: lắp ráp prompt cuối (persona → blocks → skills → rules; rào chắn đặt cuối), máy trạng thái bước (next/prev/canGo), tạo/serialize draft, heuristic gợi ý rule ban đầu. Unit-test được.
 - **Không backend mới** — mọi lệnh AI qua `aiService` (fallback Gemini→Groq sẵn có).
 
 ## 4. Điều phối AI (mức B — đề xuất, người dùng duyệt)
