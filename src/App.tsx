@@ -659,7 +659,7 @@ export default function App() {
             <EnhancerTab onApplyTemplate={handleSelectTemplate} />
           </TabPanel>
           <TabPanel isActive={activeTab === 'learn'} mounted={visitedTabs.has('learn')}>
-            <LearnTab />
+            <LearnTab libraryTemplates={visibleTemplates} />
           </TabPanel>
           <TabPanel isActive={activeTab === 'aifuture'} mounted={visitedTabs.has('aifuture')}>
             <AIFutureTab theme={theme} />

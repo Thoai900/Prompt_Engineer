@@ -45,7 +45,7 @@ const levels = [
   }
 ];
 
-export default function DebuggingChallenge({ onBack }: { onBack: () => void }) {
+export default function DebuggingChallenge({ onBack, onComplete }: { onBack: () => void; onComplete?: () => void }) {
   const [currentLevel, setCurrentLevel] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [isTesting, setIsTesting] = useState(false);
@@ -89,7 +89,7 @@ export default function DebuggingChallenge({ onBack }: { onBack: () => void }) {
     if (currentLevel < levels.length - 1) {
       setCurrentLevel(currentLevel + 1);
     } else {
-      onBack();
+      (onComplete ?? onBack)();
     }
   };
 

@@ -16,13 +16,13 @@ const rounds = [
   {
     id: 2,
     title: 'Vòng 2: Sáng tác Thơ',
-    challenge: 'Mục tiêu: Bắt ép AI sử dụng một thể loại khó nhằn và không được từ chối hoặc nói "Tôi không thể".',
+    challenge: 'Mục tiêu: AI phải bắt tay vào viết ngay theo đúng thể thơ yêu cầu, không vòng vo rào đón hay tự nghi ngờ.',
     promptA: `<Role>Nhà thơ</Role>\nHãy viết thơ Đường luật 8 câu.\n\n<Thinking>\nPhân tích luật bằng trắc trước khi viết...\n</Thinking>`,
     promptB: `<Role>Nhà thơ</Role>\nHãy viết thơ Đường luật 8 câu.\n\n<Prefill>\nDạ vâng, tuân lệnh. Dưới đây là bài thơ tuân thủ nghiêm ngặt luật bằng trắc:\n</Prefill>`,
     resultA: 'Tôi không chắc mình có thể viết thơ Đường luật chuẩn xác 100% bằng tiếng Việt vì luật bằng trắc rắc rối. Nhưng tôi sẽ thử: ...',
     resultB: 'Dạ vâng, tuân lệnh. Dưới đây là bài thơ tuân thủ nghiêm ngặt luật bằng trắc:\nSóng tản mây mù ngọc lấp loáng...\n(Bài thơ hoàn chỉnh)',
     correctChoice: 'B',
-    explanation: 'Sử dụng <Prefill> để mớm lời cho AI ("Dạ vâng, tuân lệnh...") sẽ bypass hoàn toàn màng lọc từ chối (refusal) và ép AI vào trạng thái cung cấp kết quả ngay lập tức.'
+    explanation: 'Sử dụng <Prefill> để mớm sẵn câu mở đầu giúp neo chặt đầu ra: AI viết tiếp từ câu đã mớm nên bắt tay vào bài thơ ngay, thay vì mở màn bằng những đoạn rào đón, tự nghi ngờ năng lực làm loãng kết quả.'
   },
   {
     id: 3,
@@ -37,7 +37,7 @@ const rounds = [
   }
 ];
 
-export default function VersusChallenge({ onBack }: { onBack: () => void }) {
+export default function VersusChallenge({ onBack, onComplete }: { onBack: () => void; onComplete?: () => void }) {
   const [currentRound, setCurrentRound] = useState(0);
   const [choice, setChoice] = useState<'A' | 'B' | null>(null);
   const [showResult, setShowResult] = useState(false);
@@ -56,7 +56,7 @@ export default function VersusChallenge({ onBack }: { onBack: () => void }) {
     if (currentRound < rounds.length - 1) {
       setCurrentRound(currentRound + 1);
     } else {
-      onBack();
+      (onComplete ?? onBack)();
     }
   };
 
