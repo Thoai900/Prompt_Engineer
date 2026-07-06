@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   migrateProjectToGraph, isGraphProject, stripLegacyRefs, createEmptyGraphProject,
-  addTemplateAsAttributeNode, blockTypeToSlot,
+  addTemplateAsAttributeNode, blockTypeToSlot, templateToGraphProject,
 } from '../utils/graphMigration';
 import { compileGraph } from '../utils/graphCompile';
 import { PromptProject } from '../types';
@@ -112,5 +112,58 @@ describe('helpers', () => {
   it('blockTypeToSlot map các loại lạ về custom', () => {
     expect(blockTypeToSlot('thinking')).toBe('custom');
     expect(blockTypeToSlot('role')).toBe('role');
+  });
+});
+
+describe('templateToGraphProject (Studio → Prompt Graph, đợt 2)', () => {
+  const template = {
+    title: 'Kịch bản TikTok',
+    description: 'Video ngắn',
+    blocks: [
+      { id: 'b1', type: 'role' as const, title: '🎭 Vai trò', content: 'Bạn là biên kịch.' },
+      { id: 'b2', type: 'task' as const, title: '🎯 Nhiệm vụ', content: 'Viết kịch bản {{chu_de}}.' },
+      { id: 'b3', type: 'constraints' as const, title: '📏 Quy tắc', content: 'Hook 3 giây đầu.' },
+      { id: 'b4', type: 'format' as const, title: '📋 Định dạng', content: '' }, // rỗng → bỏ
+    ],
+    variables: [{ name: 'chu_de', type: 'text' as const, required: true }],
+  };
+
+  it('task → lõi Prompt Gốc, block khác → node thuộc tính đã nối dây đúng cổng', () => {
+    const proj = templateToGraphProject(template, 'ws-1');
+    expect(isGraphProject(proj)).toBe(true);
+    expect(proj.name).toBe('Kịch bản TikTok');
+    expect(proj.workspaceId).toBe('ws-1');
+
+    const root = proj.graphNodes!.find((n) => n.kind === 'root')!;
+    expect(root.content).toBe('Viết kịch bản {{chu_de}}.');
+    expect(root.variables.map((v) => v.name)).toEqual(['chu_de']);
+
+    // 2 node thuộc tính (block rỗng bị loại), tất cả BẬT và nối dây vào root.
+    const attrs = proj.graphNodes!.filter((n) => n.kind === 'attribute');
+    expect(attrs).toHaveLength(2);
+    expect(attrs.every((a) => a.enabled)).toBe(true);
+    for (const a of attrs) {
+      const edge = proj.edges!.find((e) => e.source === a.id)!;
+      expect(edge.target).toBe(root.id);
+      expect(edge.targetSlot).toBe(a.attrType);
+    }
+    expect(attrs.map((a) => a.attrType).sort()).toEqual(['constraints', 'role']);
+  });
+
+  it('compile được ngay: prompt cuối chứa đủ nội dung các khối', () => {
+    const proj = templateToGraphProject(template);
+    const { finalPrompt } = compileGraph(proj);
+    expect(finalPrompt).toContain('Bạn là biên kịch.');
+    expect(finalPrompt).toContain('Viết kịch bản {{chu_de}}.');
+    expect(finalPrompt).toContain('Hook 3 giây đầu.');
+  });
+
+  it('template không có block task → lõi rỗng nhưng vẫn là project v3 hợp lệ', () => {
+    const proj = templateToGraphProject({ title: 'X', blocks: [
+      { id: 'b1', type: 'role' as const, title: 'Vai trò', content: 'Bạn là chuyên gia.' },
+    ] });
+    const root = proj.graphNodes!.find((n) => n.kind === 'root')!;
+    expect(root.content).toBe('');
+    expect(proj.graphNodes!.filter((n) => n.kind === 'attribute')).toHaveLength(1);
   });
 });

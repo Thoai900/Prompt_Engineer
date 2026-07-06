@@ -76,6 +76,71 @@ export const createEmptyGraphProject = (
   };
 };
 
+/**
+ * Xuất một template (từ Prompt Studio / Builder) thành project Prompt Graph v3
+ * độc lập: block `task` đầu tiên → nội dung lõi Prompt Gốc; các block còn lại →
+ * node thuộc tính ĐÃ nối dây vào cổng tương ứng; variables → root.
+ */
+export const templateToGraphProject = (
+  template: { title: string; description?: string; blocks: PromptBlock[]; variables?: PromptVariable[] },
+  workspaceId?: string,
+): PromptProject => {
+  const blocks = (template.blocks || []).filter((b) => (b.content || '').trim());
+  const taskIdx = blocks.findIndex((b) => b.type === 'task');
+
+  const root: GraphNode = {
+    id: newId('root'),
+    kind: 'root',
+    attrType: 'custom',
+    title: 'Prompt Gốc',
+    content: taskIdx >= 0 ? blocks[taskIdx].content.trim() : '',
+    variables: (template.variables || []).map((v) => ({ ...v })),
+    position: { x: LAYOUT.rootX, y: LAYOUT.rootY },
+    enabled: true,
+  };
+  const graphNodes: GraphNode[] = [root];
+  const edges: GraphEdge[] = [];
+
+  blocks.forEach((b, i) => {
+    if (i === taskIdx) return;
+    const slot = blockTypeToSlot(b.type);
+    const attr: GraphNode = {
+      id: newId('attr'),
+      kind: 'attribute',
+      attrType: slot,
+      title: b.title || 'Thuộc tính',
+      content: b.content.trim(),
+      variables: [],
+      position: { x: 0, y: 0 }, // auto-layout đặt lại bên dưới
+      enabled: true,
+    };
+    graphNodes.push(attr);
+    edges.push({ id: newId('edge'), source: attr.id, target: root.id, targetSlot: slot });
+  });
+
+  const positions = computeGraphLayout(graphNodes, edges);
+  const laidOut = graphNodes.map((n) => {
+    const pos = positions.get(n.id);
+    return pos ? { ...n, position: pos } : n;
+  });
+
+  return {
+    id: `proj-${Date.now()}`,
+    name: template.title || 'Prompt mới',
+    description: template.description || '',
+    globalEvalCriteria: [],
+    nodes: [],
+    schemaVersion: 3,
+    graphNodes: laidOut,
+    edges,
+    testCases: [],
+    versions: [],
+    workspaceId,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+};
+
 /** Chuyển một project legacy sang v3. Idempotent: project v3 trả về nguyên vẹn. */
 export const migrateProjectToGraph = (project: PromptProject): PromptProject => {
   if (isGraphProject(project)) return project;

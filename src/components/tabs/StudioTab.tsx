@@ -7,21 +7,28 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { User } from 'firebase/auth';
-import { ArrowLeft, ArrowRight, Home, Loader2, LogIn, RotateCcw } from 'lucide-react';
+import { doc, setDoc } from 'firebase/firestore';
+import { ArrowLeft, ArrowRight, Bot, Home, ListOrdered, Loader2, LogIn, RotateCcw } from 'lucide-react';
 import { AiRule, AiSkill, PromptTemplate, TabType } from '../../types';
 import { useWorkspace } from '../../context/WorkspaceContext';
+import { db, handleFirestoreError } from '../../firebase';
 import { confirmDialog } from '../common/ConfirmDialog';
+import { toast } from '../common/Toaster';
 import { PRESET_RULES, PRESET_SKILLS } from '../../presets';
+import { LOCAL_PROJECTS_KEY, loadLocalProjects } from '../../services/chainAppService';
+import { templateToGraphProject } from '../../utils/graphMigration';
 import {
-  STUDIO_STEPS, StudioDraft, assembleStudioPrompt, clampStep, createEmptyDraft,
-  draftStorageKey, draftToTemplate, parseDraft, serializeDraft,
+  STUDIO_STEPS, StudioDraft, assembleStudioPrompt, clampStep, computeQualityScore,
+  createEmptyDraft, draftStorageKey, draftToTemplate, parseDraft, serializeDraft,
 } from '../../utils/studioFlow';
 import { StepRailHorizontal, StepRailVertical } from '../studio/StepRail';
 import LivePreview from '../studio/LivePreview';
+import CopilotPanel from '../studio/CopilotPanel';
 import StepIdea from '../studio/StepIdea';
 import StepDraft from '../studio/StepDraft';
 import StepEnhance from '../studio/StepEnhance';
 import StepCheck from '../studio/StepCheck';
+import StepPolish from '../studio/StepPolish';
 import StepFinish from '../studio/StepFinish';
 
 interface StudioTabProps {
@@ -51,15 +58,25 @@ function loadStore(): { rules: AiRule[]; skills: AiSkill[] } {
   };
 }
 
-// TẠM THỜI (đang kiểm thử): tắt yêu cầu đăng nhập để dùng thử Studio không cần
-// tài khoản — draft khách lưu dưới khoá 'guest'. Bật lại `true` sau khi kiểm thử
-// xong (spec phần 1 yêu cầu đăng nhập).
-const STUDIO_REQUIRE_LOGIN: boolean = false;
+// Spec phần 1: Studio yêu cầu đăng nhập (kho Rules/Library gắn với uid).
+// Đặt false CHỈ khi cần kiểm thử nhanh không tài khoản (draft khách lưu khoá 'guest').
+const STUDIO_REQUIRE_LOGIN: boolean = true;
+
+/** Chế độ cột trái (đợt 3): thanh bước cổ điển hoặc copilot điều phối. */
+type StudioUiMode = 'rail' | 'copilot';
+const UI_MODE_KEY = 'studio_ui_mode';
 
 export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBuilder, onNavigateToTab, onLogin }: StudioTabProps) {
-  const { personas } = useWorkspace();
+  const { personas, activeWorkspaceId } = useWorkspace();
   const [draft, setDraft] = useState<StudioDraft>(() => createEmptyDraft());
   const [store, setStore] = useState<{ rules: AiRule[]; skills: AiSkill[] }>(() => loadStore());
+  const [uiMode, setUiMode] = useState<StudioUiMode>(() =>
+    localStorage.getItem(UI_MODE_KEY) === 'copilot' ? 'copilot' : 'rail');
+
+  const switchUiMode = (mode: StudioUiMode) => {
+    setUiMode(mode);
+    localStorage.setItem(UI_MODE_KEY, mode);
+  };
 
   const uid = user?.uid || (STUDIO_REQUIRE_LOGIN ? undefined : 'guest');
 
@@ -105,6 +122,30 @@ export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBui
     () => draftToTemplate(draft, store.rules, store.skills),
     [draft, store],
   );
+  const quality = useMemo(() => computeQualityScore(draft), [draft]);
+
+  /** Đợt 2: template → project Prompt Graph v3, lưu local + Firestore, mở tab Project Chain. */
+  const handleExportGraph = useCallback(async (template: PromptTemplate) => {
+    const project = templateToGraphProject(template, activeWorkspaceId);
+    try {
+      const next = [...loadLocalProjects().filter((p) => p.id !== project.id), project];
+      localStorage.setItem(LOCAL_PROJECTS_KEY, JSON.stringify(next));
+      localStorage.setItem('active_project_id', project.id);
+    } catch (e) {
+      console.error('Lưu project cục bộ lỗi:', e);
+    }
+    if (user) {
+      try {
+        await setDoc(doc(db, 'projects', project.id), { ...project, userId: user.uid });
+      } catch (err) {
+        try { handleFirestoreError(err, 'create', `projects/${project.id}`); } catch (e: any) { console.error(e.message); }
+      }
+    }
+    // ProjectChainTab có thể đã mount (giữ state) → báo để nó nhận project mới ngay.
+    window.dispatchEvent(new CustomEvent('pb:project-added', { detail: project }));
+    toast.success('Đã xuất thành Prompt Graph — mở trong Project Chain.');
+    onNavigateToTab('projectchain');
+  }, [activeWorkspaceId, user, onNavigateToTab]);
 
   const handleReset = async () => {
     const ok = await confirmDialog({
@@ -132,8 +173,8 @@ export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBui
           </div>
           <h1 className="mt-5 text-2xl font-bold tracking-tight text-ink">Prompt Studio</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted">
-            Từ ý tưởng thô đến prompt hoàn chỉnh — một dây chuyền năm bước:
-            nháp, tăng cường, kiểm tra, hoàn tất.
+            Từ ý tưởng thô đến prompt hoàn chỉnh — một dây chuyền sáu bước:
+            nháp, tăng cường, kiểm tra, nâng cấp, hoàn tất.
           </p>
           {/* Rail thu nhỏ làm hình minh hoạ */}
           <div className="mt-6 flex items-center justify-center gap-1.5">
@@ -180,19 +221,46 @@ export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBui
               {draft.template?.title || 'Bản nháp mới'}
             </div>
           </div>
-          <button
-            onClick={handleReset}
-            className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-muted transition-colors hover:bg-hover hover:text-ink"
-          >
-            <RotateCcw size={13} /> Bắt đầu lại
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            {/* Đợt 3: toggle thanh bước ↔ copilot (chỉ đổi cột trái, draft giữ nguyên) */}
+            <div className="hidden items-center rounded-lg border border-line bg-panel/60 p-0.5 md:flex">
+              <button
+                onClick={() => switchUiMode('rail')}
+                title="Thanh bước cổ điển"
+                className={`flex cursor-pointer items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-semibold transition-colors ${
+                  uiMode === 'rail' ? 'bg-gradient-to-r from-violet-600 to-cyan-600 text-white shadow-sm' : 'text-muted hover:text-ink'
+                }`}
+              >
+                <ListOrdered size={12} /> Các bước
+              </button>
+              <button
+                onClick={() => switchUiMode('copilot')}
+                title="Copilot điều phối"
+                className={`flex cursor-pointer items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-semibold transition-colors ${
+                  uiMode === 'copilot' ? 'bg-gradient-to-r from-violet-600 to-cyan-600 text-white shadow-sm' : 'text-muted hover:text-ink'
+                }`}
+              >
+                <Bot size={12} /> Copilot
+              </button>
+            </div>
+            <button
+              onClick={handleReset}
+              className="flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-muted transition-colors hover:bg-hover hover:text-ink"
+            >
+              <RotateCcw size={13} /> Bắt đầu lại
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="mx-auto flex max-w-7xl items-start gap-8 px-4 pb-16 pt-6 lg:px-8">
-        {/* Rail dọc (desktop) */}
-        <div className="sticky top-20 hidden w-52 shrink-0 md:block">
-          <StepRailVertical draft={draft} onSelect={goToStep} />
+        {/* Cột trái (desktop): thanh bước hoặc copilot — đợt 3 */}
+        <div className={`sticky top-20 hidden shrink-0 md:block ${uiMode === 'copilot' ? 'w-72' : 'w-52'}`}>
+          {uiMode === 'copilot' ? (
+            <CopilotPanel draft={draft} quality={quality} onGoToStep={goToStep} />
+          ) : (
+            <StepRailVertical draft={draft} onSelect={goToStep} />
+          )}
         </div>
 
         {/* Nội dung bước */}
@@ -219,6 +287,9 @@ export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBui
               {stepKey === 'check' && (
                 <StepCheck draft={draft} assembledText={assembledNoPersona} onPatch={patch} />
               )}
+              {stepKey === 'polish' && (
+                <StepPolish draft={draft} assembledText={assembledNoPersona} onPatch={patch} />
+              )}
               {stepKey === 'finish' && (
                 <StepFinish
                   finalText={finalText}
@@ -226,6 +297,7 @@ export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBui
                   personaName={persona?.name || null}
                   onSaveTemplate={onSaveTemplate}
                   onOpenInBuilder={onOpenInBuilder}
+                  onExportGraph={handleExportGraph}
                 />
               )}
             </motion.div>
@@ -258,6 +330,7 @@ export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBui
             ruleCount={draft.selectedRuleIds.length}
             skillCount={draft.appliedSkillIds.length}
             personaName={persona?.name || null}
+            quality={quality}
           />
         </div>
       </div>

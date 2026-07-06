@@ -3,7 +3,7 @@
  * Mở trong Builder (deep-link, KHÔNG render lại UI Builder).
  */
 import React, { useState } from 'react';
-import { Check, Copy, Library, Loader2, PenTool } from 'lucide-react';
+import { Check, Copy, Library, Loader2, PenTool, Workflow } from 'lucide-react';
 import { toast } from '../common/Toaster';
 import { PromptTemplate } from '../../types';
 
@@ -15,11 +15,14 @@ interface StepFinishProps {
   personaName: string | null;
   onSaveTemplate: (t: PromptTemplate) => Promise<void>;
   onOpenInBuilder: (t: PromptTemplate) => void;
+  /** Đợt 2: xuất thành project Prompt Graph rồi mở tab Project Chain. */
+  onExportGraph: (t: PromptTemplate) => Promise<void>;
 }
 
-export default function StepFinish({ finalText, mergedTemplate, personaName, onSaveTemplate, onOpenInBuilder }: StepFinishProps) {
+export default function StepFinish({ finalText, mergedTemplate, personaName, onSaveTemplate, onOpenInBuilder, onExportGraph }: StepFinishProps) {
   const [copied, setCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(finalText);
@@ -90,6 +93,21 @@ export default function StepFinish({ finalText, mergedTemplate, personaName, onS
           className="flex cursor-pointer items-center gap-2 rounded-xl border border-line bg-panel px-4 py-3 text-sm font-semibold text-ink transition-colors hover:bg-hover"
         >
           <PenTool size={15} /> Mở trong Builder
+        </button>
+        <button
+          onClick={async () => {
+            setIsExporting(true);
+            try {
+              await onExportGraph(mergedTemplate);
+            } finally {
+              setIsExporting(false);
+            }
+          }}
+          disabled={isExporting}
+          className="flex cursor-pointer items-center gap-2 rounded-xl border border-line bg-panel px-4 py-3 text-sm font-semibold text-ink transition-colors hover:bg-hover disabled:opacity-50"
+        >
+          {isExporting ? <Loader2 size={15} className="animate-spin" /> : <Workflow size={15} />}
+          Xuất sang Prompt Graph
         </button>
       </div>
 

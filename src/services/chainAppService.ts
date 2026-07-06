@@ -129,7 +129,9 @@ export async function runChainApp(
 }
 
 // ── Chia sẻ (sharedApps) ────────────────────────────────────────────────────
-const LOCAL_PROJECTS_KEY = 'mentor_ai_prompt_projects';
+/** Khoá localStorage danh sách Project Chain — dùng chung với ProjectChainTab
+ *  và Prompt Studio (xuất template → Prompt Graph). */
+export const LOCAL_PROJECTS_KEY = 'mentor_ai_prompt_projects';
 
 /** Đọc các Project Chain lưu cục bộ (ProjectChainTab lưu ở đây). */
 export function loadLocalProjects(): PromptProject[] {

@@ -151,6 +151,23 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
     loadProjects();
   }, [user]);
 
+  // Prompt Studio xuất template → Prompt Graph: tab này mount-giữ-state nên nhận
+  // project mới qua sự kiện (Studio đã tự lưu localStorage + Firestore trước đó).
+  useEffect(() => {
+    const onProjectAdded = (e: Event) => {
+      const proj = (e as CustomEvent<PromptProject>).detail;
+      if (!proj?.id) return;
+      setProjects((prev) => {
+        const next = [...prev.filter((p) => p.id !== proj.id), proj];
+        try { localStorage.setItem(LOCAL_KEY, JSON.stringify(next)); } catch (err) { console.error(err); }
+        return next;
+      });
+      setActiveProject(proj);
+    };
+    window.addEventListener('pb:project-added', onProjectAdded);
+    return () => window.removeEventListener('pb:project-added', onProjectAdded);
+  }, []);
+
   // Đổi workspace: nếu dự án đang mở không thuộc workspace mới → chuyển sang dự án đầu tiên hiển thị.
   useEffect(() => {
     if (activeProject && !isInActiveWorkspace(activeProject.workspaceId)) {

@@ -8,11 +8,11 @@
  */
 import type { AiPersona, AiRule, AiSkill, BlockType, PromptBlock, PromptTemplate } from '../types';
 // Type-only import: bị xoá khi compile nên KHÔNG kéo aiService (nặng) vào bundle test.
-import type { LintIssue } from '../services/aiService';
+import type { AIChainEvaluation, LintIssue, QualityScore } from '../services/aiService';
 
 // ── Máy trạng thái bước ──────────────────────────────────────────────────────
 
-export type StudioStepKey = 'idea' | 'draft' | 'enhance' | 'check' | 'finish';
+export type StudioStepKey = 'idea' | 'draft' | 'enhance' | 'check' | 'polish' | 'finish';
 
 export interface StudioStepMeta {
   key: StudioStepKey;
@@ -25,6 +25,7 @@ export const STUDIO_STEPS: StudioStepMeta[] = [
   { key: 'draft', title: 'Bản nháp', subtitle: 'AI dựng khung prompt nhiều khối' },
   { key: 'enhance', title: 'Tăng cường', subtitle: 'Gắn Rules & Skills từ kho của bạn' },
   { key: 'check', title: 'Kiểm tra', subtitle: 'Lint tìm điểm yếu trước khi dùng' },
+  { key: 'polish', title: 'Nâng cấp', subtitle: 'Chạy thử, chấm điểm, tối ưu (tuỳ chọn)' },
   { key: 'finish', title: 'Hoàn tất', subtitle: 'Lưu, copy hoặc tinh chỉnh sâu' },
 ];
 
@@ -47,7 +48,9 @@ export function stepIndexByKey(key: StudioStepKey): number {
 
 // ── Draft ────────────────────────────────────────────────────────────────────
 
-export const DRAFT_VERSION = 1 as const;
+// v2 (đợt 2): thêm kết quả bước Nâng cấp (chạy thử/chấm điểm/tối ưu).
+// Draft v1 cũ được parseDraft nâng cấp tự động (điền mặc định các field mới).
+export const DRAFT_VERSION = 2 as const;
 
 export interface StudioDraft {
   version: typeof DRAFT_VERSION;
@@ -63,6 +66,12 @@ export interface StudioDraft {
   lintIssues: LintIssue[];
   /** ISO time lần lint gần nhất; null = chưa chấm điểm (hoặc blocks đã đổi). */
   lintRanAt: string | null;
+  /** Đầu ra lần chạy thử gần nhất (bước Nâng cấp). */
+  runOutput: string | null;
+  /** Điểm giám khảo LLM chấm cho runOutput. */
+  runScore: QualityScore | null;
+  /** Kết quả thẩm định + đề xuất vá của Optimizer (đề xuất đã xử lý bị loại khỏi mảng). */
+  optimizeEval: AIChainEvaluation | null;
   currentStep: number;
   updatedAt: string;
 }
@@ -80,6 +89,9 @@ export function createEmptyDraft(now: string = new Date().toISOString()): Studio
     dismissedSkillIds: [],
     lintIssues: [],
     lintRanAt: null,
+    runOutput: null,
+    runScore: null,
+    optimizeEval: null,
     currentStep: 0,
     updatedAt: now,
   };
@@ -101,6 +113,7 @@ export function stepDone(draft: StudioDraft, key: StudioStepKey): boolean {
     case 'draft': return !!draft.template && draft.template.blocks.length > 0;
     case 'enhance': return draft.selectedRuleIds.length + draft.appliedSkillIds.length > 0;
     case 'check': return draft.lintRanAt !== null;
+    case 'polish': return draft.runScore !== null || draft.optimizeEval !== null;
     case 'finish': return false;
   }
 }
@@ -123,9 +136,95 @@ export function stepSummary(draft: StudioDraft, key: StudioStepKey): string | nu
     }
     case 'check':
       return draft.lintRanAt ? `${draft.lintIssues.length} vấn đề` : null;
+    case 'polish': {
+      if (draft.runScore) return `chạy thử ${draft.runScore.score}/100`;
+      if (draft.optimizeEval) return `thẩm định ${draft.optimizeEval.score}/100`;
+      return null;
+    }
     case 'finish':
       return null;
   }
+}
+
+// ── Điểm chất lượng tổng hợp (đợt 2) ─────────────────────────────────────────
+
+export interface QualityPart {
+  key: 'lint' | 'run' | 'optimize';
+  label: string;
+  /** 0–100, null = phép đo này chưa chạy. */
+  value: number | null;
+}
+
+export interface CompositeQuality {
+  /** Trung bình các phép đo đã chạy (0–100). */
+  score: number;
+  parts: QualityPart[];
+}
+
+/** Gộp linter + chạy thử + thẩm định thành một "điểm tín dụng" của prompt.
+ *  Trả null khi CHƯA có phép đo nào (không bịa điểm). */
+export function computeQualityScore(draft: StudioDraft): CompositeQuality | null {
+  const weights = { high: 18, medium: 10, low: 4 } as const;
+  const lintValue = draft.lintRanAt
+    ? Math.max(0, 100 - draft.lintIssues.reduce((sum, i) => sum + weights[i.severity], 0))
+    : null;
+  const parts: QualityPart[] = [
+    { key: 'lint', label: 'Linter', value: lintValue },
+    { key: 'run', label: 'Chạy thử', value: draft.runScore?.score ?? null },
+    { key: 'optimize', label: 'Thẩm định', value: draft.optimizeEval?.score ?? null },
+  ];
+  const measured = parts.filter((p) => p.value !== null) as (QualityPart & { value: number })[];
+  if (measured.length === 0) return null;
+  const score = Math.round(measured.reduce((s, p) => s + p.value, 0) / measured.length);
+  return { score, parts };
+}
+
+// ── Copilot (đợt 3) ──────────────────────────────────────────────────────────
+
+export interface NextAction {
+  step: StudioStepKey;
+  title: string;
+  reason: string;
+}
+
+/** Hành động kế tiếp tốt nhất — suy ra TẤT ĐỊNH từ trạng thái draft (miễn phí,
+ *  không gọi AI). Copilot chỉ là "người bấm hộ": mọi hành động vẫn do người dùng duyệt. */
+export function suggestNextAction(draft: StudioDraft): NextAction {
+  if (!draft.idea.trim()) {
+    return { step: 'idea', title: 'Nhập ý tưởng', reason: 'Chưa có mô tả nhiệm vụ — mọi thứ bắt đầu từ đây.' };
+  }
+  if (!draft.template || draft.template.blocks.length === 0) {
+    return { step: 'draft', title: 'Dựng bản nháp bằng AI', reason: 'Đã có ý tưởng nhưng chưa có khung prompt.' };
+  }
+  if (draft.selectedRuleIds.length + draft.appliedSkillIds.length === 0) {
+    return { step: 'enhance', title: 'Gắn Rules & Skills', reason: 'Bản nháp chưa có rào chắn/kỹ năng nào (miễn phí, có thể bỏ qua).' };
+  }
+  if (draft.lintRanAt === null) {
+    return { step: 'check', title: 'Chấm điểm prompt', reason: 'Prompt chưa qua linter — nên soi lỗi trước khi dùng.' };
+  }
+  if (draft.lintIssues.length > 0) {
+    return { step: 'check', title: 'Xử lý vấn đề linter', reason: `Còn ${draft.lintIssues.length} vấn đề linter chưa xử lý.` };
+  }
+  if (draft.runScore === null) {
+    return { step: 'polish', title: 'Chạy thử & chấm điểm', reason: 'Prompt sạch lint — chạy thử để đo chất lượng đầu ra thật.' };
+  }
+  return { step: 'finish', title: 'Hoàn tất', reason: 'Prompt đã qua đủ kiểm tra — lưu, copy hoặc xuất đi.' };
+}
+
+/** Ngữ cảnh draft nén gọn cho copilot chat (đưa vào system instruction). */
+export function buildCopilotContext(draft: StudioDraft, quality: CompositeQuality | null): string {
+  const lines = [
+    'Bạn là copilot của Prompt Studio (PromptBuilder) — trợ lý prompt engineering, trả lời NGẮN GỌN bằng tiếng Việt, đi thẳng vào việc.',
+    'Trạng thái bản nháp hiện tại:',
+    `- Ý tưởng: ${draft.idea.trim() || '(chưa có)'}`,
+    `- Bản nháp: ${draft.template ? `"${draft.template.title}" (${draft.template.blocks.length} khối)` : '(chưa dựng)'}`,
+    `- Đã gắn: ${draft.selectedRuleIds.length} quy tắc, ${draft.appliedSkillIds.length} kỹ năng`,
+    `- Linter: ${draft.lintRanAt ? `${draft.lintIssues.length} vấn đề` : 'chưa chạy'}`,
+    `- Chạy thử: ${draft.runScore ? `${draft.runScore.score}/100` : 'chưa chạy'}`,
+    `- Điểm tổng hợp: ${quality ? `${quality.score}/100` : 'chưa đo'}`,
+    'Chỉ TƯ VẤN (góp ý nội dung khối, gợi ý ràng buộc, giải thích lỗi lint...). Bạn KHÔNG thể tự sửa prompt — hướng người dùng đến bước phù hợp của Studio khi cần hành động.',
+  ];
+  return lines.join('\n');
 }
 
 // ── Lắp ráp prompt cuối ──────────────────────────────────────────────────────
@@ -265,7 +364,8 @@ function asStringArray(v: unknown): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
 }
 
-/** Parse + validate draft từ localStorage. Hỏng cấu trúc → null (bắt đầu mới). */
+/** Parse + validate draft từ localStorage. Hỏng cấu trúc → null (bắt đầu mới).
+ *  Draft v1 (trước bước Nâng cấp) được nâng cấp tự động lên v2. */
 export function parseDraft(raw: string | null): StudioDraft | null {
   if (!raw) return null;
   let data: any;
@@ -274,7 +374,7 @@ export function parseDraft(raw: string | null): StudioDraft | null {
   } catch {
     return null;
   }
-  if (!data || typeof data !== 'object' || data.version !== DRAFT_VERSION) return null;
+  if (!data || typeof data !== 'object' || ![1, DRAFT_VERSION].includes(data.version)) return null;
   if (typeof data.idea !== 'string') return null;
   const template = data.template && typeof data.template === 'object' && Array.isArray(data.template.blocks)
     ? (data.template as PromptTemplate)
@@ -289,6 +389,18 @@ export function parseDraft(raw: string | null): StudioDraft | null {
           suggestion: typeof i.suggestion === 'string' ? i.suggestion : '',
         }))
     : [];
+  const runScore = data.runScore && typeof data.runScore.score === 'number'
+    ? (data.runScore as QualityScore)
+    : null;
+  const optimizeEval = data.optimizeEval && typeof data.optimizeEval.score === 'number'
+    ? ({
+        score: data.optimizeEval.score,
+        weaknesses: asStringArray(data.optimizeEval.weaknesses),
+        suggestions: Array.isArray(data.optimizeEval.suggestions)
+          ? data.optimizeEval.suggestions.filter((s: any) => s && typeof s.content === 'string')
+          : [],
+      } as AIChainEvaluation)
+    : null;
   return {
     version: DRAFT_VERSION,
     idea: data.idea,
@@ -301,6 +413,9 @@ export function parseDraft(raw: string | null): StudioDraft | null {
     dismissedSkillIds: asStringArray(data.dismissedSkillIds),
     lintIssues,
     lintRanAt: typeof data.lintRanAt === 'string' ? data.lintRanAt : null,
+    runOutput: typeof data.runOutput === 'string' ? data.runOutput : null,
+    runScore,
+    optimizeEval,
     currentStep: clampStep(typeof data.currentStep === 'number' ? data.currentStep : 0),
     updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : new Date().toISOString(),
   };

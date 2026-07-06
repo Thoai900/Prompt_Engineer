@@ -4,6 +4,7 @@
  */
 import React from 'react';
 import { FileText } from 'lucide-react';
+import { CompositeQuality } from '../../utils/studioFlow';
 
 interface LivePreviewProps {
   text: string;
@@ -11,6 +12,8 @@ interface LivePreviewProps {
   ruleCount: number;
   skillCount: number;
   personaName: string | null;
+  /** Điểm chất lượng tổng hợp (đợt 2); null = chưa có phép đo nào. */
+  quality: CompositeQuality | null;
 }
 
 function CountChip({ label, value }: { label: string; value: number }) {
@@ -22,13 +25,29 @@ function CountChip({ label, value }: { label: string; value: number }) {
   );
 }
 
-export default function LivePreview({ text, blockCount, ruleCount, skillCount, personaName }: LivePreviewProps) {
+export default function LivePreview({ text, blockCount, ruleCount, skillCount, personaName, quality }: LivePreviewProps) {
   return (
     <aside className="flex max-h-[calc(100vh-7rem)] flex-col overflow-hidden rounded-2xl border border-line bg-panel/70 backdrop-blur-sm">
       <div className="border-b border-line/70 px-4 py-3">
-        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-faint">
-          <FileText size={12} className="text-violet-500" />
-          Prompt đang thành hình
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-faint">
+            <FileText size={12} className="text-violet-500" />
+            Prompt đang thành hình
+          </div>
+          {quality && (
+            <span
+              title={quality.parts.map((p) => `${p.label}: ${p.value === null ? 'chưa đo' : p.value}`).join(' · ')}
+              className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                quality.score >= 80
+                  ? 'bg-emerald-500/10 text-emerald-500'
+                  : quality.score >= 60
+                    ? 'bg-amber-500/10 text-amber-500'
+                    : 'bg-rose-500/10 text-rose-500'
+              }`}
+            >
+              {quality.score}/100
+            </span>
+          )}
         </div>
         <div className="mt-2 flex flex-wrap gap-1.5">
           <CountChip label="khối" value={blockCount} />

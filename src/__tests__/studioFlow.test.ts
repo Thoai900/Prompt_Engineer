@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { AiPersona, AiRule, AiSkill, PromptTemplate } from '../types';
 import {
-  STUDIO_STEPS, assembleStudioPrompt, buildFixRequest, clampStep, createEmptyDraft,
-  draftStorageKey, draftToTemplate, normalizeBlockType, parseDraft, serializeDraft,
-  stepDone, stepSummary, suggestRules, suggestSkills, toggleId, tokenize,
+  STUDIO_STEPS, assembleStudioPrompt, buildCopilotContext, buildFixRequest, clampStep,
+  computeQualityScore, createEmptyDraft, draftStorageKey, draftToTemplate,
+  normalizeBlockType, parseDraft, serializeDraft, stepDone, stepSummary,
+  suggestNextAction, suggestRules, suggestSkills, toggleId, tokenize,
 } from '../utils/studioFlow';
 
 const NOW = '2026-07-05T00:00:00.000Z';
@@ -205,5 +206,114 @@ describe('serialize / parse draft', () => {
 
   it('draftStorageKey tách theo uid', () => {
     expect(draftStorageKey('u1')).toBe('studio_draft_u1');
+  });
+});
+
+// ── Đợt 2 + 3: bước Nâng cấp, điểm tổng hợp, copilot ─────────────────────────
+
+describe('draft v2 (đợt 2)', () => {
+  it('STUDIO_STEPS có 6 bước, Nâng cấp đứng trước Hoàn tất', () => {
+    expect(STUDIO_STEPS.map((s) => s.key)).toEqual(['idea', 'draft', 'enhance', 'check', 'polish', 'finish']);
+  });
+
+  it('parseDraft nâng cấp draft v1 (thiếu field mới) lên v2 với mặc định null', () => {
+    const v1 = JSON.stringify({
+      version: 1,
+      idea: 'x',
+      currentStep: 2,
+      selectedRuleIds: ['r1'],
+      template: { id: 't', title: 'T', description: '', blocks: [] },
+    });
+    const d = parseDraft(v1)!;
+    expect(d.version).toBe(2);
+    expect(d.runOutput).toBeNull();
+    expect(d.runScore).toBeNull();
+    expect(d.optimizeEval).toBeNull();
+    expect(d.selectedRuleIds).toEqual(['r1']);
+  });
+
+  it('parseDraft round-trip v2 giữ nguyên kết quả Nâng cấp, lọc suggestion hỏng', () => {
+    const d = draftWithTemplate();
+    d.runOutput = 'đầu ra thử';
+    d.runScore = { score: 85, perCriterion: [], feedback: 'ổn' };
+    d.optimizeEval = { score: 70, weaknesses: ['mơ hồ'], suggestions: [{ title: 'Vá', description: '', content: '\n\n[RÀNG BUỘC]' }] };
+    expect(parseDraft(serializeDraft(d))).toEqual(d);
+
+    const dirty = JSON.parse(serializeDraft(d));
+    dirty.optimizeEval.suggestions.push({ title: 'hỏng' }); // thiếu content
+    expect(parseDraft(JSON.stringify(dirty))!.optimizeEval!.suggestions).toHaveLength(1);
+  });
+
+  it('stepDone/stepSummary cho bước Nâng cấp', () => {
+    const d = draftWithTemplate();
+    expect(stepDone(d, 'polish')).toBe(false);
+    expect(stepSummary(d, 'polish')).toBeNull();
+    d.runScore = { score: 85, perCriterion: [], feedback: '' };
+    expect(stepDone(d, 'polish')).toBe(true);
+    expect(stepSummary(d, 'polish')).toBe('chạy thử 85/100');
+  });
+});
+
+describe('computeQualityScore', () => {
+  it('null khi chưa có phép đo nào (không bịa điểm)', () => {
+    expect(computeQualityScore(draftWithTemplate())).toBeNull();
+  });
+
+  it('chỉ lint: 100 trừ theo mức độ, không âm', () => {
+    const d = draftWithTemplate();
+    d.lintRanAt = NOW;
+    d.lintIssues = [
+      { severity: 'high', category: 'x', message: 'a', suggestion: '' },
+      { severity: 'medium', category: 'x', message: 'b', suggestion: '' },
+      { severity: 'low', category: 'x', message: 'c', suggestion: '' },
+    ];
+    const q = computeQualityScore(d)!;
+    expect(q.score).toBe(100 - 18 - 10 - 4);
+    expect(q.parts.find((p) => p.key === 'run')!.value).toBeNull();
+  });
+
+  it('trung bình các phép đo đã chạy', () => {
+    const d = draftWithTemplate();
+    d.lintRanAt = NOW; // 0 vấn đề → lint = 100
+    d.runScore = { score: 80, perCriterion: [], feedback: '' };
+    d.optimizeEval = { score: 60, weaknesses: [], suggestions: [] };
+    expect(computeQualityScore(d)!.score).toBe(80); // (100+80+60)/3
+  });
+});
+
+describe('suggestNextAction (copilot, đợt 3)', () => {
+  it('leo thang đúng thứ tự: ý tưởng → nháp → tăng cường → lint → sửa lint → chạy thử → hoàn tất', () => {
+    const d = createEmptyDraft(NOW);
+    expect(suggestNextAction(d).step).toBe('idea');
+
+    d.idea = 'Viết kịch bản';
+    expect(suggestNextAction(d).step).toBe('draft');
+
+    d.template = { ...template };
+    expect(suggestNextAction(d).step).toBe('enhance');
+
+    d.selectedRuleIds = ['r1'];
+    expect(suggestNextAction(d).step).toBe('check');
+
+    d.lintRanAt = NOW;
+    d.lintIssues = [{ severity: 'high', category: 'x', message: 'a', suggestion: '' }];
+    expect(suggestNextAction(d).step).toBe('check');
+    expect(suggestNextAction(d).reason).toContain('1 vấn đề');
+
+    d.lintIssues = [];
+    expect(suggestNextAction(d).step).toBe('polish');
+
+    d.runScore = { score: 90, perCriterion: [], feedback: '' };
+    expect(suggestNextAction(d).step).toBe('finish');
+  });
+
+  it('buildCopilotContext nén đúng trạng thái draft', () => {
+    const d = draftWithTemplate();
+    d.selectedRuleIds = ['r1'];
+    const ctx = buildCopilotContext(d, { score: 77, parts: [] });
+    expect(ctx).toContain('Kịch bản TikTok học tiếng Anh');
+    expect(ctx).toContain('1 quy tắc');
+    expect(ctx).toContain('77/100');
+    expect(ctx).toContain('chưa chạy'); // linter chưa chạy
   });
 });
