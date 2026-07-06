@@ -1,6 +1,6 @@
-import React from 'react';
-import { Handle, Position, NodeProps } from '@xyflow/react';
-import { Crown } from 'lucide-react';
+import React, { useState } from 'react';
+import { Handle, Position, NodeProps, useConnection } from '@xyflow/react';
+import { Crown, ChevronDown, ChevronUp } from 'lucide-react';
 import { GraphEdge, GraphNode } from '../../types';
 import { ROOT_SLOTS, SLOT_COLORS, SLOT_LABELS } from '../../utils/graphCompile';
 
@@ -11,16 +11,26 @@ export interface RootPromptNodeData {
 }
 
 /**
- * Prompt Gốc — node trung tâm duy nhất (kiểu Material Output của Blender).
- * Mỗi hàng bên trái là một cổng input đặt tên; node thuộc tính cắm dây vào đây.
- * Thứ tự cổng = thứ tự section trong prompt cuối.
+ * Prompt Gốc — node compiler trung tâm duy nhất (kiểu Material Output của Blender).
+ * Mỗi hàng bên trái là một cổng input đặt tên; thứ tự cổng = thứ tự section.
+ * v3.2: nội dung lõi là TUỲ CHỌN (có thể để trống và cắm Task Node vào cổng
+ * Nhiệm vụ); cổng trống thu gọn được — tự hiện đủ khi đang kéo dây.
  */
 export function RootPromptNode(props: NodeProps) {
   const { node, edges } = props.data as RootPromptNodeData;
   const accent = SLOT_COLORS.task;
+  const connection = useConnection();
+  const isWiring = connection.inProgress;
+  const [showAllPorts, setShowAllPorts] = useState(true);
 
   const countFor = (slot: string) =>
     edges.filter((e) => e.target === node.id && e.targetSlot === slot).length;
+
+  // Cổng hiển thị: tất cả khi mở rộng hoặc đang kéo dây; ngược lại chỉ cổng có dây.
+  const visibleSlots = ROOT_SLOTS.filter(
+    (slot) => showAllPorts || isWiring || countFor(slot) > 0,
+  );
+  const hiddenCount = ROOT_SLOTS.length - visibleSlots.length;
 
   return (
     <div
@@ -46,17 +56,23 @@ export function RootPromptNode(props: NodeProps) {
         </div>
       </div>
 
-      {/* Nội dung lõi rút gọn */}
+      {/* Nội dung lõi rút gọn (tuỳ chọn — có thể thay bằng Task Node) */}
       <div className="px-3.5 py-2.5 border-b border-line/60">
-        <div className="text-[9px] font-extrabold uppercase tracking-wider text-faint mb-1">Nhiệm vụ (nội dung lõi)</div>
+        <div className="text-[9px] font-extrabold uppercase tracking-wider text-faint mb-1">
+          Nhiệm vụ lõi (tuỳ chọn)
+        </div>
         <p className="text-[11px] leading-relaxed text-muted line-clamp-3 whitespace-pre-line break-words">
-          {node.content.trim() || <span className="italic text-faint">Chưa có nội dung — bấm node để soạn.</span>}
+          {node.content.trim() || (
+            <span className="italic text-faint">
+              Trống — gõ trực tiếp (bấm node) hoặc cắm node Nhiệm vụ vào cổng bên dưới.
+            </span>
+          )}
         </p>
       </div>
 
       {/* Các cổng input đặt tên */}
       <div className="py-1.5">
-        {ROOT_SLOTS.map((slot) => {
+        {visibleSlots.map((slot) => {
           const color = SLOT_COLORS[slot];
           const count = countFor(slot);
           return (
@@ -84,6 +100,20 @@ export function RootPromptNode(props: NodeProps) {
             </div>
           );
         })}
+
+        {/* Nút thu gọn / mở rộng cổng trống */}
+        {!isWiring && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowAllPorts((v) => !v); }}
+            className="nodrag w-full flex items-center justify-center gap-1 py-1.5 text-[9px] font-bold text-faint hover:text-ink cursor-pointer transition-colors"
+          >
+            {showAllPorts ? (
+              <><ChevronUp size={10} /> Thu gọn cổng trống</>
+            ) : (
+              <><ChevronDown size={10} /> {hiddenCount} cổng ẩn — bấm để hiện</>
+            )}
+          </button>
+        )}
       </div>
     </div>
   );

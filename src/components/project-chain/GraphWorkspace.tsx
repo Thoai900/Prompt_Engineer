@@ -6,7 +6,8 @@ import { confirmDialog } from '../common/ConfirmDialog';
 import {
   AttrSlot, GraphEdge, GraphNode, PromptProject, PromptTemplate, PromptVersion, TestCase,
 } from '../../types';
-import { compileGraph, LAYOUT, findRootNode } from '../../utils/graphCompile';
+import { compileGraph, LAYOUT, findRootNode, SLOT_LABELS, renderNodeText } from '../../utils/graphCompile';
+import { getPreset, defaultPresetParams } from '../../utils/graphPresets';
 import { addTemplateAsAttributeNode } from '../../utils/graphMigration';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { GraphCanvas } from './GraphCanvas';
@@ -106,7 +107,7 @@ export function GraphWorkspace({
     return { x, y: maxY + LAYOUT.attrNodeHeight + LAYOUT.nodeGapY };
   };
 
-  const addAttributeNode = (slot: AttrSlot, title: string, content: string, connect = true) => {
+  const addAttributeNode = (slot: AttrSlot, title: string, content: string, extra?: Partial<GraphNode>) => {
     const root = findRootNode(activeProject);
     const node: GraphNode = {
       id: `attr-${Date.now()}`,
@@ -117,9 +118,10 @@ export function GraphWorkspace({
       variables: [],
       position: freePosition(),
       enabled: true,
+      ...extra,
     };
     const edges: GraphEdge[] = [...(activeProject.edges || [])];
-    if (connect && root) {
+    if (root) {
       edges.push({ id: `edge-${Date.now()}`, source: node.id, target: root.id, targetSlot: slot });
     }
     commitNow({
@@ -133,7 +135,25 @@ export function GraphWorkspace({
   };
 
   const handleAddNode = (slot: AttrSlot) => {
-    addAttributeNode(slot, `Thuộc tính mới`, '');
+    addAttributeNode(slot, slot === 'task' ? 'Nhiệm vụ mới' : `${SLOT_LABELS[slot]} mới`, '');
+  };
+
+  // Modifier node (Meta-Prompt): text sinh từ preset, chỉnh bằng control trên card.
+  const handleAddPresetNode = (presetId: string) => {
+    const preset = getPreset(presetId);
+    if (!preset) return;
+    addAttributeNode(preset.slot, preset.title, '', {
+      nodeType: 'preset',
+      presetId: preset.id,
+      presetParams: defaultPresetParams(preset),
+    });
+  };
+
+  const handleAddFewShotNode = () => {
+    addAttributeNode('example', 'Ví dụ mẫu', '', {
+      nodeType: 'fewshot',
+      examples: [{ input: '', output: '' }],
+    });
   };
 
   const handleAddFixNode = (title: string, content: string) => {
@@ -166,7 +186,8 @@ export function GraphWorkspace({
         id: `block-${Date.now()}`,
         type: node.attrType === 'fix' ? 'custom' : node.attrType,
         title: node.title,
-        content: node.content,
+        // Preset/few-shot xuất text ĐÃ render để template dùng được ở mọi nơi.
+        content: renderNodeText(node),
       }],
       variables: node.variables,
     })
@@ -248,7 +269,10 @@ export function GraphWorkspace({
           theme={theme}
           onUpdateLocal={updateLocal}
           onCommit={commitNow}
+          onUpdateNode={handleUpdateNode}
           onAddNode={handleAddNode}
+          onAddPresetNode={handleAddPresetNode}
+          onAddFewShotNode={handleAddFewShotNode}
           onOpenImportTemplate={() => setIsImportModalOpen(true)}
         />
       </ReactFlowProvider>

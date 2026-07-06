@@ -106,6 +106,37 @@ describe('compileGraph', () => {
     expect(compileGraph(p, {}).finalPrompt).toContain('{{chua_khai_bao}}');
   });
 
+  it('cổng Nhiệm vụ (v3.2): nội dung lõi đứng trước các Task Node, tiêu đề [Nhiệm vụ] in 1 lần', () => {
+    const nodes = [
+      root('Lõi của root.'),
+      attr('t-duoi', { attrType: 'task', content: 'Task phụ', position: { x: 0, y: 300 } }),
+      attr('t-tren', { attrType: 'task', content: 'Task chính', position: { x: 0, y: 10 } }),
+    ];
+    const edges: GraphEdge[] = [
+      { id: 'e1', source: 't-duoi', target: 'root', targetSlot: 'task' },
+      { id: 'e2', source: 't-tren', target: 'root', targetSlot: 'task' },
+    ];
+    const { finalPrompt, sections } = compileGraph(makeProject(nodes, edges));
+    const tasks = sections.filter((s) => s.slot === 'task');
+    expect(tasks.map((s) => s.nodeId)).toEqual(['root', 't-tren', 't-duoi']);
+    expect(tasks.map((s) => s.showHeader)).toEqual([true, false, false]);
+    expect(finalPrompt.match(/\[Nhiệm vụ\]/g)?.length).toBe(1);
+  });
+
+  it('root TRỐNG + Task Node cắm vào: task node nhận tiêu đề section (mô hình compiler thuần)', () => {
+    const nodes = [
+      root(''),
+      attr('t1', { attrType: 'task', content: 'Toàn bộ nhiệm vụ nằm ở node này.' }),
+    ];
+    const edges: GraphEdge[] = [{ id: 'e1', source: 't1', target: 'root', targetSlot: 'task' }];
+    const { finalPrompt, sections } = compileGraph(makeProject(nodes, edges));
+    const tasks = sections.filter((s) => s.slot === 'task');
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].nodeId).toBe('t1');
+    expect(tasks[0].showHeader).toBe(true);
+    expect(finalPrompt).toContain('[Nhiệm vụ]\nToàn bộ nhiệm vụ nằm ở node này.');
+  });
+
   it('node không nối dây không tham gia prompt', () => {
     const nodes = [root(), attr('moco', { attrType: 'role', content: 'Không được xuất hiện' })];
     const { finalPrompt } = compileGraph(makeProject(nodes, []));

@@ -1,4 +1,5 @@
 import { AttrSlot, GraphEdge, GraphNode, PromptProject, PromptVariable } from '../types';
+import { getPreset, renderFewShotText } from './graphPresets';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Project Chain v3 — lõi compile của Prompt Graph (hàm thuần, unit-test được).
@@ -6,15 +7,20 @@ import { AttrSlot, GraphEdge, GraphNode, PromptProject, PromptVariable } from '.
 // đóng góp văn bản. Node tắt (enabled=false) bị loại cùng toàn bộ nhánh upstream.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Thứ tự section trong prompt cuối. 'task' = nội dung lõi của Prompt Gốc. */
-export type SectionSlot = AttrSlot | 'task';
+/**
+ * Thứ tự section trong prompt cuối. Section 'task' gồm: nội dung lõi của
+ * Prompt Gốc (nếu có) + các Task Node cắm vào cổng `Nhiệm vụ` (v3.2 — root là
+ * compiler; nội dung lõi chỉ là lối tắt tuỳ chọn, có thể để trống và swap
+ * Task Node như Blender).
+ */
+export type SectionSlot = AttrSlot;
 export const SECTION_ORDER: readonly SectionSlot[] = [
   'role', 'context', 'task', 'format', 'tone', 'constraints', 'example', 'fix', 'custom',
 ];
 
 /** Các cổng input hiển thị trên Prompt Gốc (thứ tự trên UI = thứ tự compile). */
 export const ROOT_SLOTS: readonly AttrSlot[] = [
-  'role', 'context', 'format', 'tone', 'constraints', 'example', 'fix', 'custom',
+  'role', 'context', 'task', 'format', 'tone', 'constraints', 'example', 'fix', 'custom',
 ];
 
 export const SLOT_LABELS: Record<SectionSlot, string> = {
@@ -101,6 +107,23 @@ export const wouldCreateCycle = (edges: GraphEdge[], source: string, target: str
   return false;
 };
 
+/**
+ * Text "thô" của một node theo loại (v3.2):
+ * - preset: sinh từ thư viện Modifier theo presetParams (dropdown/slider).
+ * - fewshot: render cặp Input→Output chuẩn few-shot.
+ * - text (mặc định): dùng content.
+ */
+export const renderNodeText = (node: GraphNode): string => {
+  if (node.nodeType === 'preset') {
+    const preset = getPreset(node.presetId);
+    return preset ? preset.render(node.presetParams || {}) : (node.content || '');
+  }
+  if (node.nodeType === 'fewshot') {
+    return renderFewShotText(node.examples || []);
+  }
+  return node.content;
+};
+
 /** Node cắm vào (target, slot), chỉ lấy node đang bật, sort theo Y (trên → dưới). */
 const getEnabledSources = (
   nodeMap: Map<string, GraphNode>,
@@ -125,7 +148,7 @@ const compileAttributeText = (
   if (visited.has(node.id)) return ''; // chống chu trình phòng thủ (UI đã chặn khi nối)
   visited.add(node.id);
   collect(node.id);
-  const parts = [node.content.trim()];
+  const parts = [renderNodeText(node).trim()];
   getEnabledSources(nodeMap, edges, node.id, 'append').forEach((child) => {
     const childText = compileAttributeText(child, nodeMap, edges, visited, collect);
     if (childText) parts.push(childText);
@@ -150,23 +173,26 @@ export const compileGraph = (
   const rawSections: Array<Omit<CompiledSection, 'text'> & { rawText: string }> = [];
 
   for (const slot of SECTION_ORDER) {
+    let headerShown = false;
+    // Cổng Nhiệm vụ: nội dung lõi của root (nếu có) đứng trước các Task Node cắm vào.
     if (slot === 'task') {
       const core = root.content.trim();
       if (core) {
         rawSections.push({
           nodeId: root.id, slot: 'task', title: SLOT_LABELS.task, showHeader: true, rawText: core,
         });
+        headerShown = true;
       }
-      continue;
     }
     const sources = getEnabledSources(nodeMap, edges, root.id, slot);
-    sources.forEach((node, idx) => {
+    sources.forEach((node) => {
       const visited = new Set<string>();
       const text = compileAttributeText(node, nodeMap, edges, visited, collect);
       if (!text) return;
       rawSections.push({
-        nodeId: node.id, slot, title: SLOT_LABELS[slot], showHeader: idx === 0, rawText: text,
+        nodeId: node.id, slot, title: SLOT_LABELS[slot], showHeader: !headerShown, rawText: text,
       });
+      headerShown = true;
     });
   }
 
@@ -211,7 +237,9 @@ export const collectGraphVariables = (project: PromptProject): PromptVariable[] 
   nodes.forEach((n) => {
     let match;
     const regex = new RegExp(VAR_REGEX.source, 'g');
-    while ((match = regex.exec(n.content)) !== null) {
+    // Quét trên text ĐÃ render để bắt cả biến trong ví dụ few-shot / preset.
+    const text = n.kind === 'root' ? n.content : renderNodeText(n);
+    while ((match = regex.exec(text)) !== null) {
       const name = match[1].trim();
       if (seen.has(name)) continue;
       seen.add(name);

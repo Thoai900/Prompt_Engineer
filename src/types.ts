@@ -216,7 +216,21 @@ export interface PromptVersion {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Loại thuộc tính = tên cổng input trên Prompt Gốc, theo thứ tự compile. */
-export type AttrSlot = 'role' | 'context' | 'format' | 'tone' | 'constraints' | 'example' | 'fix' | 'custom';
+export type AttrSlot = 'role' | 'context' | 'task' | 'format' | 'tone' | 'constraints' | 'example' | 'fix' | 'custom';
+
+/**
+ * v3.2: node không chỉ là "hộp text".
+ * - 'text' (mặc định): văn bản tự do trong `content`.
+ * - 'preset': Modifier node (Meta-Prompt) — text sinh từ thư viện preset
+ *   (graphPresets.ts) theo `presetId` + `presetParams` (dropdown/slider trên node).
+ * - 'fewshot': node Ví dụ mẫu — cặp `examples[]` Input→Output có cấu trúc.
+ */
+export type GraphNodeType = 'text' | 'preset' | 'fewshot';
+
+export interface FewShotExample {
+  input: string;
+  output: string;
+}
 
 export interface GraphNode {
   id: string;
@@ -227,6 +241,12 @@ export interface GraphNode {
   variables: PromptVariable[];
   position: { x: number; y: number };
   enabled: boolean;            // false = mute (loại khỏi compile, dây mờ đi)
+
+  // v3.2 — node có cấu trúc (undefined = 'text', tương thích ngược)
+  nodeType?: GraphNodeType;
+  presetId?: string;                      // nodeType 'preset'
+  presetParams?: Record<string, string>;  // giá trị các control của preset
+  examples?: FewShotExample[];            // nodeType 'fewshot'
 }
 
 export interface GraphEdge {

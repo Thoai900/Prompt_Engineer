@@ -109,14 +109,16 @@ export const GRAPH_SAMPLE_PROJECTS: PromptProject[] = [
   buildSample(
     'sample-code-reviewer',
     'Code Reviewer',
-    'Prompt review code với thuộc tính quy định tiêu chí, định dạng báo cáo và ví dụ mẫu. Cắm thêm node Ràng buộc riêng cho stack của bạn.',
-    'Review đoạn code sau (ngôn ngữ: {{ngon_ngu}}):\n\n```\n{{code}}\n```\n\nBối cảnh: {{boi_canh}}',
+    'Demo swap Task Node kiểu Blender: Prompt Gốc để TRỐNG, hai node Nhiệm vụ cắm cùng cổng — bật cái này tắt cái kia để đổi cả bài toán mà không sửa chữ nào.',
+    '',
     [
       { name: 'ngon_ngu', type: 'text', description: 'Ngôn ngữ lập trình', required: true, defaultValue: 'TypeScript' },
       { name: 'code', type: 'long-text', description: 'Đoạn code cần review', required: true, defaultValue: '' },
       { name: 'boi_canh', type: 'text', description: 'Bối cảnh của đoạn code', required: false, defaultValue: 'component React trong ứng dụng web' },
     ],
     [
+      { slot: 'task', title: 'Nhiệm vụ: Review tổng quát', content: 'Review đoạn code sau (ngôn ngữ: {{ngon_ngu}}):\n\n```\n{{code}}\n```\n\nBối cảnh: {{boi_canh}}' },
+      { slot: 'task', title: 'Nhiệm vụ: Chỉ soát bảo mật', content: 'CHỈ tập trung rà soát lỗ hổng bảo mật (injection, XSS, lộ secret, phân quyền sai) trong đoạn code sau (ngôn ngữ: {{ngon_ngu}}):\n\n```\n{{code}}\n```\n\nBỏ qua mọi vấn đề không liên quan bảo mật.', enabled: false },
       { slot: 'role', title: 'Senior Engineer khó tính', content: 'Bạn là Senior Software Engineer chuyên review code, nổi tiếng kỹ tính nhưng công tâm: chỉ ra lỗi thẳng thắn kèm cách sửa cụ thể, không chê chung chung.' },
       { slot: 'constraints', title: 'Tiêu chí review', content: 'Thứ tự ưu tiên khi review:\n1. Bug và lỗi logic (nghiêm trọng nhất)\n2. Lỗ hổng bảo mật, rò rỉ dữ liệu\n3. Hiệu năng (chỉ khi ảnh hưởng thực tế)\n4. Khả năng đọc hiểu và bảo trì\n\nKHÔNG bắt lỗi phong cách cá nhân (dấu chấm phẩy, đặt tên biến hợp lệ...).' },
       { slot: 'format', title: 'Định dạng báo cáo', content: 'Báo cáo theo cấu trúc:\n- **Tổng quan**: 2-3 câu đánh giá chung\n- **Vấn đề**: danh sách đánh số, mỗi vấn đề gồm [mức độ] + vị trí + giải thích + code đã sửa\n- **Điểm tốt**: 1-2 điểm code làm tốt (nếu có)' },

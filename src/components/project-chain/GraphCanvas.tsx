@@ -23,7 +23,11 @@ interface GraphCanvasProps {
   onUpdateLocal: (proj: PromptProject) => void;
   /** Cập nhật + lưu bền (thả kéo, nối dây, thêm/xoá node...). */
   onCommit: (proj: PromptProject) => void;
+  /** Sửa field của một node (debounce ở workspace) — dùng cho control preset trên card. */
+  onUpdateNode: (id: string, fields: Partial<GraphNode>) => void;
   onAddNode: (slot: AttrSlot) => void;
+  onAddPresetNode: (presetId: string) => void;
+  onAddFewShotNode: () => void;
   onOpenImportTemplate: () => void;
 }
 
@@ -33,7 +37,8 @@ interface GraphCanvasProps {
  */
 export function GraphCanvas({
   project, selectedNodeId, setSelectedNodeId, theme = 'dark',
-  onUpdateLocal, onCommit, onAddNode, onOpenImportTemplate,
+  onUpdateLocal, onCommit, onUpdateNode,
+  onAddNode, onAddPresetNode, onAddFewShotNode, onOpenImportTemplate,
 }: GraphCanvasProps) {
   const { fitView } = useReactFlow();
   const graphNodes = project.graphNodes || [];
@@ -53,8 +58,8 @@ export function GraphCanvas({
     deletable: n.kind !== 'root',
     data: n.kind === 'root'
       ? { node: n, edges }
-      : { node: n, onToggleEnabled: handleToggleEnabled },
-  })), [graphNodes, edges, selectedNodeId, handleToggleEnabled]);
+      : { node: n, onToggleEnabled: handleToggleEnabled, onUpdateNode },
+  })), [graphNodes, edges, selectedNodeId, handleToggleEnabled, onUpdateNode]);
 
   const nodeById = useMemo(() => new Map(graphNodes.map((n) => [n.id, n] as const)), [graphNodes]);
 
@@ -205,6 +210,8 @@ export function GraphCanvas({
         <Panel position="top-left">
           <NodePalette
             onAddNode={onAddNode}
+            onAddPresetNode={onAddPresetNode}
+            onAddFewShotNode={onAddFewShotNode}
             onOpenImportTemplate={onOpenImportTemplate}
             onAutoLayout={handleAutoLayout}
             disabled={!hasRoot}

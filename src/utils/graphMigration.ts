@@ -15,11 +15,12 @@ import { computeGraphLayout, LAYOUT } from './graphCompile';
 export const isGraphProject = (p: PromptProject): boolean =>
   p.schemaVersion === 3 && Array.isArray(p.graphNodes);
 
-/** Map BlockType (v2, 17 loại) → cổng thuộc tính v3 (8 loại). */
+/** Map BlockType (v2, 17 loại) → cổng thuộc tính v3. */
 export const blockTypeToSlot = (type: BlockType): AttrSlot => {
   switch (type) {
     case 'role': return 'role';
     case 'context': return 'context';
+    case 'task': return 'task'; // block task THỪA (ngoài block lõi) → Task Node cắm cổng Nhiệm vụ
     case 'format': return 'format';
     case 'tone': return 'tone';
     case 'constraints': return 'constraints';
