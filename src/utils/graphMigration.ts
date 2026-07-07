@@ -142,6 +142,118 @@ export const templateToGraphProject = (
   };
 };
 
+// ── Nhập prompt THÔ từ bất kỳ đâu (ChatGPT, web, file...) thành đồ thị ───────
+
+/** Nhận diện dòng tiêu đề section: `[Tiêu đề]` hoặc heading markdown `## Tiêu đề`. */
+const SECTION_MARKER_REGEX = /^\s*(?:\[([^\[\]]{1,80})\]|#{1,4}\s+(.{1,80}?))\s*$/;
+
+/** Đoán cổng từ tiêu đề section (hỗ trợ tiếng Việt + tiếng Anh phổ biến). */
+export const guessSlotFromTitle = (title: string): AttrSlot => {
+  const t = title.toLowerCase().trim();
+  const rules: Array<[RegExp, AttrSlot]> = [
+    [/vai\s*tr|role|system|persona/, 'role'],
+    [/ngữ\s*cảnh|bối\s*cảnh|context|background|dữ\s*liệu|input/, 'context'],
+    [/nhiệm\s*vụ|task|yêu\s*cầu|objective|goal|mục\s*tiêu/, 'task'],
+    [/định\s*dạng|format|output|đầu\s*ra/, 'format'],
+    [/giọng\s*điệu|tone|phong\s*cách|style/, 'tone'],
+    [/ràng\s*buộc|constraint|quy\s*tắc|rule|lưu\s*ý|hạn\s*chế/, 'constraints'],
+    [/ví\s*dụ|example|few[- ]?shot|mẫu/, 'example'],
+    [/sửa\s*lỗi|fix|khắc\s*phục/, 'fix'],
+  ];
+  for (const [regex, slot] of rules) {
+    if (regex.test(t)) return slot;
+  }
+  return 'custom';
+};
+
+/**
+ * Biến một prompt TEXT THÔ (dán từ bất kỳ trang nào) thành project Prompt Graph:
+ * - Có section marker (`[X]` / heading markdown): phần mở đầu → nội dung lõi
+ *   Prompt Gốc; mỗi section → node thuộc tính ĐÃ nối dây vào cổng đoán từ tiêu đề
+ *   (section "Nhiệm vụ" → Task Node) — người dùng chỉnh tiếp bằng node ngay.
+ * - Không có marker: toàn bộ text → nội dung lõi, đồ thị sạch để cắm thêm.
+ * Hàm thuần — unit-test được.
+ */
+export const parseRawPromptToGraph = (
+  name: string,
+  description: string,
+  rawText: string,
+  workspaceId?: string,
+): PromptProject => {
+  const text = (rawText || '').replace(/\r\n/g, '\n').trim();
+  const lines = text.split('\n');
+
+  interface RawSection { title: string; body: string[] }
+  const preamble: string[] = [];
+  const sections: RawSection[] = [];
+  let current: RawSection | null = null;
+
+  for (const line of lines) {
+    const match = line.match(SECTION_MARKER_REGEX);
+    if (match) {
+      current = { title: (match[1] || match[2] || '').trim(), body: [] };
+      sections.push(current);
+    } else if (current) {
+      current.body.push(line);
+    } else {
+      preamble.push(line);
+    }
+  }
+
+  const root: GraphNode = {
+    id: newId('root'),
+    kind: 'root',
+    attrType: 'custom',
+    title: 'Prompt Gốc',
+    content: stripLegacyRefs(preamble.join('\n').trim()),
+    variables: [],
+    position: { x: LAYOUT.rootX, y: LAYOUT.rootY },
+    enabled: true,
+  };
+  const graphNodes: GraphNode[] = [root];
+  const edges: GraphEdge[] = [];
+
+  sections.forEach((section) => {
+    const content = stripLegacyRefs(section.body.join('\n').trim());
+    if (!content) return;
+    const slot = guessSlotFromTitle(section.title);
+    const attr: GraphNode = {
+      id: newId('attr'),
+      kind: 'attribute',
+      attrType: slot,
+      title: section.title,
+      content,
+      variables: [],
+      position: { x: 0, y: 0 }, // auto-layout đặt lại bên dưới
+      enabled: true,
+    };
+    graphNodes.push(attr);
+    edges.push({ id: newId('edge'), source: attr.id, target: root.id, targetSlot: slot });
+  });
+
+  const positions = computeGraphLayout(graphNodes, edges);
+  const laidOut = graphNodes.map((n) => {
+    const pos = positions.get(n.id);
+    return pos ? { ...n, position: pos } : n;
+  });
+
+  return {
+    id: `proj-${Date.now()}`,
+    name: name || 'Prompt nhập từ ngoài',
+    description,
+    globalEvalCriteria: [],
+    nodes: [],
+    schemaVersion: 3,
+    graphNodes: laidOut,
+    edges,
+    testCases: [],
+    versions: [],
+    workspaceId,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+};
+
 /** Chuyển một project legacy sang v3. Idempotent: project v3 trả về nguyên vẹn. */
 export const migrateProjectToGraph = (project: PromptProject): PromptProject => {
   if (isGraphProject(project)) return project;
@@ -261,34 +373,5 @@ export const addTemplateAsAttributeNode = (
   };
 };
 
-/**
- * Tạo project v3 mới từ một template thư viện: block `task` → nội dung lõi,
- * các block khác → node thuộc tính đã nối dây (tái dùng logic migration).
- */
-export const createGraphProjectFromTemplate = (
-  name: string,
-  description: string,
-  template: { title: string; description?: string; blocks: PromptBlock[]; variables?: PromptVariable[] },
-  workspaceId?: string,
-): PromptProject => {
-  const legacyShape: PromptProject = {
-    id: `proj-${Date.now()}`,
-    name,
-    description,
-    globalEvalCriteria: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    workspaceId,
-    nodes: [{
-      id: newId('root'),
-      parentId: null,
-      title: template.title,
-      description: template.description || '',
-      status: 'idle',
-      position: { x: LAYOUT.rootX, y: LAYOUT.rootY },
-      blocks: template.blocks.map((b) => ({ ...b })),
-      variables: (template.variables || []).map((v) => ({ ...v })),
-    }],
-  };
-  return migrateProjectToGraph(legacyShape);
-};
+// (createGraphProjectFromTemplate đã hợp nhất vào templateToGraphProject ở trên —
+//  nơi gọi ghi đè title/description của template khi muốn đặt tên project khác.)

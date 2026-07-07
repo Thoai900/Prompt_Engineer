@@ -8,7 +8,7 @@ import { PromptProject, PromptTemplate } from '../../types';
 import { TEMPLATES } from '../../data';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { GraphWorkspace } from '../project-chain/GraphWorkspace';
-import { createEmptyGraphProject, isGraphProject, migrateProjectToGraph } from '../../utils/graphMigration';
+import { createEmptyGraphProject, isGraphProject, migrateProjectToGraph, parseRawPromptToGraph } from '../../utils/graphMigration';
 import { GRAPH_SAMPLE_PROJECTS } from '../../utils/graphSamples';
 
 /**
@@ -46,6 +46,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDesc, setNewProjectDesc] = useState('');
+  const [newProjectPaste, setNewProjectPaste] = useState('');
 
   const allAvailableTemplates = [...TEMPLATES, ...(customTemplates || [])];
 
@@ -184,7 +185,11 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
   // ── Quản lý dự án ──────────────────────────────────────────────────────────
   const handleCreateProject = () => {
     if (!newProjectName.trim()) return;
-    const newProj = createEmptyGraphProject(newProjectName, newProjectDesc, activeWorkspaceId);
+    // Có dán prompt sẵn (từ Builder/ChatGPT/web...) → parse thành đồ thị:
+    // section [X] / heading markdown thành node cắm sẵn, không marker → vào lõi.
+    const newProj = newProjectPaste.trim()
+      ? parseRawPromptToGraph(newProjectName, newProjectDesc, newProjectPaste, activeWorkspaceId)
+      : createEmptyGraphProject(newProjectName, newProjectDesc, activeWorkspaceId);
 
     const nextProjects = [...projects, newProj];
     setProjects(nextProjects);
@@ -197,9 +202,17 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
         .catch(() => setSyncStatus('error'));
     }
 
+    if (newProjectPaste.trim()) {
+      const attrCount = (newProj.graphNodes || []).filter((n) => n.kind === 'attribute').length;
+      toast.success(attrCount > 0
+        ? `Đã tách prompt thành ${attrCount} node thuộc tính cắm sẵn vào Prompt Gốc.`
+        : 'Đã đưa prompt vào Prompt Gốc — cắm thêm node để nâng cấp.');
+    }
+
     setIsNewProjectModalOpen(false);
     setNewProjectName('');
     setNewProjectDesc('');
+    setNewProjectPaste('');
   };
 
   const handleDeleteProject = async (id: string, e: React.MouseEvent) => {
@@ -377,6 +390,18 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
                   onChange={(e) => setNewProjectDesc(e.target.value)}
                   placeholder="Mô tả mục tiêu của prompt này..."
                   className="text-xs px-3.5 py-2.5 border border-line/70 focus:border-violet-500 bg-transparent text-ink rounded-xl focus:outline-none resize-none h-20 transition-colors custom-scrollbar"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-muted uppercase tracking-wide">
+                  Dán prompt có sẵn <span className="text-faint normal-case font-semibold">(tuỳ chọn — từ Builder, ChatGPT, web...)</span>
+                </label>
+                <textarea
+                  value={newProjectPaste}
+                  onChange={(e) => setNewProjectPaste(e.target.value)}
+                  placeholder={'Dán prompt vào đây. Nếu prompt có các phần dạng [Vai trò], [Nhiệm vụ]... hoặc heading Markdown (## Vai trò), mỗi phần sẽ tự tách thành một node cắm sẵn vào Prompt Gốc.'}
+                  className="text-xs px-3.5 py-2.5 border border-line/70 focus:border-violet-500 bg-transparent text-ink rounded-xl focus:outline-none resize-y h-28 transition-colors custom-scrollbar font-mono"
                 />
               </div>
             </div>

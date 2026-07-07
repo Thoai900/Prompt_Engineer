@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
-import { Sparkles, ArrowRight, Loader2, Copy, Check, ExternalLink, Settings } from 'lucide-react';
+import { Sparkles, ArrowRight, Loader2, Copy, Check, ExternalLink, Settings, Workflow } from 'lucide-react';
 import { PromptBlock, PromptTemplate } from '../../types';
 import { enhancePromptWithAiStream } from '../../services/aiService';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import StepNarrator from '../common/StepNarrator';
 import { GhostTextArea } from '../common/GhostTextArea';
+import { toast } from '../common/Toaster';
+import { templateToGraphProject } from '../../utils/graphMigration';
+import { openProjectInGraph } from '../../services/graphExportService';
 
 interface EnhancerTabProps {
   onApplyTemplate?: (template: PromptTemplate) => void;
 }
 
 export default function EnhancerTab({ onApplyTemplate }: EnhancerTabProps) {
-  const { activePersona } = useWorkspace();
+  const { activePersona, user, activeWorkspaceId } = useWorkspace();
   const [inputPrompt, setInputPrompt] = useState('');
   const [optimizedBlocks, setOptimizedBlocks] = useState<PromptBlock[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -81,6 +84,20 @@ export default function EnhancerTab({ onApplyTemplate }: EnhancerTabProps) {
       blocks: optimizedBlocks
     };
     onApplyTemplate(template);
+  };
+
+  // Kết quả tối ưu → project Prompt Graph (block task → Prompt Gốc, block khác
+  // → node cắm sẵn) để chỉnh tiếp bằng node trong Project Chain.
+  const handleOpenInGraph = async () => {
+    if (!optimizedBlocks) return;
+    const project = templateToGraphProject({
+      title: 'AI Enhanced Prompt',
+      description: 'Prompt tối ưu bởi AI Enhancer — chỉnh tiếp bằng node.',
+      blocks: optimizedBlocks,
+    }, activeWorkspaceId);
+    await openProjectInGraph(project, user);
+    toast.success('Đã mở trong Prompt Graph — chỉnh tiếp bằng node.');
+    window.location.hash = '#projectchain';
   };
 
   return (
@@ -195,6 +212,14 @@ export default function EnhancerTab({ onApplyTemplate }: EnhancerTabProps) {
                       <span>Áp dụng vào Builder</span>
                     </button>
                   )}
+                  <button
+                    onClick={handleOpenInGraph}
+                    title="Mở kết quả thành Prompt Graph để chỉnh bằng node"
+                    className="flex-[2] md:flex-none justify-center px-3 py-2 bg-cyan-600 border border-cyan-600 rounded-md text-xs font-semibold text-white hover:bg-cyan-700 flex items-center gap-1.5 transition-colors shadow-sm"
+                  >
+                    <Workflow size={14} />
+                    <span>Chỉnh bằng Node</span>
+                  </button>
                </div>
              )}
           </div>

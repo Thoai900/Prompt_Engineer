@@ -7,15 +7,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { User } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
 import { ArrowLeft, ArrowRight, Bot, Home, ListOrdered, Loader2, LogIn, RotateCcw } from 'lucide-react';
 import { AiRule, AiSkill, PromptTemplate, TabType } from '../../types';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import { db, handleFirestoreError } from '../../firebase';
 import { confirmDialog } from '../common/ConfirmDialog';
 import { toast } from '../common/Toaster';
 import { PRESET_RULES, PRESET_SKILLS } from '../../presets';
-import { LOCAL_PROJECTS_KEY, loadLocalProjects } from '../../services/chainAppService';
+import { openProjectInGraph } from '../../services/graphExportService';
 import { templateToGraphProject } from '../../utils/graphMigration';
 import {
   STUDIO_STEPS, StudioDraft, assembleStudioPrompt, clampStep, computeQualityScore,
@@ -124,25 +122,10 @@ export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBui
   );
   const quality = useMemo(() => computeQualityScore(draft), [draft]);
 
-  /** Đợt 2: template → project Prompt Graph v3, lưu local + Firestore, mở tab Project Chain. */
+  /** Đợt 2: template → project Prompt Graph v3, lưu + báo tab qua graphExportService. */
   const handleExportGraph = useCallback(async (template: PromptTemplate) => {
     const project = templateToGraphProject(template, activeWorkspaceId);
-    try {
-      const next = [...loadLocalProjects().filter((p) => p.id !== project.id), project];
-      localStorage.setItem(LOCAL_PROJECTS_KEY, JSON.stringify(next));
-      localStorage.setItem('active_project_id', project.id);
-    } catch (e) {
-      console.error('Lưu project cục bộ lỗi:', e);
-    }
-    if (user) {
-      try {
-        await setDoc(doc(db, 'projects', project.id), { ...project, userId: user.uid });
-      } catch (err) {
-        try { handleFirestoreError(err, 'create', `projects/${project.id}`); } catch (e: any) { console.error(e.message); }
-      }
-    }
-    // ProjectChainTab có thể đã mount (giữ state) → báo để nó nhận project mới ngay.
-    window.dispatchEvent(new CustomEvent('pb:project-added', { detail: project }));
+    await openProjectInGraph(project, user);
     toast.success('Đã xuất thành Prompt Graph — mở trong Project Chain.');
     onNavigateToTab('projectchain');
   }, [activeWorkspaceId, user, onNavigateToTab]);

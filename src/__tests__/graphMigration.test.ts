@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   migrateProjectToGraph, isGraphProject, stripLegacyRefs, createEmptyGraphProject,
-  addTemplateAsAttributeNode, blockTypeToSlot, templateToGraphProject,
+  addTemplateAsAttributeNode, blockTypeToSlot, templateToGraphProject, parseRawPromptToGraph,
 } from '../utils/graphMigration';
 import { compileGraph } from '../utils/graphCompile';
 import { PromptProject } from '../types';
@@ -165,5 +165,69 @@ describe('templateToGraphProject (Studio → Prompt Graph, đợt 2)', () => {
     const root = proj.graphNodes!.find((n) => n.kind === 'root')!;
     expect(root.content).toBe('');
     expect(proj.graphNodes!.filter((n) => n.kind === 'attribute')).toHaveLength(1);
+  });
+});
+
+describe('parseRawPromptToGraph (dán prompt thô từ bất kỳ đâu)', () => {
+  it('tách section [X] thành node đúng cổng, phần mở đầu vào lõi Prompt Gốc', () => {
+    const raw = [
+      'Đây là phần mở đầu tự do.',
+      '',
+      '[Vai trò]',
+      'Bạn là chuyên gia SEO.',
+      '',
+      '[Ràng buộc]',
+      'Không dùng từ sáo rỗng.',
+      '',
+      '[Nhiệm vụ]',
+      'Viết bài về {{chu_de}}.',
+    ].join('\n');
+    const proj = parseRawPromptToGraph('Test', 'mô tả', raw, 'ws-1');
+    expect(isGraphProject(proj)).toBe(true);
+    expect(proj.workspaceId).toBe('ws-1');
+
+    const root = proj.graphNodes!.find((n) => n.kind === 'root')!;
+    expect(root.content).toBe('Đây là phần mở đầu tự do.');
+
+    const attrs = proj.graphNodes!.filter((n) => n.kind === 'attribute');
+    expect(attrs.map((a) => a.attrType).sort()).toEqual(['constraints', 'role', 'task']);
+    // Section Nhiệm vụ → Task Node cắm cổng task
+    const taskNode = attrs.find((a) => a.attrType === 'task')!;
+    expect(taskNode.content).toContain('{{chu_de}}');
+    // Tất cả nối dây vào root, đúng cổng
+    for (const a of attrs) {
+      const edge = proj.edges!.find((e) => e.source === a.id)!;
+      expect(edge.target).toBe(root.id);
+      expect(edge.targetSlot).toBe(a.attrType);
+    }
+    // Compile được ngay
+    const { finalPrompt } = compileGraph(proj);
+    expect(finalPrompt).toContain('Bạn là chuyên gia SEO.');
+    expect(finalPrompt).toContain('Viết bài về {{chu_de}}.');
+  });
+
+  it('hỗ trợ heading Markdown (## Vai trò / ### Ví dụ), tiêu đề lạ → custom', () => {
+    const raw = '## Vai trò\nBạn là nhà thơ.\n\n### Ví dụ\nThơ mẫu...\n\n## Phần Bí Ẩn XYZ\nNội dung lạ.';
+    const proj = parseRawPromptToGraph('MD', '', raw);
+    const attrs = proj.graphNodes!.filter((n) => n.kind === 'attribute');
+    expect(attrs.map((a) => a.attrType).sort()).toEqual(['custom', 'example', 'role']);
+    expect(attrs.find((a) => a.attrType === 'custom')!.title).toBe('Phần Bí Ẩn XYZ');
+  });
+
+  it('không có marker nào → toàn bộ text vào lõi Prompt Gốc, không node thuộc tính', () => {
+    const raw = 'Viết cho tôi một email xin nghỉ phép chuyên nghiệp, giọng lịch sự.';
+    const proj = parseRawPromptToGraph('Email', '', raw);
+    const root = proj.graphNodes!.find((n) => n.kind === 'root')!;
+    expect(root.content).toBe(raw);
+    expect(proj.graphNodes!.filter((n) => n.kind === 'attribute')).toHaveLength(0);
+    expect(proj.edges).toHaveLength(0);
+  });
+
+  it('section rỗng bị bỏ, cú pháp tham chiếu cũ bị thay bằng ghi chú', () => {
+    const raw = '[Vai trò]\n\n[Ngữ cảnh]\nDựa trên {{output_1}} phía trước.';
+    const proj = parseRawPromptToGraph('X', '', raw);
+    const attrs = proj.graphNodes!.filter((n) => n.kind === 'attribute');
+    expect(attrs).toHaveLength(1); // Vai trò rỗng → bỏ
+    expect(attrs[0].content).toContain('[Tham chiếu cũ: output_1]');
   });
 });

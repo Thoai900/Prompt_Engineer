@@ -4,7 +4,7 @@ import { X, FolderPlus, ArrowRight } from 'lucide-react';
 import { PromptProject, PromptBlock, PromptVariable, TabType } from '../../types';
 import { collection, doc, getDocs, query, where, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { addTemplateAsAttributeNode, createGraphProjectFromTemplate } from '../../utils/graphMigration';
+import { addTemplateAsAttributeNode, templateToGraphProject } from '../../utils/graphMigration';
 
 interface AddToProjectModalProps {
   isOpen: boolean;
@@ -117,12 +117,12 @@ export default function AddToProjectModal({
         return;
       }
       // v3: block `task` của template → nội dung lõi Prompt Gốc, block khác
-      // → node thuộc tính đã cắm dây sẵn.
-      targetProject = createGraphProjectFromTemplate(
-        newProjName,
-        newProjDesc || 'Dự án Prompt Graph.',
-        template,
-      );
+      // → node thuộc tính đã cắm dây sẵn (ghi đè title/desc = tên project mới).
+      targetProject = templateToGraphProject({
+        ...template,
+        title: newProjName,
+        description: newProjDesc || template.description || 'Dự án Prompt Graph.',
+      });
     } else {
       if (!activeProject) return;
       // v3: template trở thành node thuộc tính cắm sẵn vào Prompt Gốc

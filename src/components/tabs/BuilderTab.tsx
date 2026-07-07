@@ -29,6 +29,8 @@ import StepNarrator from '../common/StepNarrator';
 import type { GenerationFlowKey } from '../../utils/generationNarratives';
 import { PRESET_RULES, PRESET_SKILLS } from '../../presets';
 import { DEFAULT_FRAMEWORKS } from '../../utils/builderUtils';
+import { templateToGraphProject } from '../../utils/graphMigration';
+import { openProjectInGraph } from '../../services/graphExportService';
 
 interface BuilderTabProps {
   initialTemplate: PromptTemplate | null;
@@ -47,7 +49,7 @@ export default function BuilderTab({
     geminiApiKey, setGeminiApiKey, openaiApiKey, setOpenaiApiKey,
     groqApiKey, setGroqApiKey,
     useSystemGeminiKey, setUseSystemGeminiKey,
-    activePersona,
+    activePersona, activeWorkspaceId,
   } = useWorkspace();
 
   const {
@@ -605,6 +607,31 @@ export default function BuilderTab({
     setShowExportDropdown(false);
   };
 
+  // Cấu trúc đang soạn → project Prompt Graph (block task → Prompt Gốc, block
+  // khác → node thuộc tính cắm sẵn) rồi nhảy sang Project Chain chỉnh bằng node.
+  const exportToGraph = async () => {
+    if (blocks.length === 0) {
+      toast('Chưa có khối nào trong Workshop để xuất.');
+      return;
+    }
+    const parsedVars = allVariables.map(v => ({
+      name: v.name,
+      type: v.options ? 'dropdown' as const : 'text' as const,
+      required: true,
+      options: v.options
+    }));
+    const project = templateToGraphProject({
+      title: initialTemplate?.title || 'Prompt từ Builder',
+      description: initialTemplate?.description || 'Xuất từ Prompt Builder để chỉnh bằng node.',
+      blocks: [...blocks],
+      variables: parsedVars,
+    }, activeWorkspaceId);
+    await openProjectInGraph(project, user);
+    setShowExportDropdown(false);
+    toast.success('Đã mở prompt trong Prompt Graph — chỉnh tiếp bằng node.');
+    onNavigateToTab?.('projectchain');
+  };
+
   const handleStartPlaygroundSession = () => {
     const combinedSystem = generatePreviewContent(false, 'combined');
     handleGenerateSampleResult(combinedSystem);
@@ -1112,6 +1139,15 @@ export default function BuilderTab({
                             >
                               <Printer size={14} className="text-emerald-500" />
                               Xuất tài liệu PDF (.pdf)
+                            </button>
+                            <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+                            <button
+                              onClick={exportToGraph}
+                              className="w-full text-left px-3 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-cyan-50 dark:hover:bg-cyan-955/20 hover:text-cyan-650 dark:hover:text-cyan-400 rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+                              title="Block Nhiệm vụ thành Prompt Gốc, các block khác thành node cắm sẵn"
+                            >
+                              <Workflow size={14} className="text-cyan-500" />
+                              Mở trong Prompt Graph (chỉnh bằng node)
                             </button>
                           </div>
                         </>
