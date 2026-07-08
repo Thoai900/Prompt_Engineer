@@ -856,12 +856,14 @@ export async function runPromptOnModel(params: {
     });
   } else if (provider === 'anthropic') {
     // Claude (M1): luôn qua backend proxy (key server); Opus 4.8 từ chối sampling
-    // param nên KHÔNG truyền temperature/topP cho nhánh này.
+    // param nên KHÔNG truyền temperature/topP cho nhánh này. Đặt maxTokens rộng tay vì
+    // thinking của Opus tính chung vào ngân sách — thiếu sẽ ra kết quả cụt khi so tài.
     text = await proxyGenerate({
       provider: 'anthropic',
       model,
       system: systemInstruction,
       user: userContent,
+      maxTokens: 16000,
     });
   } else {
     // openai (và provider tương thích OpenAI khác): gom chunk từ stream.

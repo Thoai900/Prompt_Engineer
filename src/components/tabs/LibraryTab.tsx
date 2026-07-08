@@ -3,147 +3,162 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { TEMPLATES } from '../../data';
 import { PromptTemplate } from '../../types';
-import { Search, TrendingUp, Sparkles, Bookmark, History, Play, Eye, Brain, Code2, Video, GraduationCap } from 'lucide-react';
+import { Search, TrendingUp, Sparkles, Bookmark, History, Eye, X, Code2, Video, Brain, GraduationCap, FileText, Layout, Folder, FolderPlus, Plus, Trash2 } from 'lucide-react';
 import PromptCard from '../common/PromptCard';
 import PromptDetailModal from '../modals/PromptDetailModal';
 import ExamplePreviewModal from '../modals/ExamplePreviewModal';
 import AddToProjectModal from '../modals/AddToProjectModal';
+import AddToCollectionModal from '../modals/AddToCollectionModal';
 import { useBookmarks } from '../../hooks/useBookmarks';
+import { useCollections } from '../../hooks/useCollections';
+import { collectionsContaining } from '../../utils/collections';
+import { openProjectInGraph } from '../../services/graphExportService';
+import { templateToGraphProject } from '../../utils/graphMigration';
+import { confirmDialog } from '../common/ConfirmDialog';
 import { toast } from '../common/Toaster';
-import { seededCount, buildShareUrl, parseSharedTemplateId, prepareRemixTemplate } from '../../utils/libraryUtils';
+import {
+  buildShareUrl,
+  parseSharedTemplateId,
+  prepareRemixTemplate,
+  filterAndSortTemplates,
+  collectFacets,
+  isOwnTemplate,
+  type FacetOption,
+  type LibrarySource,
+} from '../../utils/libraryUtils';
+import { loadRecentIds, recordRecentTemplate } from '../../utils/recentTemplates';
 import { loadLikedIds } from '../../utils/likedTemplates';
 import { toggleTemplateLike } from '../../services/metricsService';
-
-const MOCK_RESULTS: PromptTemplate[] = [
-  {
-    id: 'res-code',
-    title: 'Tối ưu hóa mảng Javascript',
-    description: 'Tối ưu hóa hàm lọc trùng lặp và tăng tốc hiệu năng vòng lặp O(N^2) cũ.',
-    category: 'Mẫu của tôi',
-    blocks: [],
-    tags: ['JavaScript', 'Performance'],
-    createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(), // 5 mins ago
-    outputExample: {
-      type: 'code',
-      title: 'JavaScript code',
-      description: 'Hàm tối ưu hóa mảng Javascript',
-      input: 'Viết cho tôi hàm loại bỏ phần tử trùng lặp trong mảng JS có hiệu suất cao nhất và tối ưu hóa bộ nhớ.',
-      content: `// Code JS Tối ưu bậc nhất: Sử dụng Set (O(N) time complexity)
-function removeDuplicates(arr) {
-  const uniqueSet = new Set(arr);
-  return Array.from(uniqueSet);
-}
-
-// Thử nghiệm thực tế với 1M phần tử:
-// Cách thông thường (filter + indexOf): ~1800ms
-// Cách tối ưu (Set): ~12ms (Nhanh gấp 150 lần!)`
-    }
-  },
-  {
-    id: 'res-video',
-    title: 'Kịch bản TikTok 30s: Thói quen 5 AM',
-    description: 'Kịch bản thu hút triệu views về thói quen kỷ luật tự giác dậy từ 5 giờ sáng.',
-    category: 'Mẫu của tôi',
-    blocks: [],
-    tags: ['Content', 'TikTok', 'Video Script'],
-    createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 mins ago
-    outputExample: {
-      type: 'video',
-      title: 'Kịch bản TikTok Shorts',
-      description: 'Video ngắn 30s phát triển bản thân',
-      input: 'Hãy soạn kịch bản video TikTok 30 giây đầy đủ hook, body và call to action về thói quen dậy sớm 5AM.',
-      content: `[00:00 - 00:05] Hook: *Tiếng chuông điện thoại reo bíp bíp* Bạn vẫn nghĩ dậy lúc 5 giờ sáng chỉ dành cho người già? Sai lầm lớn nhất đời bạn đấy!
-[00:05 - 00:20] Body: *Cảnh pha cafe nghi ngút khói* Trong khi cả thế giới đang ngủ, bạn có thêm 2 giờ yên tĩnh tuyệt đối để tập trung vào bản thân. Không tin nhắn công việc, không drama mạng xã hội, không xao nhãng. Đây là lúc người thành công bứt phá!
-[00:20 - 00:30] Call to action: Hãy thử thách bản thân thức dậy lúc 5AM trong 7 ngày tới. Nhấn theo dõi mình để nhận bộ lịch trình chi tiết nhé!`
-    }
-  },
-  {
-    id: 'res-mindmap',
-    title: 'Sơ đồ Lịch sử VN: Thời phong kiến',
-    description: 'Bản đồ khái quát các triều đại Độc lập tự chủ từ Ngô, Đinh, Tiền Lê, Lý, Trần.',
-    category: 'Mẫu của tôi',
-    blocks: [],
-    tags: ['History', 'Education', 'Mindmap'],
-    createdAt: new Date(Date.now() - 120 * 60 * 1000).toISOString(), // 2 hours ago
-    outputExample: {
-      type: 'mindmap',
-      title: 'Sơ đồ tư duy lịch sử Việt Nam',
-      description: 'Cấu trúc tiến trình các triều đại tự chủ',
-      input: 'Tạo sơ đồ tư duy tóm tắt các mốc sự kiện chính của các triều đại phong kiến liên kết Việt Nam.',
-      content: `## SƠ ĐỒ TIẾN TRÌNH LỊCH SỬ PHONG KIẾN TỰ CHỦ (Thế kỷ X - XV)
-
-* 👑 NHÀ NGÔ (939 - 965)
-  * Người lập quốc: Ngô Quyền (Chiến thắng sông Bạch Đằng)
-  * Đóng đô: Cổ Loa
-
-* 🛡️ NHÀ ĐINH (968 - 980)
-  * Người lập quốc: Đinh Tiên Hoàng (Dẹp loạn 12 sứ quân)
-  * Quốc hiệu: Đại Cồ Việt
-  * Đóng đô: Hoa Lư
-
-* 🗡️ NHÀ TIỀN LÊ (980 - 1009)
-  * Người lập quốc: Lê Hoàn (Kháng chiến chống Tống vĩ đại)
-
-* 🌸 NHÀ LÝ (1009 - 1125)
-  * Người lập quốc: Lý Công Uẩn (Lý Thái Tổ)
-  * Sự kiện lớn: Dời đô về Thăng Long (1010)
-  * Di sản: Chiếu dời đô, Chùa Một Cột, Nam Quốc Sơn Hà`
-    }
-  },
-  {
-    id: 'res-tutor',
-    title: 'Gia sư: Phương trình bậc hai lớp 9',
-    description: 'Phương pháp phân tích nhân tử và hằng đẳng thức siêu trực quan cho học sinh.',
-    category: 'Mẫu của tôi',
-    blocks: [],
-    tags: ['Math', 'Education', 'Tutor'],
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // Yesterday
-    outputExample: {
-      type: 'tutor',
-      title: 'Gia sư Toán AI',
-      description: 'Hướng dẫn giải chi tiết phương trình bậc 2',
-      input: 'Hãy làm gia sư giải thích phương trình bậc hai x^2 - 4x + 4 = 0 cho học sinh trung học cơ sở dễ hiểu nhất.',
-      content: `### 👋 Chào bạn! Cùng thầy chinh phục phương trình này nhé: x² - 4x + 4 = 0
-
-Thay vì vội vã dùng công thức biệt thức Delta (Δ) dài dòng, chúng mình hãy quan sát thật kỹ cấu trúc của phương trình nhé:
-
-* Nhận xét:
-  x² chính là bình phương của biểu thức: **(x)²**
-  4 chính là bình phương của biểu thức: **(2)²**
-  -4x chính là hai lần tích của biểu thức thứ nhất và biểu thức thứ hai: **-2 * (x) * (2)**
-
-* Áp dụng Hằng Đẳng Thức Đáng Nhớ: (A - B)² = A² - 2AB + B²
-  Chúng ta viết lại phương trình thành:
-  **(x - 2)² = 0**
-
-* Giải phương trình đơn giản:
-  x - 2 = 0  =>  **x = 2**
-
-* Kết luận: Phương trình có nghiệm kép duy nhất x = 2. Cực kỳ nhanh và đẹp mắt đúng không nào!`
-    }
-  }
-];
 
 interface LibraryTabProps {
   onSelectTemplate: (template: PromptTemplate) => void;
   customTemplates?: PromptTemplate[];
+  /** Template PUBLIC của người khác (Đợt 3) — KHÔNG lọc theo workspace. */
+  communityTemplates?: PromptTemplate[];
   user: any;
   onNavigateToTab: (tab: any) => void;
+  activeWorkspaceId?: string;
 }
 
 const CATEGORIES = ['Tất cả', 'Công thức Prompt', 'Học sinh/Sinh viên', 'Người đi làm', 'Sáng tạo nội dung', 'Phát triển cá nhân', 'Mẫu của tôi'];
 
-export default function LibraryTab({ onSelectTemplate, customTemplates = [], user, onNavigateToTab }: LibraryTabProps) {
+// Icon cho từng loại kết quả (dùng ở khối "Dùng gần đây").
+const OUTPUT_TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  code: Code2,
+  video: Video,
+  mindmap: Brain,
+  tutor: GraduationCap,
+  text: FileText,
+  ui: Layout,
+};
+
+// Nhóm chip lọc facet — chỉ render khi có tiêu chí (facets tự lọc tiêu chí rỗng).
+function FacetGroup({
+  label,
+  options,
+  active,
+  onToggle,
+}: {
+  label: string;
+  options: FacetOption[];
+  active: string[];
+  onToggle: (value: string) => void;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="shrink-0 w-24 pt-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">{label}</span>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((o) => {
+          const on = active.includes(o.value);
+          return (
+            <button
+              key={o.value}
+              onClick={() => onToggle(o.value)}
+              aria-pressed={on}
+              className={`px-3 py-1 text-[11px] font-bold rounded-full border transition-all ${
+                on
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'
+              }`}
+            >
+              {o.label} <span className={on ? 'text-white/70' : 'text-slate-400'}>{o.count}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export default function LibraryTab({ onSelectTemplate, customTemplates = [], communityTemplates = [], user, onNavigateToTab, activeWorkspaceId }: LibraryTabProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
   const [activeTab, setActiveTab] = useState<'trending' | 'new' | 'saved'>('trending');
+  const [sourceFilter, setSourceFilter] = useState<'all' | LibrarySource>('all');
+
+  // Bộ lọc facet (Đợt 1 — Khám phá). Rỗng = không lọc.
+  const [outputTypes, setOutputTypes] = useState<string[]>([]);
+  const [frameworks, setFrameworks] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
 
   const [selectedPrompt, setSelectedPrompt] = useState<PromptTemplate | null>(null);
   const [previewPrompt, setPreviewPrompt] = useState<PromptTemplate | null>(null);
   const [isAddToProjOpen, setIsAddToProjOpen] = useState(false);
   const [addToProjTemplate, setAddToProjTemplate] = useState<PromptTemplate | null>(null);
 
+  // "Dùng gần đây" — tín hiệu THẬT: id các template vừa mở/xem/remix (localStorage).
+  const [recentIds, setRecentIds] = useState<string[]>(() => loadRecentIds());
+  const markRecent = (t: PromptTemplate) => setRecentIds(recordRecentTemplate(t.id));
+  const openDetail = (t: PromptTemplate) => {
+    setSelectedPrompt(t);
+    markRecent(t);
+  };
+
   const { savedIds, isSaved, toggleSave } = useBookmarks(user);
+
+  // Bộ sưu tập cá nhân (Đợt 2 — tổ chức). Filter theo bộ sưu tập đang chọn.
+  const { collections, create: createCollection, remove: removeCollection, toggleTemplate: toggleTemplateInCollection } = useCollections();
+  const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
+  const [collectionTemplate, setCollectionTemplate] = useState<PromptTemplate | null>(null);
+  const [isCreatingCollection, setIsCreatingCollection] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState('');
+
+  const openCollectionModal = (t: PromptTemplate) => setCollectionTemplate(t);
+
+  const handleCreateCollection = () => {
+    const created = createCollection(newCollectionName);
+    if (created) {
+      toast.success(`Đã tạo bộ sưu tập "${created.name}".`);
+      setNewCollectionName('');
+      setIsCreatingCollection(false);
+    }
+  };
+
+  const handleDeleteCollection = async (id: string, name: string) => {
+    const ok = await confirmDialog({
+      message: `Xoá bộ sưu tập "${name}"? Template bên trong không bị xoá, chỉ gỡ khỏi bộ sưu tập.`,
+      danger: true,
+      confirmText: 'Xoá bộ sưu tập',
+    });
+    if (!ok) return;
+    removeCollection(id);
+    if (activeCollectionId === id) setActiveCollectionId(null);
+    toast.success('Đã xoá bộ sưu tập.');
+  };
+
+  // "Mở trong Prompt Graph": chuyển template → project đồ thị rồi bơm vào tab Prompt Graph.
+  const handleOpenInGraph = async (t: PromptTemplate) => {
+    try {
+      const project = templateToGraphProject(t, activeWorkspaceId || undefined);
+      await openProjectInGraph(project, user || undefined);
+      markRecent(t);
+      setSelectedPrompt(null);
+      toast.success('Đã mở template trong Prompt Graph.');
+      onNavigateToTab('projectchain');
+    } catch {
+      toast.error('Không mở được trong Prompt Graph.');
+    }
+  };
 
   // H1: like THẬT — trạng thái "tôi đã thích" giữ cục bộ, tổng đếm nằm ở Firestore.
   const [likedIds, setLikedIds] = useState<Set<string>>(() => loadLikedIds());
@@ -164,63 +179,125 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], use
       .catch(() => toast.error('Không sao chép được liên kết.'));
   };
 
-  const [userResults, setUserResults] = useState<PromptTemplate[]>(() => {
-    const saved = localStorage.getItem('my_prompt_results');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return MOCK_RESULTS;
-      }
-    }
-    localStorage.setItem('my_prompt_results', JSON.stringify(MOCK_RESULTS));
-    return MOCK_RESULTS;
-  });
+  // ── Ba NGUỒN template (Đợt 3) ──────────────────────────────────────────────
+  // "Của tôi": template thuộc user hiện tại (đã lọc workspace ở App). Chỉ template
+  // của mình mới được gán nhãn "Tôi (Chính bạn)" / "Mẫu của tôi".
+  const myTemplates = useMemo(
+    () =>
+      customTemplates
+        .filter((t) => isOwnTemplate(t, user?.uid))
+        .map((t) => ({
+          ...t,
+          category: t.category || 'Mẫu của tôi',
+          authorName: t.authorName || 'Tôi (Chính bạn)',
+          authorAvatar: t.authorAvatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
+          isVerified: true,
+          metrics: t.metrics || { usageCount: 0, upvotes: 0, likes: 0, saves: 0 },
+          createdAt: t.createdAt || new Date().toISOString(),
+        })),
+    [customTemplates, user?.uid],
+  );
 
-  // Process custom templates to always have a category
-  const processedCustomTemplates = useMemo(() => customTemplates.map(t => ({
-    ...t,
-    category: t.category || 'Mẫu của tôi',
-    authorName: t.authorName || 'Tôi (Chính bạn)',
-    authorAvatar: t.authorAvatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
-    isVerified: true,
-    metrics: t.metrics || { usageCount: 0, upvotes: 0, likes: 0, saves: 0 },
-    createdAt: t.createdAt || new Date().toISOString()
-  })), [customTemplates]);
+  // "Cộng đồng": template PUBLIC của người khác — GIỮ tác giả thật, KHÔNG ép nhãn
+  // "Mẫu của tôi", KHÔNG bịa verified. Không lọc theo workspace (đã lo ở App).
+  const communityProcessed = useMemo(
+    () =>
+      (communityTemplates || []).map((t) => ({
+        ...t,
+        authorName: t.authorName || 'Người dùng cộng đồng',
+        isVerified: t.isVerified ?? false,
+        metrics: t.metrics || { usageCount: 0, upvotes: 0, likes: 0, saves: 0 },
+      })),
+    [communityTemplates],
+  );
 
-  // H1: metrics THẬT — template built-in (demo) không còn số liệu seeded giả;
-  // hiển thị đúng giá trị thực (mặc định 0). Ngày tạo giữ seeded chỉ để sort ổn định.
-  const enrichedTemplates = useMemo(() => TEMPLATES.map((t, i) => ({
+  // Đợt 1 — TRUNG THỰC: template built-in là nội dung tuyển chọn chính thức "PromptBuilder".
+  const enrichedTemplates = useMemo(() => TEMPLATES.map((t) => ({
     ...t,
-    authorName: ['Alex Nguyen', 'Sarah Ha', 'Prompt Wizard', 'Tech Guru'][i % 4],
-    authorAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${i}`,
-    isVerified: i % 3 === 0,
+    authorName: t.authorName || 'PromptBuilder',
+    authorAvatar: t.authorAvatar,
+    isVerified: t.isVerified ?? true,
     metrics: t.metrics || { usageCount: 0, upvotes: 0, likes: 0, saves: 0 },
-    createdAt: t.createdAt || new Date(Date.now() - seededCount(t.id, 10000000) * 1000).toISOString()
   })), []);
 
-  const allTemplates = useMemo(() => [...processedCustomTemplates, ...enrichedTemplates], [processedCustomTemplates, enrichedTemplates]);
+  // Gộp + khử trùng lặp id + bản đồ nguồn (mine thắng community thắng builtin).
+  const { allTemplates, sourceMap } = useMemo(() => {
+    const map = new Map<string, LibrarySource>();
+    const seen = new Set<string>();
+    const out: PromptTemplate[] = [];
+    const push = (list: PromptTemplate[], source: LibrarySource) => {
+      for (const t of list) {
+        if (seen.has(t.id)) continue;
+        seen.add(t.id);
+        map.set(t.id, source);
+        out.push(t);
+      }
+    };
+    push(myTemplates, 'mine');
+    push(communityProcessed, 'community');
+    push(enrichedTemplates, 'builtin');
+    return { allTemplates: out, sourceMap: map };
+  }, [myTemplates, communityProcessed, enrichedTemplates]);
 
-  const filteredTemplates = useMemo(() => {
-    let result = allTemplates.filter(template => {
-      const matchesSearch = template.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            template.description.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesCategory = selectedCategory === 'Tất cả' || template.category === selectedCategory;
-
-      const matchesSaved = activeTab !== 'saved' || savedIds.has(template.id);
-
-      return matchesSearch && matchesCategory && matchesSaved;
-    });
-
-    if (activeTab === 'trending') {
-      result = result.sort((a, b) => ((b.metrics?.usageCount || 0) + (b.metrics?.likes || 0)) - ((a.metrics?.usageCount || 0) + (a.metrics?.likes || 0)));
-    } else if (activeTab === 'new') {
-      result = result.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  const sourceCounts = useMemo(() => {
+    let mine = 0, community = 0;
+    for (const s of sourceMap.values()) {
+      if (s === 'mine') mine++;
+      else if (s === 'community') community++;
     }
+    return { all: sourceMap.size, mine, community };
+  }, [sourceMap]);
 
-    return result;
-  }, [allTemplates, searchTerm, selectedCategory, activeTab, savedIds]);
+  // Lọc theo nguồn đang chọn (Tất cả / Của tôi / Cộng đồng).
+  const sourcedTemplates = useMemo(
+    () => (sourceFilter === 'all' ? allTemplates : allTemplates.filter((t) => sourceMap.get(t.id) === sourceFilter)),
+    [allTemplates, sourceFilter, sourceMap],
+  );
+
+  // Facet chỉ liệt kê tiêu chí CÓ dữ liệu thật (loại kết quả, framework, thẻ phổ biến).
+  const facets = useMemo(() => collectFacets(allTemplates), [allTemplates]);
+
+  const filteredTemplates = useMemo(
+    () =>
+      filterAndSortTemplates(
+        sourcedTemplates,
+        {
+          search: searchTerm,
+          category: selectedCategory,
+          outputTypes,
+          frameworks,
+          tags,
+          onlySaved: activeTab === 'saved',
+          savedIds,
+        },
+        activeTab,
+      ),
+    [sourcedTemplates, searchTerm, selectedCategory, outputTypes, frameworks, tags, activeTab, savedIds],
+  );
+
+  // Lớp lọc thêm theo bộ sưu tập đang chọn (post-filter, không đụng filterAndSortTemplates).
+  const activeCollection = collections.find((c) => c.id === activeCollectionId) || null;
+  const displayedTemplates = useMemo(() => {
+    if (!activeCollection) return filteredTemplates;
+    const ids = new Set(activeCollection.templateIds);
+    return filteredTemplates.filter((t) => ids.has(t.id));
+  }, [filteredTemplates, activeCollection]);
+
+  // Resolve id gần đây → template thật (bỏ id không còn tồn tại), tối đa 8 ô hiển thị.
+  const recentTemplates = useMemo(
+    () => recentIds.map((id) => allTemplates.find((t) => t.id === id)).filter(Boolean).slice(0, 8) as PromptTemplate[],
+    [recentIds, allTemplates],
+  );
+
+  const toggleFacet = (arr: string[], set: React.Dispatch<React.SetStateAction<string[]>>, value: string) =>
+    set(arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value]);
+  const hasActiveFacets = outputTypes.length > 0 || frameworks.length > 0 || tags.length > 0;
+  const clearFacets = () => {
+    setOutputTypes([]);
+    setFrameworks([]);
+    setTags([]);
+    setActiveCollectionId(null);
+  };
 
   // Deep-link: mở chi tiết template khi URL có ?t=<id> (kể cả template công khai chưa nạp sẵn).
   useEffect(() => {
@@ -255,160 +332,95 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], use
         <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 mb-8">
           <div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              Cộng đồng <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md text-sm">Beta</span>
+              Thư viện Prompt <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md text-sm">Beta</span>
             </h2>
-            <p className="text-slate-500 mt-2 text-sm font-medium">Khám phá, chia sẻ và remix các prompt template từ cộng đồng sáng tạo.</p>
+            <p className="text-slate-500 mt-2 text-sm font-medium">Khám phá mẫu prompt tuyển chọn, chỉnh sửa (remix) và lưu bộ sưu tập của riêng bạn.</p>
           </div>
           <div className="relative w-full md:w-80">
-            <input 
-              type="text" 
-              placeholder="Tìm kiếm prompt, tác giả..." 
+            <input
+              type="text"
+              placeholder="Tìm theo tên, tác giả, thẻ..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 text-sm font-medium border-2 border-slate-200 rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400" 
+              className="w-full pl-10 pr-4 py-3 text-sm font-medium border-2 border-slate-200 rounded-xl bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400"
             />
             <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
           </div>
         </div>
 
-        {/* Phần Kết quả của bạn (My Results) */}
-        <div className="mb-8 bg-white border border-slate-200/60 rounded-3xl p-5 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)]">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100/85">
-            <div className="flex items-center gap-2.5">
+        {/* Dùng gần đây — tín hiệu THẬT (thay khối "Kết quả của bạn" seed cứng cũ) */}
+        {recentTemplates.length > 0 && (
+          <div className="mb-8 bg-white border border-slate-200/60 rounded-3xl p-5 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)]">
+            <div className="flex items-center gap-2.5 mb-4 pb-3 border-b border-slate-100/85">
               <div className="p-2 bg-indigo-50 rounded-xl text-indigo-600">
                 <History className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="text-sm font-black text-slate-800 tracking-tight flex items-center gap-2">
-                  Kết quả của bạn <span className="text-indigo-600 text-[10px] font-bold bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">4 kết quả gần đây</span>
+                  Dùng gần đây
+                  <span className="text-indigo-600 text-[10px] font-bold bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">
+                    {recentTemplates.length} mẫu
+                  </span>
                 </h3>
-                <p className="text-[11px] text-slate-400 font-medium">Lưu trữ các kết quả tối ưu hoá AI và sơ đồ bạn đã tạo gần đây dưới dạng các ảnh Thumbnail.</p>
+                <p className="text-[11px] text-slate-400 font-medium">Những mẫu bạn vừa mở, xem thử hoặc remix — bấm để mở lại.</p>
               </div>
             </div>
-            <div className="text-[10px] font-bold bg-slate-50 text-slate-500 px-2.5 py-1 rounded-full border border-slate-100 uppercase tracking-widest cursor-default select-none">
-              Workspace Live
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {recentTemplates.map((t) => {
+                const Icon = OUTPUT_TYPE_ICONS[t.outputExample?.type || ''] || FileText;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => openDetail(t)}
+                    className="group text-left flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 hover:border-indigo-400 hover:shadow-md hover:shadow-indigo-500/5 transition-all"
+                  >
+                    <div className="shrink-0 w-9 h-9 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-indigo-500">
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[12px] font-bold text-slate-700 line-clamp-1 group-hover:text-indigo-600 transition-colors">{t.title}</div>
+                      <div className="text-[10px] text-slate-400 font-semibold line-clamp-1">{t.category || 'Mẫu'}</div>
+                    </div>
+                    <span className="shrink-0 text-[10px] font-bold text-slate-400 group-hover:text-indigo-500 flex items-center gap-0.5">
+                      <Eye className="w-3.5 h-3.5" />Mở lại
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
+        )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {userResults.map((result) => {
-              const isCode = result.outputExample?.type === 'code';
-              const isVideo = result.outputExample?.type === 'video';
-              const isMindmap = result.outputExample?.type === 'mindmap';
-              const isTutor = result.outputExample?.type === 'tutor';
-
-              return (
-                <div 
-                  key={result.id}
-                  onClick={() => setPreviewPrompt(result)}
-                  className="group relative flex flex-col justify-between h-44 rounded-2xl border border-slate-200/80 overflow-hidden bg-white hover:border-indigo-400 hover:shadow-lg hover:shadow-indigo-500/5 transition-all duration-300 cursor-pointer"
-                >
-                  {/* Visual Thumbnail */}
-                  <div className="flex-1 w-full bg-slate-50 relative overflow-hidden flex items-center justify-center p-3 select-none">
-                    
-                    {isCode && (
-                      <div className="w-full h-full bg-[#0B0E14] rounded-xl p-2.5 font-mono text-[8px] text-[#A9B2C3] leading-snug overflow-hidden border border-slate-800 shadow-inner group-hover:scale-[1.02] transition-transform duration-300">
-                        <div className="flex gap-1.2 items-center mb-1.5 border-b border-slate-800/80 pb-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                          <span className="text-[7.5px] text-slate-500 ml-1">unique.js</span>
-                        </div>
-                        <span className="text-pink-500">const</span> <span className="text-indigo-400">removeDups</span> = <span className="text-emerald-400">arr</span> =&gt; &#123;<br/>
-                        &nbsp;&nbsp;<span className="text-pink-500">return</span> <span className="text-amber-400">Array</span>.from(<span className="text-pink-500">new</span> <span className="text-amber-400">Set</span>(arr));<br/>
-                        &#125;
-                      </div>
-                    )}
-
-                    {isVideo && (
-                      <div className="w-full h-full bg-gradient-to-tr from-rose-500 to-pink-600 rounded-xl p-2.5 text-white flex flex-col justify-between overflow-hidden shadow-md group-hover:scale-[1.02] transition-transform duration-300 relative">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.15),transparent)] pointer-events-none"></div>
-                        <div className="flex justify-between items-center relative z-10">
-                          <span className="text-[7.5px] font-black uppercase tracking-wider bg-white/20 px-1.5 py-0.5 rounded-md backdrop-blur-sm">TikTok Shorts</span>
-                          <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center animate-pulse">
-                            <Play className="w-2.5 h-2.5 text-white fill-white" />
-                          </div>
-                        </div>
-                        <div className="text-[8.5px] font-extrabold leading-tight line-clamp-2 bg-black/15 p-1.5 rounded-lg backdrop-blur-[2px] border border-white/10 relative z-10">
-                          "Hook: Thức dậy từ 5 giờ sáng bứt phá..."
-                        </div>
-                      </div>
-                    )}
-
-                    {isMindmap && (
-                      <div className="w-full h-full bg-gradient-to-tr from-blue-500 to-indigo-700 rounded-xl p-2.5 text-white flex flex-col justify-between overflow-hidden shadow-md group-hover:scale-[1.02] transition-transform duration-300 relative">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.1),transparent)] pointer-events-none"></div>
-                        <div className="flex justify-between items-center mb-1 relative z-10">
-                          <span className="text-[7.5px] font-black uppercase tracking-wider bg-white/20 px-1.5 py-0.5 rounded-md backdrop-blur-sm">SƠ ĐỒ TƯ DUY</span>
-                          <Brain className="w-3.5 h-3.5 text-white" />
-                        </div>
-                        <div className="flex-1 flex flex-col justify-center gap-1.5 pl-1.5 relative z-10">
-                          <div className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                            <span className="text-[8px] font-bold">👑 Nhà Lý (1009)</span>
-                          </div>
-                          <div className="w-[1.5px] h-2.5 bg-white/40 ml-[3px]"></div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                            <span className="text-[8px] font-bold">🛡️ Nhà Đinh (968)</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {isTutor && (
-                      <div className="w-full h-full bg-[#fcfaf4] rounded-xl p-2.5 text-amber-900 border border-amber-100 flex flex-col justify-between overflow-hidden shadow-sm group-hover:scale-[1.02] transition-transform duration-300">
-                        <div className="flex justify-between items-center">
-                          <span className="text-[7.5px] font-black uppercase tracking-wider bg-amber-100/80 text-amber-800 px-1.5 py-0.5 rounded-md">Toán 9 Gia Sư</span>
-                          <span className="text-[8px] text-amber-600 font-bold font-mono">f(x)=0</span>
-                        </div>
-                        <div className="font-serif text-[8.5px] italic text-amber-800 leading-normal pl-0.5">
-                          Thay ví đổi delta dài dòng,<br /> áp dụng hằng đẳng thức:<br />
-                          <span className="font-bold text-amber-950">(x - 2)² = 0  →  x = 2</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* View overlay */}
-                    <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center backdrop-blur-[1px]">
-                      <div className="bg-white text-slate-900 text-[10px] font-extrabold px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1 transform translate-y-1.5 group-hover:translate-y-0 transition-transform duration-200">
-                        <Eye className="w-3.5 h-3.5 text-indigo-600" /> Xem chi tiết
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Details */}
-                  <div className="px-3.5 py-2 border-t border-slate-100 bg-white flex flex-col gap-0.5 shrink-0">
-                    <span className="text-[10px] font-bold text-slate-700 line-clamp-1 group-hover:text-indigo-600 transition-colors">
-                      {result.title}
-                    </span>
-                    <div className="flex items-center justify-between text-[8px] text-slate-400 font-semibold uppercase tracking-wider">
-                      <span className="flex items-center gap-0.5">
-                        {isCode && <Code2 className="w-2.5 h-2.5 text-slate-400" />}
-                        {isVideo && <Video className="w-2.5 h-2.5 text-slate-400" />}
-                        {isMindmap && <Brain className="w-2.5 h-2.5 text-slate-400" />}
-                        {isTutor && <GraduationCap className="w-2.5 h-2.5 text-slate-400" />}
-                        {result.outputExample?.description || 'AI Output'}
-                      </span>
-                      <span>{result.id === 'res-code' ? '5m trước' : result.id === 'res-video' ? '30m trước' : result.id === 'res-mindmap' ? '2h trước' : 'Hôm qua'}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+        {/* Nguồn (Đợt 3): Tất cả / Của tôi / Cộng đồng */}
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mr-1">Nguồn</span>
+          {([['all', 'Tất cả', sourceCounts.all], ['mine', 'Của tôi', sourceCounts.mine], ['community', 'Cộng đồng', sourceCounts.community]] as const).map(([key, label, count]) => {
+            const on = sourceFilter === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setSourceFilter(key)}
+                className={`px-3.5 py-1.5 text-xs font-bold rounded-full border transition-all ${
+                  on ? 'bg-slate-800 text-white border-slate-800 shadow-md shadow-slate-200' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                {label} <span className={on ? 'text-white/60' : 'text-slate-400'}>{count}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Social Tabs */}
         <div className="flex gap-6 border-b border-slate-200 mb-6">
-          <button 
+          <button
             onClick={() => setActiveTab('trending')}
             className={`pb-3 text-sm font-bold flex items-center gap-2 transition-colors relative ${activeTab === 'trending' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
           >
             <TrendingUp className="w-4 h-4" /> Trending
             {activeTab === 'trending' && <span className="absolute bottom-[-1px] left-0 w-full h-0.5 bg-indigo-600 rounded-t-full"></span>}
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('new')}
             className={`pb-3 text-sm font-bold flex items-center gap-2 transition-colors relative ${activeTab === 'new' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
           >
@@ -440,32 +452,142 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], use
             </button>
           ))}
         </div>
+
+        {/* Bộ sưu tập cá nhân (Đợt 2) — chip lọc + tạo/xoá */}
+        <div className="mt-4 flex items-start gap-3">
+          <span className="shrink-0 w-24 pt-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Bộ sưu tập</span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {collections.map((c) => {
+              const on = activeCollectionId === c.id;
+              return (
+                <div
+                  key={c.id}
+                  className={`flex items-center rounded-full border transition-all ${
+                    on ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300'
+                  }`}
+                >
+                  <button
+                    onClick={() => setActiveCollectionId(on ? null : c.id)}
+                    className="flex items-center gap-1.5 pl-3 pr-2 py-1 text-[11px] font-bold"
+                  >
+                    <Folder className="w-3 h-3" />
+                    {c.name}
+                    <span className={on ? 'text-white/70' : 'text-slate-400'}>{c.templateIds.length}</span>
+                  </button>
+                  {on && (
+                    <button
+                      onClick={() => handleDeleteCollection(c.id, c.name)}
+                      title="Xoá bộ sưu tập"
+                      className="pr-2 pl-0.5 py-1 text-white/80 hover:text-white"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            {isCreatingCollection ? (
+              <div className="flex items-center gap-1">
+                <input
+                  autoFocus
+                  value={newCollectionName}
+                  onChange={(e) => setNewCollectionName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleCreateCollection();
+                    if (e.key === 'Escape') { setIsCreatingCollection(false); setNewCollectionName(''); }
+                  }}
+                  placeholder="Tên bộ sưu tập..."
+                  className="w-40 px-2.5 py-1 text-[11px] font-semibold border border-indigo-300 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-100 bg-white"
+                />
+                <button
+                  onClick={handleCreateCollection}
+                  disabled={!newCollectionName.trim()}
+                  className="px-2.5 py-1 rounded-full bg-indigo-600 text-white text-[11px] font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Tạo
+                </button>
+                <button onClick={() => { setIsCreatingCollection(false); setNewCollectionName(''); }} className="p-1 text-slate-400 hover:text-slate-600">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsCreatingCollection(true)}
+                className="flex items-center gap-1 px-3 py-1 text-[11px] font-bold rounded-full border border-dashed border-slate-300 text-slate-500 hover:border-indigo-400 hover:text-indigo-600 transition-all"
+              >
+                <Plus className="w-3 h-3" /> Bộ sưu tập
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Facet Filters — chỉ hiện tiêu chí có dữ liệu thật */}
+        {(facets.outputTypes.length > 0 || facets.frameworks.length > 0 || facets.tags.length > 0) && (
+          <div className="mt-4 flex flex-col gap-3">
+            {facets.outputTypes.length > 0 && (
+              <FacetGroup label="Loại kết quả" options={facets.outputTypes} active={outputTypes} onToggle={(v) => toggleFacet(outputTypes, setOutputTypes, v)} />
+            )}
+            {facets.frameworks.length > 0 && (
+              <FacetGroup label="Framework" options={facets.frameworks} active={frameworks} onToggle={(v) => toggleFacet(frameworks, setFrameworks, v)} />
+            )}
+            {facets.tags.length > 0 && (
+              <FacetGroup label="Thẻ phổ biến" options={facets.tags} active={tags} onToggle={(v) => toggleFacet(tags, setTags, v)} />
+            )}
+          </div>
+        )}
+
+        {/* Result count + clear */}
+        <div className="flex items-center justify-between mt-5">
+          <span className="text-xs font-bold text-slate-500">
+            {displayedTemplates.length} mẫu prompt{activeCollection ? ` · ${activeCollection.name}` : ''}
+          </span>
+          {(hasActiveFacets || activeCollection) && (
+            <button onClick={clearFacets} className="text-[11px] font-bold text-slate-500 hover:text-indigo-600 flex items-center gap-1">
+              <X className="w-3.5 h-3.5" />Xóa lọc
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20">
-        {filteredTemplates.map((template) => (
+        {displayedTemplates.map((template) => (
           <PromptCard
             key={template.id}
             template={template as PromptTemplate}
-            onSelect={(t) => setSelectedPrompt(t)}
+            onSelect={(t) => openDetail(t)}
             onRemix={(t) => {
               // Phase 4: remix template người khác → bản fork (id mới + forkedFrom).
+              markRecent(t);
               onSelectTemplate(prepareRemixTemplate(t, user?.uid));
             }}
-            onPreview={(t) => setPreviewPrompt(t)}
+            onPreview={(t) => {
+              setPreviewPrompt(t);
+              markRecent(t);
+            }}
             isSaved={isSaved(template.id)}
             onToggleSave={toggleSave}
             onShare={handleShare}
+            onAddToCollection={openCollectionModal}
+            collectionCount={collectionsContaining(collections, template.id).length}
           />
         ))}
-        
-        {filteredTemplates.length === 0 && (
+
+        {displayedTemplates.length === 0 && (
           <div className="col-span-full py-20 flex flex-col items-center justify-center text-slate-400 bg-white rounded-3xl border border-slate-100">
              <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-4">
                 <Search className="w-8 h-8 text-slate-300" />
              </div>
-             <p className="text-sm font-bold text-slate-600">Opps! Trống ở đây.</p>
-             <p className="text-xs mt-1">Không tìm thấy mẫu nào phù hợp với bộ lọc hiện tại.</p>
+             {sourceFilter === 'community' && sourceCounts.community === 0 ? (
+               <>
+                 <p className="text-sm font-bold text-slate-600">Chưa có template cộng đồng nào.</p>
+                 <p className="text-xs mt-1">Hãy bật "Chia sẻ công khai" khi lưu template để trở thành người đầu tiên chia sẻ.</p>
+               </>
+             ) : (
+               <>
+                 <p className="text-sm font-bold text-slate-600">Opps! Trống ở đây.</p>
+                 <p className="text-xs mt-1">Không tìm thấy mẫu nào phù hợp với bộ lọc hiện tại.</p>
+               </>
+             )}
           </div>
         )}
       </div>
@@ -476,6 +598,7 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], use
           onClose={() => setSelectedPrompt(null)}
           onRemix={(t) => {
             setSelectedPrompt(null);
+            markRecent(t);
             onSelectTemplate(prepareRemixTemplate(t, user?.uid));
           }}
           onAddToProject={(t) => {
@@ -483,6 +606,8 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], use
             setAddToProjTemplate(t);
             setIsAddToProjOpen(true);
           }}
+          onAddToCollection={openCollectionModal}
+          onOpenInGraph={handleOpenInGraph}
           isSaved={isSaved(selectedPrompt.id)}
           onToggleSave={toggleSave}
           onShare={handleShare}
@@ -492,7 +617,7 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], use
       )}
 
       {previewPrompt && (
-        <ExamplePreviewModal 
+        <ExamplePreviewModal
           template={previewPrompt}
           onClose={() => setPreviewPrompt(null)}
         />
@@ -504,6 +629,15 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], use
         user={user}
         template={addToProjTemplate}
         onNavigateToTab={onNavigateToTab || (() => {})}
+      />
+
+      <AddToCollectionModal
+        isOpen={!!collectionTemplate}
+        template={collectionTemplate}
+        collections={collections}
+        onToggle={toggleTemplateInCollection}
+        onCreate={createCollection}
+        onClose={() => setCollectionTemplate(null)}
       />
     </div>
   );

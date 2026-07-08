@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PromptTemplate } from '../../types';
-import { Bookmark, Copy, Users, CheckCircle, Layout, FileText, Code2, Video, GitMerge, GraduationCap, FlaskConical, Share2 } from 'lucide-react';
+import { detectFrameworkName } from '../../utils/libraryUtils';
+import { Bookmark, Copy, Users, CheckCircle, Layout, FileText, Code2, Video, GitMerge, GraduationCap, FlaskConical, Share2, FolderPlus } from 'lucide-react';
 
 interface PromptCardProps {
   template: PromptTemplate;
@@ -10,6 +11,9 @@ interface PromptCardProps {
   isSaved?: boolean;
   onToggleSave?: (template: PromptTemplate) => void;
   onShare?: (template: PromptTemplate) => void;
+  onAddToCollection?: (template: PromptTemplate) => void;
+  /** Số bộ sưu tập đang chứa template — hiện đốm chỉ báo trên nút thư mục. */
+  collectionCount?: number;
 }
 
 interface StepperStep {
@@ -21,10 +25,10 @@ interface StepperStep {
 }
 
 const detectFramework = (template: PromptTemplate): { name: string; steps: StepperStep[] } | null => {
-  const titleLower = template.title.toLowerCase();
-  const idLower = template.id.toLowerCase();
-  
-  if (idLower === 'formula-chain' || titleLower.includes('c.h.a.i.n') || titleLower.includes('chain')) {
+  // Điều kiện nhận diện dùng CHUNG từ libraryUtils để card & bộ lọc facet không lệch nhau.
+  const framework = detectFrameworkName(template);
+
+  if (framework === 'C.H.A.I.N') {
     return {
       name: 'C.H.A.I.N Framework',
       steps: [
@@ -37,12 +41,7 @@ const detectFramework = (template: PromptTemplate): { name: string; steps: Stepp
     };
   }
 
-  const hasRoleBlock = template.blocks.some(b => b.type === 'role');
-  const hasTaskBlock = template.blocks.some(b => b.type === 'task');
-  const hasFormatOrToneBlock = template.blocks.some(b => b.type === 'format' || b.type === 'tone');
-  const isRtfTitle = titleLower.includes('rtf') || titleLower.includes('r-t-f') || idLower.includes('rtf');
-  
-  if (isRtfTitle || (template.blocks.length === 3 && hasRoleBlock && hasTaskBlock && hasFormatOrToneBlock)) {
+  if (framework === 'R-T-F') {
     return {
       name: 'R-T-F Framework',
       steps: [
@@ -53,7 +52,7 @@ const detectFramework = (template: PromptTemplate): { name: string; steps: Stepp
     };
   }
 
-  if (idLower === 'formula-role' || titleLower.includes('r.o.l.e') || titleLower.includes('role')) {
+  if (framework === 'R.O.L.E') {
     return {
       name: 'R.O.L.E Framework',
       steps: [
@@ -65,7 +64,7 @@ const detectFramework = (template: PromptTemplate): { name: string; steps: Stepp
     };
   }
 
-  if (idLower === 'formula-task' || titleLower.includes('t.a.s.k') || titleLower.includes('task')) {
+  if (framework === 'T.A.S.K') {
     return {
       name: 'T.A.S.K Framework',
       steps: [
@@ -77,7 +76,7 @@ const detectFramework = (template: PromptTemplate): { name: string; steps: Stepp
     };
   }
 
-  if (idLower === 'formula-create' || titleLower.includes('c.r.e.a.t.e') || titleLower.includes('create')) {
+  if (framework === 'C.R.E.A.T.E') {
     return {
       name: 'C.R.E.A.T.E Framework',
       steps: [
@@ -94,7 +93,7 @@ const detectFramework = (template: PromptTemplate): { name: string; steps: Stepp
   return null;
 };
 
-export default function PromptCard({ template, onSelect, onRemix, onPreview, isSaved, onToggleSave, onShare }: PromptCardProps) {
+export default function PromptCard({ template, onSelect, onRemix, onPreview, isSaved, onToggleSave, onShare, onAddToCollection, collectionCount = 0 }: PromptCardProps) {
   const [activeStepIndex, setActiveStepIndex] = useState<number | null>(null);
   const metrics = template.metrics || { usageCount: 0, upvotes: 0, likes: 0, saves: 0 };
   const getAvatarFallback = (name: string) => name ? name.charAt(0).toUpperCase() : '?';
@@ -356,6 +355,17 @@ export default function PromptCard({ template, onSelect, onRemix, onPreview, isS
              >
                <Share2 className="w-3.5 h-3.5" />
              </button>
+             {onAddToCollection && (
+               <button
+                 onClick={(e) => { e.stopPropagation(); onAddToCollection(template); }}
+                 aria-label="Thêm vào bộ sưu tập"
+                 className={`relative flex items-center gap-1 cursor-pointer transition-colors ${collectionCount > 0 ? 'text-indigo-600' : 'hover:text-indigo-500'}`}
+                 title="Thêm vào bộ sưu tập"
+               >
+                 <FolderPlus className="w-3.5 h-3.5" />
+                 {collectionCount > 0 && <span className="text-xs font-semibold">{collectionCount}</span>}
+               </button>
+             )}
            </div>
 
            <button 

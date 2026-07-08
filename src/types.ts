@@ -146,6 +146,7 @@ export interface PromptTemplate {
   // 7. Visibility & Governance
   isPublic?: boolean;
   status?: 'Draft' | 'Published' | 'Archived';
+  userId?: string; // uid chủ sở hữu (Firestore) — để phân biệt "của tôi" vs "cộng đồng"
   authorId?: string;
   authorName?: string;
   authorAvatar?: string;

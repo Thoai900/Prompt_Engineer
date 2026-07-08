@@ -116,6 +116,13 @@ export default function App() {
     [customTemplates, isInActiveWorkspace],
   );
 
+  // Đợt 3 — Cộng đồng thật: template PUBLIC của NGƯỜI KHÁC, KHÔNG lọc theo workspace
+  // (workspace là phân vùng cá nhân của người xem, không áp cho nội dung cộng đồng).
+  const communityTemplates = useMemo(
+    () => customTemplates.filter((t) => t.isPublic && !!t.userId && t.userId !== user?.uid),
+    [customTemplates, user?.uid],
+  );
+
   const navigationItems = useMemo(() => [
     { tab: 'studio' as TabType, label: 'Studio', icon: <Wand2 size={18} />, active: 'bg-fuchsia-50 dark:bg-fuchsia-950/40 text-fuchsia-700 dark:text-fuchsia-300 border-fuchsia-100 dark:border-fuchsia-900/50', iconColor: 'text-fuchsia-500' },
     { tab: 'home' as TabType, label: 'Home', icon: <Home size={18} />, active: 'bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-800', iconColor: 'text-slate-400' },
@@ -177,6 +184,9 @@ export default function App() {
       metrics: data.metrics,
       variables: data.variables,
       aiConfig: data.aiConfig,
+      // Chủ sở hữu: cần để phân biệt "của tôi" vs "cộng đồng" ở LibraryTab (Đợt 3).
+      userId: data.userId,
+      authorId: data.authorId,
       authorName: data.authorName,
       workspaceId: data.workspaceId,
       versions: data.versions,
@@ -654,8 +664,10 @@ export default function App() {
             <LibraryTab
               onSelectTemplate={handleSelectTemplate}
               customTemplates={visibleTemplates}
+              communityTemplates={communityTemplates}
               user={user}
               onNavigateToTab={setActiveTab}
+              activeWorkspaceId={activeWorkspaceId}
             />
           </TabPanel>
           <TabPanel isActive={activeTab === 'enhancer'} mounted={visitedTabs.has('enhancer')}>

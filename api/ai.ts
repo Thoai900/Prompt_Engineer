@@ -9,6 +9,10 @@ import { createRemoteJWKSet, jwtVerify } from 'jose';
 // (GEMINI_API_KEY / GROQ_API_KEY đặt ở Vercel → Project Settings → Environment).
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Cho phép hàm chạy tới 60s: Opus 4.8 bật adaptive thinking (effort mặc định 'high')
+// có thể sinh lâu; tránh timeout mặc định cắt ngang phản hồi non-stream giữa chừng.
+export const config = { maxDuration: 60 };
+
 const PROJECT_ID = 'eduai-nexus';
 const JWKS = createRemoteJWKSet(
   new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
@@ -27,8 +31,10 @@ const ALLOWED_MODELS: Record<'gemini' | 'groq' | 'anthropic', Set<string>> = {
   groq: new Set(['llama-3.1-8b-instant']),
   anthropic: new Set(['claude-opus-4-8', 'claude-haiku-4-5']),
 };
-// Trần tham số đầu vào — chặn lạm dụng key chung.
-const MAX_OUTPUT_TOKENS_CAP = 8192;
+// Trần token ĐẦU RA — vừa chặn lạm dụng key chung, vừa đủ rộng để KHÔNG cắt cụt phản hồi.
+// LƯU Ý (Anthropic): token "thinking" của Opus 4.8 tính CHUNG vào max_tokens, nên trần
+// quá thấp khiến suy luận ăn hết ngân sách → trả lời cụt/rỗng. Chỉnh qua ENV nếu cần.
+const MAX_OUTPUT_TOKENS_CAP = Math.max(1024, Number(process.env.AI_MAX_OUTPUT_TOKENS) || 16000);
 const MAX_INPUT_CHARS = 200_000;
 
 // Rate-limit theo uid: sliding-window TRONG BỘ NHỚ của instance. Best-effort —
@@ -166,12 +172,13 @@ function buildAnthropicRequest(b: ProxyBody): any {
   const { system, messages } = anthropicParams(b);
   const params: any = {
     model,
-    max_tokens: Math.min(b.maxTokens || 4096, MAX_OUTPUT_TOKENS_CAP),
+    max_tokens: Math.min(b.maxTokens || 16000, MAX_OUTPUT_TOKENS_CAP),
     messages,
   };
   if (system) params.system = system;
   // Opus 4.8: bật adaptive thinking (mặc định tắt khi bỏ trống) — chất lượng tốt hơn
-  // cho tác vụ suy luận; Haiku 4.5 chưa hỗ trợ adaptive → bỏ trống.
+  // cho tác vụ suy luận. LƯU Ý: token thinking tính CHUNG vào max_tokens, nên default để
+  // rộng (16000) tránh trả lời cụt/rỗng; Haiku 4.5 chưa hỗ trợ adaptive → bỏ trống.
   if (model.startsWith('claude-opus')) params.thinking = { type: 'adaptive' };
   return params;
 }

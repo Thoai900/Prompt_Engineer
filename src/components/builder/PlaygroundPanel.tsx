@@ -3,6 +3,10 @@ import { Sparkles, Loader2, Send } from 'lucide-react';
 import AIResponseRenderer from '../common/AIResponseRenderer';
 import StepNarrator from '../common/StepNarrator';
 
+// Trần token đầu ra hiển thị cho người dùng — khớp mặc định proxy (AI_MAX_OUTPUT_TOKENS ở api/ai.ts).
+// Kẹp tại client để người dùng không đặt vượt trần rồi bị backend cắt cụt âm thầm.
+const MAX_TOKENS_LIMIT = 16000;
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -192,13 +196,17 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
             </div>
             <div>
               <div className="flex justify-between text-[9px] font-bold text-slate-500 dark:text-slate-450 uppercase mb-0.5">
-                <span>Max tokens:</span>
+                <span>Max tokens (≤ {MAX_TOKENS_LIMIT}):</span>
                 <span className="text-violet-655 dark:text-violet-400">{playgroundMaxTokens}</span>
               </div>
               <input
                 type="number"
+                min={256}
+                max={MAX_TOKENS_LIMIT}
+                step={256}
                 value={playgroundMaxTokens}
-                onChange={(e) => setPlaygroundMaxTokens(Number(e.target.value))}
+                onChange={(e) => setPlaygroundMaxTokens(Math.min(MAX_TOKENS_LIMIT, Math.max(1, Number(e.target.value) || 1)))}
+                onBlur={(e) => setPlaygroundMaxTokens(Math.min(MAX_TOKENS_LIMIT, Math.max(256, Number(e.target.value) || 256)))}
                 className="w-full text-xs px-2 py-0.5 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 rounded-lg text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-500 font-mono"
               />
             </div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { PromptTemplate, TemplateVersion } from '../../types';
-import { X, Heart, Bookmark, Copy, Users, CheckCircle, MessageSquare, Share2, Star, Workflow, History, RotateCcw, ChevronDown, ChevronRight, Flag, ShieldX } from 'lucide-react';
+import { X, Heart, Bookmark, Copy, Users, CheckCircle, MessageSquare, Share2, Star, Workflow, History, RotateCcw, ChevronDown, ChevronRight, Flag, ShieldX, FolderPlus, Network } from 'lucide-react';
 import InteractiveFewShotPanel from '../common/InteractiveFewShotPanel';
 import { computeUnifiedDiff } from '../../utils/chainUtils';
 import { blocksToText } from '../../utils/templateVersionUtils';
@@ -13,6 +13,9 @@ interface PromptDetailModalProps {
   onClose: () => void;
   onRemix: (template: PromptTemplate) => void;
   onAddToProject?: (template: PromptTemplate) => void;
+  onAddToCollection?: (template: PromptTemplate) => void;
+  /** Mở template dưới dạng đồ thị node trong Prompt Graph. */
+  onOpenInGraph?: (template: PromptTemplate) => void;
   isSaved?: boolean;
   onToggleSave?: (template: PromptTemplate) => void;
   onShare?: (template: PromptTemplate) => void;
@@ -22,7 +25,7 @@ interface PromptDetailModalProps {
   onToggleLike?: () => Promise<boolean | null>;
 }
 
-export default function PromptDetailModal({ template, onClose, onRemix, onAddToProject, isSaved = false, onToggleSave, onShare, liked = false, onToggleLike }: PromptDetailModalProps) {
+export default function PromptDetailModal({ template, onClose, onRemix, onAddToProject, onAddToCollection, onOpenInGraph, isSaved = false, onToggleSave, onShare, liked = false, onToggleLike }: PromptDetailModalProps) {
   const [isLiked, setIsLiked] = useState(liked);
   // Trạng thái ban đầu để hiệu chỉnh số đếm hiển thị (metrics là snapshot lúc mở modal).
   const [initialLiked] = useState(liked);
@@ -316,6 +319,15 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
                      )}
                    </div>
                  )}
+                 {onAddToCollection && (
+                   <button
+                     onClick={() => onAddToCollection(template)}
+                     title="Thêm vào bộ sưu tập"
+                     className="p-2.5 bg-white border border-slate-200 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200 transition-colors shadow-sm"
+                   >
+                     <FolderPlus className="w-5 h-5" />
+                   </button>
+                 )}
                  <button
                    onClick={() => onShare?.(template)}
                    title="Chia sẻ liên kết"
@@ -421,6 +433,16 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
           >
             Đóng
           </button>
+          {onOpenInGraph && (
+            <button
+              onClick={() => onOpenInGraph(template)}
+              title="Mở dưới dạng đồ thị node trong Prompt Graph"
+              className="px-5 py-2.5 text-sm font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-xl transition-all flex items-center gap-2 active:scale-95"
+            >
+              <Network className="w-4 h-4" />
+              Mở trong Graph
+            </button>
+          )}
           {onAddToProject && (
             <button 
               onClick={() => onAddToProject(template)}
