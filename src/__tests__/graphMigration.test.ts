@@ -109,6 +109,26 @@ describe('helpers', () => {
     expect(p.edges!.some((e) => e.source === added.id)).toBe(false);
   });
 
+  it('addTemplateAsAttributeNode với template NHIỀU block → nở thành Bundle node (v3.3)', () => {
+    const p = addTemplateAsAttributeNode(legacyProject(), {
+      title: 'Form Content SEO',
+      blocks: [
+        { id: 'b1', type: 'role', title: 'Vai trò', content: 'Cây bút SEO.' },
+        { id: 'b2', type: 'constraints', title: 'Quy tắc', content: 'Từ khóa tự nhiên.' },
+        { id: 'b3', type: 'format', title: 'Định dạng', content: '' }, // rỗng → bỏ
+      ],
+    });
+    const added = p.graphNodes!.find((n) => n.title === 'Form Content SEO')!;
+    expect(added.nodeType).toBe('group');
+    expect(added.members).toHaveLength(2);
+    expect(added.members!.map((m) => m.attrType).sort()).toEqual(['constraints', 'role']);
+    // Nhóm đóng góp không cần dây
+    expect(p.edges!.some((e) => e.source === added.id)).toBe(false);
+    const { finalPrompt } = compileGraph(p);
+    expect(finalPrompt).toContain('Cây bút SEO.');
+    expect(finalPrompt).toContain('Từ khóa tự nhiên.');
+  });
+
   it('blockTypeToSlot map các loại lạ về custom', () => {
     expect(blockTypeToSlot('thinking')).toBe('custom');
     expect(blockTypeToSlot('role')).toBe('role');

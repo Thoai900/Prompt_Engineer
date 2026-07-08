@@ -1,14 +1,17 @@
-import React from 'react';
-import { Trash2, Save, Eye, EyeOff, Variable, Plus, Crown, MousePointerClick, Unlink, ListOrdered } from 'lucide-react';
+import React, { useState } from 'react';
+import { Trash2, Save, Eye, EyeOff, Variable, Plus, Crown, MousePointerClick, Unlink, ListOrdered, Globe, Loader2, DownloadCloud, Boxes, PackageOpen } from 'lucide-react';
 import { AttrSlot, FewShotExample, GraphNode, PromptVariable } from '../../types';
 import { ROOT_SLOTS, SLOT_COLORS, SLOT_LABELS, renderNodeText } from '../../utils/graphCompile';
 import { getPreset } from '../../utils/graphPresets';
+import { fetchUrlAsText } from '../../services/webFetchService';
+import { toast } from '../common/Toaster';
 
 interface NodeInspectorProps {
   node: GraphNode | null;
   onUpdateNode: (id: string, fields: Partial<GraphNode>) => void;
   onDeleteNode: (id: string) => void;
   onExportTemplate: (node: GraphNode) => void;
+  onUngroupNode: (id: string) => void;
   canExport: boolean;
 }
 
@@ -18,7 +21,8 @@ interface NodeInspectorProps {
  * - preset (Modifier): control params + text sinh ra (read-only) + nút "tháo" thành text
  * - fewshot: editor cặp Đầu vào → Đầu ra
  */
-export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTemplate, canExport }: NodeInspectorProps) {
+export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTemplate, onUngroupNode, canExport }: NodeInspectorProps) {
+  const [isFetching, setIsFetching] = useState(false);
   if (!node) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
@@ -34,7 +38,36 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
   const isRoot = node.kind === 'root';
   const preset = node.nodeType === 'preset' ? getPreset(node.presetId) : undefined;
   const isFewShot = node.nodeType === 'fewshot';
-  const color = isRoot ? SLOT_COLORS.task : (SLOT_COLORS[node.attrType] || SLOT_COLORS.custom);
+  const isWeb = node.nodeType === 'web';
+  const isGroup = node.nodeType === 'group';
+  const isPlainText = !isRoot && !preset && !isFewShot && !isWeb && !isGroup;
+  const color = isRoot ? SLOT_COLORS.task
+    : isGroup ? '#7c3aed'
+    : (SLOT_COLORS[node.attrType] || SLOT_COLORS.custom);
+
+  const handleFetchUrl = async () => {
+    const url = (node.url || '').trim();
+    if (!url) {
+      toast('Nhập URL trước khi cào dữ liệu.');
+      return;
+    }
+    setIsFetching(true);
+    try {
+      const page = await fetchUrlAsText(url);
+      onUpdateNode(node.id, { content: page.text, fetchedAt: new Date().toISOString() });
+      toast.success(`Đã cào ${page.text.length.toLocaleString()} ký tự${page.truncated ? ' (đã cắt bớt)' : ''}.`);
+    } catch (err: any) {
+      toast.error(err.message || 'Không cào được trang.');
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  const updateMember = (idx: number, fields: Partial<GraphNode>) => {
+    const members = [...(node.members || [])];
+    members[idx] = { ...members[idx], ...fields };
+    onUpdateNode(node.id, { members });
+  };
 
   const updateVariable = (idx: number, fields: Partial<PromptVariable>) => {
     const vars = [...(node.variables || [])];
@@ -54,6 +87,10 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
       <div className="flex items-center gap-2">
         {isRoot ? <Crown size={14} style={{ color }} /> : preset ? (
           <span className="text-sm leading-none">{preset.icon}</span>
+        ) : isWeb ? (
+          <Globe size={14} style={{ color }} />
+        ) : isGroup ? (
+          <Boxes size={14} style={{ color }} />
         ) : (
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
         )}
@@ -61,6 +98,8 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
           {isRoot ? 'Prompt Gốc (Compiler)'
             : preset ? `Modifier · ${preset.title}`
             : isFewShot ? 'Few-Shot · Ví dụ mẫu'
+            : isWeb ? 'Web · Dữ liệu từ URL'
+            : isGroup ? `Nhóm · ${(node.members || []).length} node`
             : `Thuộc tính · ${SLOT_LABELS[node.attrType]}`}
         </span>
         {!isRoot && (
@@ -88,8 +127,8 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
         />
       </div>
 
-      {/* Loại cổng (node thuộc tính, trừ preset — preset có cổng khuyến nghị riêng) */}
-      {!isRoot && !preset && (
+      {/* Loại cổng (node thuộc tính; preset có cổng khuyến nghị riêng; nhóm không dây) */}
+      {!isRoot && !preset && !isGroup && (
         <div>
           <label className="text-[10px] font-extrabold uppercase tracking-wider text-faint block mb-1.5">
             Loại thuộc tính (cổng tương ứng trên Prompt Gốc)
@@ -214,6 +253,89 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
             Các cặp sẽ được đóng khung chuẩn few-shot khi compile. Cặp trống cả hai vế sẽ tự bị bỏ qua.
           </p>
         </div>
+      ) : isWeb ? (
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="text-[10px] font-extrabold uppercase tracking-wider text-faint block mb-1.5">URL nguồn</label>
+            <div className="flex items-center gap-1.5">
+              <input
+                value={node.url || ''}
+                onChange={(e) => onUpdateNode(node.id, { url: e.target.value })}
+                placeholder="https://vi.wikipedia.org/wiki/..."
+                className="flex-1 min-w-0 bg-transparent border border-line/70 rounded-xl px-3 py-2 text-[11px] font-mono text-ink focus:outline-none focus:border-sky-500 transition-colors"
+              />
+              <button
+                onClick={handleFetchUrl}
+                disabled={isFetching}
+                className="shrink-0 flex items-center gap-1 px-3 py-2 rounded-xl text-[11px] font-bold text-white cursor-pointer transition-all active:scale-95 disabled:opacity-60"
+                style={{ background: color }}
+              >
+                {isFetching ? <Loader2 size={12} className="animate-spin" /> : <DownloadCloud size={12} />}
+                {node.content ? 'Tải lại' : 'Cào'}
+              </button>
+            </div>
+            <p className="text-[9px] text-faint mt-1.5">
+              Cần đăng nhập. Dữ liệu được <b>cache vào node</b> (compile dùng bản cache — bấm Tải lại khi trang đổi).
+              {node.fetchedAt && <> Cào lần cuối: {new Date(node.fetchedAt).toLocaleString()}.</>}
+            </p>
+          </div>
+          <div className="flex-1 flex flex-col min-h-[160px]">
+            <label className="text-[10px] font-extrabold uppercase tracking-wider text-faint block mb-1.5">
+              Nội dung đã cào ({(node.content || '').length.toLocaleString()} ký tự — sửa/cắt bớt được)
+            </label>
+            <textarea
+              value={node.content}
+              onChange={(e) => onUpdateNode(node.id, { content: e.target.value })}
+              placeholder="Chưa có dữ liệu — nhập URL rồi bấm Cào."
+              className="flex-1 w-full min-h-[160px] bg-transparent border border-line/70 rounded-xl px-3 py-2.5 text-[11px] leading-relaxed text-ink resize-y focus:outline-none focus:border-sky-500 transition-colors font-mono"
+            />
+          </div>
+        </div>
+      ) : isGroup ? (
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => onUngroupNode(node.id)}
+            className="flex items-center justify-center gap-1.5 py-2 rounded-xl border border-line/70 text-xs font-bold text-muted hover:text-ink cursor-pointer transition-colors"
+            title="Trả các node thành viên về canvas và nối lại vào Prompt Gốc"
+          >
+            <PackageOpen size={12} /> Tách nhóm
+          </button>
+          <div className="text-[10px] font-extrabold uppercase tracking-wider text-faint">
+            Thành viên ({(node.members || []).length}) — mỗi node vào đúng cổng của nó
+          </div>
+          {(node.members || []).map((m, idx) => {
+            const mColor = SLOT_COLORS[m.attrType] || SLOT_COLORS.custom;
+            const isPlainMember = !m.nodeType || m.nodeType === 'text';
+            return (
+              <div key={m.id || idx} className="border border-line/60 rounded-xl p-2.5 flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: mColor }} />
+                  <span className="text-[9px] font-extrabold uppercase tracking-wider shrink-0" style={{ color: mColor }}>
+                    {SLOT_LABELS[m.attrType]}
+                  </span>
+                  <input
+                    value={m.title}
+                    onChange={(e) => updateMember(idx, { title: e.target.value })}
+                    className="flex-1 min-w-0 bg-transparent border border-line/60 rounded-lg px-2 py-1 text-[11px] font-bold text-ink focus:outline-none focus:border-violet-500"
+                  />
+                </div>
+                {isPlainMember ? (
+                  <textarea
+                    value={m.content}
+                    onChange={(e) => updateMember(idx, { content: e.target.value })}
+                    rows={3}
+                    className="w-full bg-transparent border border-line/60 rounded-lg px-2 py-1.5 text-[11px] leading-relaxed text-ink resize-y focus:outline-none focus:border-violet-500 transition-colors font-mono"
+                  />
+                ) : (
+                  <>
+                    <pre className="text-[10px] text-muted whitespace-pre-wrap break-words max-h-28 overflow-y-auto custom-scrollbar border border-line/50 rounded-lg px-2 py-1.5 bg-black/[0.02] dark:bg-white/[0.02]">{renderNodeText(m) || '(trống)'}</pre>
+                    <p className="text-[8px] text-faint italic">Node {m.nodeType} — tách nhóm để chỉnh control của nó.</p>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <div className="flex-1 flex flex-col min-h-[180px]">
           <label className="text-[10px] font-extrabold uppercase tracking-wider text-faint block mb-1.5">
@@ -232,7 +354,7 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
       )}
 
       {/* Biến khai báo (node text & root) */}
-      {!preset && !isFewShot && (
+      {(isRoot || isPlainText) && (
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-[10px] font-extrabold uppercase tracking-wider text-faint flex items-center gap-1">

@@ -6,7 +6,7 @@ import { confirmDialog } from '../common/ConfirmDialog';
 import {
   AttrSlot, GraphEdge, GraphNode, PromptProject, PromptTemplate, PromptVersion, TestCase,
 } from '../../types';
-import { compileGraph, LAYOUT, findRootNode, SLOT_LABELS, renderNodeText } from '../../utils/graphCompile';
+import { compileGraph, LAYOUT, findRootNode, SLOT_LABELS, SECTION_ORDER, renderNodeText } from '../../utils/graphCompile';
 import { getPreset, defaultPresetParams } from '../../utils/graphPresets';
 import { addTemplateAsAttributeNode } from '../../utils/graphMigration';
 import { useWorkspace } from '../../context/WorkspaceContext';
@@ -156,6 +156,80 @@ export function GraphWorkspace({
     });
   };
 
+  // Web node: cào URL làm Context (fetch khi bấm Cào, compile chỉ đọc cache).
+  const handleAddWebNode = () => {
+    addAttributeNode('context', 'Dữ liệu từ web', '', {
+      nodeType: 'web',
+      url: '',
+    });
+  };
+
+  // ── Bundle node (Sub-Graph): gom node đã chọn thành 1 card ────────────────
+  const handleGroupNodes = (ids: string[]) => {
+    const graphNodes = activeProject.graphNodes || [];
+    const members = graphNodes.filter(
+      (n) => ids.includes(n.id) && n.kind === 'attribute' && n.nodeType !== 'group',
+    );
+    if (members.length < 2) {
+      toast('Chọn ít nhất 2 node thuộc tính (Shift + kéo khung chọn hoặc Ctrl + click).');
+      return;
+    }
+    const slotRank = (s: string) => SECTION_ORDER.indexOf(s as AttrSlot);
+    const sorted = [...members].sort(
+      (a, b) => slotRank(a.attrType) - slotRank(b.attrType) || a.position.y - b.position.y,
+    );
+    const memberIds = new Set(members.map((m) => m.id));
+    const centroid = {
+      x: Math.round(members.reduce((s, m) => s + m.position.x, 0) / members.length),
+      y: Math.round(members.reduce((s, m) => s + m.position.y, 0) / members.length),
+    };
+    const group: GraphNode = {
+      id: `group-${Date.now()}`,
+      kind: 'attribute',
+      attrType: 'custom',
+      nodeType: 'group',
+      title: `Nhóm ${members.length} thuộc tính`,
+      content: '',
+      variables: [],
+      position: centroid,
+      enabled: true,
+      members: sorted.map((m) => ({ ...m })),
+    };
+    commitNow({
+      ...activeProject,
+      graphNodes: [...graphNodes.filter((n) => !memberIds.has(n.id)), group],
+      edges: (activeProject.edges || []).filter((e) => !memberIds.has(e.source) && !memberIds.has(e.target)),
+      updatedAt: new Date().toISOString(),
+    });
+    handleSelectNode(group.id);
+    toast.success(`Đã gom ${members.length} node thành nhóm — đặt tên trong Inspector (ví dụ "Form viết Content chuẩn SEO").`);
+  };
+
+  const handleUngroup = (groupId: string) => {
+    const graphNodes = activeProject.graphNodes || [];
+    const group = graphNodes.find((n) => n.id === groupId);
+    if (!group || group.nodeType !== 'group') return;
+    const root = findRootNode(activeProject);
+    const step = LAYOUT.attrNodeHeight + LAYOUT.nodeGapY;
+    const restored = (group.members || []).map((m, i) => ({
+      ...m,
+      position: { x: group.position.x, y: group.position.y + i * step },
+    }));
+    const newEdges: GraphEdge[] = root
+      ? restored.map((m, i) => ({
+          id: `edge-${Date.now()}-${i}`, source: m.id, target: root.id, targetSlot: m.attrType,
+        }))
+      : [];
+    commitNow({
+      ...activeProject,
+      graphNodes: [...graphNodes.filter((n) => n.id !== groupId), ...restored],
+      edges: [...(activeProject.edges || []), ...newEdges],
+      updatedAt: new Date().toISOString(),
+    });
+    setSelectedNodeId(null);
+    toast.success('Đã tách nhóm — các node thành viên được nối lại vào Prompt Gốc.');
+  };
+
   const handleAddFixNode = (title: string, content: string) => {
     addAttributeNode('fix', title, content);
     toast.success(`Đã thêm node Sửa lỗi "${title}" vào Prompt Gốc — bật/tắt nó để so sánh.`);
@@ -178,18 +252,32 @@ export function GraphWorkspace({
   // ── Template ───────────────────────────────────────────────────────────────
   const handleExportTemplate = (node: GraphNode) => {
     if (!onSaveTemplate) return;
+    // Nhóm: xuất MỖI thành viên thành một block riêng (giữ cấu trúc — import lại
+    // sẽ nở thành nhóm); node thường: 1 block với text đã render.
+    const blocks = node.nodeType === 'group'
+      ? (node.members || []).map((m, i) => ({
+          id: `block-${Date.now()}-${i}`,
+          type: m.attrType === 'fix' ? 'custom' as const : m.attrType,
+          title: m.title,
+          content: renderNodeText(m),
+        }))
+      : [{
+          id: `block-${Date.now()}`,
+          type: node.attrType === 'fix' ? 'custom' as const : node.attrType,
+          title: node.title,
+          // Preset/few-shot xuất text ĐÃ render để template dùng được ở mọi nơi.
+          content: renderNodeText(node),
+        }];
     onSaveTemplate({
       id: `tpl-${Date.now()}`,
       title: node.title,
-      description: `Thuộc tính "${node.title}" xuất từ Prompt Graph`,
-      blocks: [{
-        id: `block-${Date.now()}`,
-        type: node.attrType === 'fix' ? 'custom' : node.attrType,
-        title: node.title,
-        // Preset/few-shot xuất text ĐÃ render để template dùng được ở mọi nơi.
-        content: renderNodeText(node),
-      }],
-      variables: node.variables,
+      description: node.nodeType === 'group'
+        ? `Bộ ${(node.members || []).length} thuộc tính xuất từ Prompt Graph`
+        : `Thuộc tính "${node.title}" xuất từ Prompt Graph`,
+      blocks,
+      variables: node.nodeType === 'group'
+        ? (node.members || []).flatMap((m) => m.variables || [])
+        : node.variables,
     })
       .then(() => toast.success('Đã lưu node thành Template thư viện!'))
       .catch((err) => toast.error('Không thể xuất template: ' + err.message));
@@ -273,6 +361,8 @@ export function GraphWorkspace({
           onAddNode={handleAddNode}
           onAddPresetNode={handleAddPresetNode}
           onAddFewShotNode={handleAddFewShotNode}
+          onAddWebNode={handleAddWebNode}
+          onGroupNodes={handleGroupNodes}
           onOpenImportTemplate={() => setIsImportModalOpen(true)}
         />
       </ReactFlowProvider>
@@ -301,6 +391,7 @@ export function GraphWorkspace({
             onUpdateNode={handleUpdateNode}
             onDeleteNode={handleDeleteNode}
             onExportTemplate={handleExportTemplate}
+            onUngroupNode={handleUngroup}
             canExport={!!onSaveTemplate}
           />
         )}

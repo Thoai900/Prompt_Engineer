@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  compileGraph, collectGraphVariables, wouldCreateCycle, computeGraphLayout, LAYOUT,
+  compileGraph, collectGraphVariables, wouldCreateCycle, computeGraphLayout, LAYOUT, renderNodeText,
 } from '../utils/graphCompile';
 import { GraphEdge, GraphNode, PromptProject } from '../types';
 
@@ -179,6 +179,81 @@ describe('wouldCreateCycle', () => {
   });
   it('cho phép nối hợp lệ', () => {
     expect(wouldCreateCycle(edges, 'a', 'root')).toBe(false);
+  });
+});
+
+describe('Bundle node (group) & Web node — v3.3', () => {
+  const group = (id: string, members: GraphNode[], over: Partial<GraphNode> = {}): GraphNode =>
+    attr(id, { nodeType: 'group', attrType: 'custom', content: '', members, ...over });
+
+  it('nhóm BẬT đóng góp mỗi thành viên vào đúng cổng của nó (không cần dây), đứng sau node có dây', () => {
+    const members = [
+      attr('m-role', { attrType: 'role', content: 'Vai trò trong nhóm' }),
+      attr('m-cons', { attrType: 'constraints', content: 'Ràng buộc trong nhóm' }),
+    ];
+    const nodes = [
+      root(),
+      attr('wired-cons', { attrType: 'constraints', content: 'Ràng buộc có dây' }),
+      group('g1', members),
+    ];
+    const edges: GraphEdge[] = [
+      { id: 'e1', source: 'wired-cons', target: 'root', targetSlot: 'constraints' },
+    ];
+    const { finalPrompt, sections, participatingNodeIds } = compileGraph(makeProject(nodes, edges));
+
+    expect(finalPrompt).toContain('Vai trò trong nhóm');
+    expect(finalPrompt).toContain('Ràng buộc trong nhóm');
+    // Thành viên constraints đứng SAU node có dây cùng cổng
+    expect(finalPrompt.indexOf('Ràng buộc có dây')).toBeLessThan(finalPrompt.indexOf('Ràng buộc trong nhóm'));
+    // Section của thành viên mang nodeId của nhóm, đúng slot
+    const roleSection = sections.find((s) => s.text.includes('Vai trò trong nhóm'))!;
+    expect(roleSection.nodeId).toBe('g1');
+    expect(roleSection.slot).toBe('role');
+    expect(participatingNodeIds).toContain('g1');
+  });
+
+  it('mute nhóm = tắt toàn bộ thành viên', () => {
+    const nodes = [
+      root(),
+      group('g1', [attr('m1', { attrType: 'tone', content: 'Giọng của nhóm' })], { enabled: false }),
+    ];
+    const { finalPrompt } = compileGraph(makeProject(nodes, []));
+    expect(finalPrompt).not.toContain('Giọng của nhóm');
+  });
+
+  it('biến khai báo + biến {{...}} trong thành viên nhóm được gom vào form', () => {
+    const members = [
+      attr('m1', {
+        attrType: 'context',
+        content: 'Ngữ cảnh về {{bien_trong_nhom}}',
+        variables: [{ name: 'bien_khai_bao', type: 'text', required: true, defaultValue: 'x' }],
+      }),
+    ];
+    const project = makeProject([root(), group('g1', members)], []);
+    const names = collectGraphVariables(project).map((v) => v.name);
+    expect(names).toContain('bien_khai_bao');
+    expect(names).toContain('bien_trong_nhom');
+  });
+
+  it('web node: chưa cào → không đóng góp; đã cào → bọc nội dung kèm URL nguồn', () => {
+    const empty = attr('w1', { nodeType: 'web', attrType: 'context', content: '', url: 'https://vd.com' });
+    expect(renderNodeText(empty)).toBe('');
+
+    const fetched = attr('w2', { nodeType: 'web', attrType: 'context', content: 'Nội dung đã cào.', url: 'https://vd.com' });
+    const text = renderNodeText(fetched);
+    expect(text).toContain('https://vd.com');
+    expect(text).toContain('Nội dung đã cào.');
+
+    const nodes = [root(), fetched];
+    const edges: GraphEdge[] = [{ id: 'e1', source: 'w2', target: 'root', targetSlot: 'context' }];
+    const { finalPrompt } = compileGraph(makeProject(nodes, edges));
+    expect(finalPrompt).toContain('Nội dung đã cào.');
+  });
+
+  it('layout: nhóm không dây vẫn xếp cột 1 cạnh root (không bị đẩy sang cột mồ côi)', () => {
+    const nodes = [root(), group('g1', [attr('m1', { attrType: 'role' })])];
+    const pos = computeGraphLayout(nodes, []);
+    expect(pos.get('g1')!.x).toBe(LAYOUT.rootX - LAYOUT.colWidth);
   });
 });
 

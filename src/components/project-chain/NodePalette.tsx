@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, LayoutGrid, Library, ChevronDown, ListOrdered } from 'lucide-react';
+import { Plus, LayoutGrid, Library, ChevronDown, ListOrdered, Globe } from 'lucide-react';
 import { AttrSlot } from '../../types';
 import { SLOT_COLORS, SLOT_LABELS } from '../../utils/graphCompile';
 import { NODE_PRESETS } from '../../utils/graphPresets';
@@ -8,6 +8,7 @@ interface NodePaletteProps {
   onAddNode: (slot: AttrSlot) => void;
   onAddPresetNode: (presetId: string) => void;
   onAddFewShotNode: () => void;
+  onAddWebNode: () => void;
   onOpenImportTemplate: () => void;
   onAutoLayout: () => void;
   disabled?: boolean;
@@ -25,7 +26,7 @@ const FREE_TEXT_SLOTS: AttrSlot[] = ['format', 'tone', 'constraints', 'fix', 'cu
  * Text tự do. Node mới tự cắm dây sẵn vào Prompt Gốc.
  */
 export function NodePalette({
-  onAddNode, onAddPresetNode, onAddFewShotNode, onOpenImportTemplate, onAutoLayout, disabled,
+  onAddNode, onAddPresetNode, onAddFewShotNode, onAddWebNode, onOpenImportTemplate, onAutoLayout, disabled,
 }: NodePaletteProps) {
   const [open, setOpen] = useState(false);
 
@@ -90,6 +91,16 @@ export function NodePalette({
               <span className="min-w-0">
                 <span className="block text-xs font-bold text-ink">Ví dụ mẫu (Few-Shot)</span>
                 <span className="block text-[9px] text-faint leading-snug">Cặp Đầu vào → Đầu ra để AI học theo</span>
+              </span>
+            </button>
+            <button
+              onClick={() => { onAddWebNode(); setOpen(false); }}
+              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-colors"
+            >
+              <Globe size={13} className="shrink-0" style={{ color: SLOT_COLORS.context }} />
+              <span className="min-w-0">
+                <span className="block text-xs font-bold text-ink">Dữ liệu từ URL (Web)</span>
+                <span className="block text-[9px] text-faint leading-snug">Cào nội dung trang web làm Ngữ cảnh</span>
               </span>
             </button>
             <button

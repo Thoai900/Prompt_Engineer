@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ReactFlow, Background, BackgroundVariant, Controls, MiniMap, Panel,
   Connection, Edge as RFEdge, Node as RFNode, NodeChange, MarkerType,
@@ -28,6 +28,9 @@ interface GraphCanvasProps {
   onAddNode: (slot: AttrSlot) => void;
   onAddPresetNode: (presetId: string) => void;
   onAddFewShotNode: () => void;
+  onAddWebNode: () => void;
+  /** Gom các node đang chọn (Shift+kéo / Ctrl+click) thành 1 Bundle node. */
+  onGroupNodes: (ids: string[]) => void;
   onOpenImportTemplate: () => void;
 }
 
@@ -38,11 +41,13 @@ interface GraphCanvasProps {
 export function GraphCanvas({
   project, selectedNodeId, setSelectedNodeId, theme = 'dark',
   onUpdateLocal, onCommit, onUpdateNode,
-  onAddNode, onAddPresetNode, onAddFewShotNode, onOpenImportTemplate,
+  onAddNode, onAddPresetNode, onAddFewShotNode, onAddWebNode, onGroupNodes, onOpenImportTemplate,
 }: GraphCanvasProps) {
   const { fitView } = useReactFlow();
   const graphNodes = project.graphNodes || [];
   const edges = project.edges || [];
+  // Multi-select (Shift+kéo khung / Ctrl+click) — phục vụ nút "Gom thành nhóm".
+  const [multiSelected, setMultiSelected] = useState<Set<string>>(new Set());
 
   const handleToggleEnabled = useCallback((id: string) => {
     const updated = graphNodes.map((n) => (n.id === id ? { ...n, enabled: !n.enabled } : n));
@@ -54,12 +59,12 @@ export function GraphCanvas({
     id: n.id,
     type: n.kind === 'root' ? 'rootNode' : 'attrNode',
     position: n.position,
-    selected: n.id === selectedNodeId,
+    selected: multiSelected.has(n.id) || n.id === selectedNodeId,
     deletable: n.kind !== 'root',
     data: n.kind === 'root'
       ? { node: n, edges }
       : { node: n, onToggleEnabled: handleToggleEnabled, onUpdateNode },
-  })), [graphNodes, edges, selectedNodeId, handleToggleEnabled, onUpdateNode]);
+  })), [graphNodes, edges, selectedNodeId, multiSelected, handleToggleEnabled, onUpdateNode]);
 
   const nodeById = useMemo(() => new Map(graphNodes.map((n) => [n.id, n] as const)), [graphNodes]);
 
@@ -86,6 +91,17 @@ export function GraphCanvas({
   // ── Tương tác ──────────────────────────────────────────────────────────────
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     let positions: Record<string, { x: number; y: number }> | null = null;
+    const selectChanges = changes.filter((ch) => ch.type === 'select');
+    if (selectChanges.length > 0) {
+      setMultiSelected((prev) => {
+        const next = new Set(prev);
+        selectChanges.forEach((ch: any) => {
+          if (ch.selected) next.add(ch.id);
+          else next.delete(ch.id);
+        });
+        return next;
+      });
+    }
     changes.forEach((ch) => {
       if (ch.type === 'position' && ch.position) {
         positions = positions || {};
@@ -171,6 +187,17 @@ export function GraphCanvas({
 
   const hasRoot = !!findRootNode(project);
 
+  // Node gom được: thuộc tính thường (không phải root, không phải nhóm lồng nhau).
+  const groupableIds = useMemo(() => [...multiSelected].filter((id) => {
+    const n = nodeById.get(id);
+    return !!n && n.kind === 'attribute' && n.nodeType !== 'group';
+  }), [multiSelected, nodeById]);
+
+  const handleGroupClick = () => {
+    onGroupNodes(groupableIds);
+    setMultiSelected(new Set());
+  };
+
   return (
     <div className="flex-1 min-w-0 h-full relative">
       <ReactFlow
@@ -212,11 +239,25 @@ export function GraphCanvas({
             onAddNode={onAddNode}
             onAddPresetNode={onAddPresetNode}
             onAddFewShotNode={onAddFewShotNode}
+            onAddWebNode={onAddWebNode}
             onOpenImportTemplate={onOpenImportTemplate}
             onAutoLayout={handleAutoLayout}
             disabled={!hasRoot}
           />
         </Panel>
+
+        {/* Gom nhóm: hiện khi chọn ≥2 node thuộc tính (Shift+kéo khung chọn) */}
+        {groupableIds.length >= 2 && (
+          <Panel position="top-center">
+            <button
+              onClick={handleGroupClick}
+              className="flex items-center gap-1.5 py-2 px-4 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold shadow-xl shadow-violet-900/30 cursor-pointer transition-all active:scale-95 animate-in fade-in slide-in-from-top-2 duration-150"
+              title="Đóng gói các node đã chọn thành 1 Bundle node (mỗi thành viên vẫn vào đúng cổng của nó)"
+            >
+              📦 Gom {groupableIds.length} node thành nhóm
+            </button>
+          </Panel>
+        )}
       </ReactFlow>
     </div>
   );

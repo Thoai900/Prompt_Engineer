@@ -121,6 +121,19 @@ export const renderNodeText = (node: GraphNode): string => {
   if (node.nodeType === 'fewshot') {
     return renderFewShotText(node.examples || []);
   }
+  if (node.nodeType === 'web') {
+    // content = snapshot đã cào (compile thuần, KHÔNG fetch ở đây).
+    const cached = (node.content || '').trim();
+    if (!cached) return '';
+    return `Dữ liệu tham khảo từ ${node.url || 'web'}:\n"""\n${cached}\n"""`;
+  }
+  if (node.nodeType === 'group') {
+    // Cho preview/quét biến — khi compile, member được xử lý riêng theo cổng.
+    return (node.members || [])
+      .map((m) => renderNodeText(m).trim())
+      .filter(Boolean)
+      .join('\n\n');
+  }
   return node.content;
 };
 
@@ -172,34 +185,50 @@ export const compileGraph = (
 
   const rawSections: Array<Omit<CompiledSection, 'text'> & { rawText: string }> = [];
 
+  // Bundle node (v3.3): nhóm BẬT đóng góp trực tiếp — mỗi thành viên vào đúng
+  // cổng attrType của nó, không cần dây (nhóm đứng sau các node có dây, sort theo Y).
+  const enabledGroups = graphNodes
+    .filter((n) => n.kind === 'attribute' && n.nodeType === 'group' && n.enabled)
+    .sort((a, b) => a.position.y - b.position.y);
+
   for (const slot of SECTION_ORDER) {
     let headerShown = false;
+    const push = (nodeId: string, rawText: string) => {
+      if (!rawText) return;
+      rawSections.push({ nodeId, slot, title: SLOT_LABELS[slot], showHeader: !headerShown, rawText });
+      headerShown = true;
+    };
+
     // Cổng Nhiệm vụ: nội dung lõi của root (nếu có) đứng trước các Task Node cắm vào.
     if (slot === 'task') {
       const core = root.content.trim();
-      if (core) {
-        rawSections.push({
-          nodeId: root.id, slot: 'task', title: SLOT_LABELS.task, showHeader: true, rawText: core,
-        });
-        headerShown = true;
-      }
+      if (core) push(root.id, core);
     }
-    const sources = getEnabledSources(nodeMap, edges, root.id, slot);
-    sources.forEach((node) => {
+
+    getEnabledSources(nodeMap, edges, root.id, slot).forEach((node) => {
       const visited = new Set<string>();
-      const text = compileAttributeText(node, nodeMap, edges, visited, collect);
-      if (!text) return;
-      rawSections.push({
-        nodeId: node.id, slot, title: SLOT_LABELS[slot], showHeader: !headerShown, rawText: text,
+      push(node.id, compileAttributeText(node, nodeMap, edges, visited, collect));
+    });
+
+    enabledGroups.forEach((group) => {
+      (group.members || []).forEach((member) => {
+        if (member.attrType !== slot) return;
+        const text = renderNodeText(member).trim();
+        if (!text) return;
+        collect(group.id);
+        push(group.id, text);
       });
-      headerShown = true;
     });
   }
 
-  // Biến khả dụng: khai báo trên các node tham gia (root ưu tiên trước).
-  const allVars: PromptVariable[] = graphNodes
-    .filter((n) => participating.has(n.id))
-    .flatMap((n) => n.variables || []);
+  // Biến khả dụng: khai báo trên các node tham gia (kể cả thành viên nhóm).
+  const participatingNodes = graphNodes.filter((n) => participating.has(n.id));
+  const allVars: PromptVariable[] = [
+    ...participatingNodes.flatMap((n) => n.variables || []),
+    ...participatingNodes
+      .filter((n) => n.nodeType === 'group')
+      .flatMap((n) => (n.members || []).flatMap((m) => m.variables || [])),
+  ];
 
   const sections: CompiledSection[] = rawSections.map((s) => ({
     nodeId: s.nodeId,
@@ -228,11 +257,15 @@ export const collectGraphVariables = (project: PromptProject): PromptVariable[] 
   const result: PromptVariable[] = [];
   const seen = new Set<string>();
 
-  nodes.forEach((n) => (n.variables || []).forEach((v) => {
+  const declareVars = (vars: PromptVariable[] | undefined) => (vars || []).forEach((v) => {
     if (seen.has(v.name)) return;
     seen.add(v.name);
     result.push(v);
-  }));
+  });
+  nodes.forEach((n) => {
+    declareVars(n.variables);
+    if (n.nodeType === 'group') (n.members || []).forEach((m) => declareVars(m.variables));
+  });
 
   nodes.forEach((n) => {
     let match;
@@ -290,6 +323,12 @@ export const computeGraphLayout = (
       }
     });
   }
+
+  // Bundle node không có dây nhưng đóng góp trực tiếp → xếp cột 1 cạnh root
+  // (không đẩy sang cột "mồ côi").
+  graphNodes.forEach((n) => {
+    if (n.nodeType === 'group' && !level.has(n.id)) level.set(n.id, 1);
+  });
 
   const slotRank = (n: GraphNode) => {
     const idx = SECTION_ORDER.indexOf(n.attrType);

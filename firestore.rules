@@ -340,6 +340,19 @@ service cloud.firestore {
       allow delete: if isValidId(appId) && isOwner(existing().userId);
     }
 
+    // Tiến trình học / thành tích cá nhân (tab Learn): users/{uid}/progress/{docId}
+    // — chỉ chủ sở hữu đọc/ghi. Doc chỉ chứa xp (số), badges + completed (list).
+    // setDoc dùng merge:true nên badges/completed có thể vắng ở lần ghi lẻ → để tùy chọn.
+    match /users/{userId}/progress/{docId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId)
+        && isValidId(docId)
+        && incoming().keys().hasOnly(['xp', 'badges', 'completed'])
+        && ( !('xp' in incoming().keys()) || (incoming().xp is number && incoming().xp >= 0) )
+        && ( !('badges' in incoming().keys()) || (incoming().badges is list && incoming().badges.size() <= 200) )
+        && ( !('completed' in incoming().keys()) || (incoming().completed is list && incoming().completed.size() <= 100) );
+    }
+
     match /healthSuites/{suiteId} {
       allow get: if isValidId(suiteId) && isOwner(resource.data.userId);
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;

@@ -335,9 +335,11 @@ export const migrateProjectToGraph = (project: PromptProject): PromptProject => 
 };
 
 /**
- * Thêm một template thư viện vào project dưới dạng node thuộc tính (dùng cho
- * AddToProjectModal & palette). Tự migrate nếu project còn ở v2.
- * `connectToRoot: true` sẽ cắm sẵn dây vào cổng tương ứng của Prompt Gốc.
+ * Thêm một template thư viện vào project (dùng cho AddToProjectModal & palette).
+ * Tự migrate nếu project còn ở v2.
+ * - Template 1 block → node thuộc tính; `connectToRoot: true` cắm sẵn dây.
+ * - Template NHIỀU block (v3.3) → nở thành BUNDLE NODE: mỗi block một thành viên
+ *   giữ đúng cổng của nó (nhóm đóng góp trực tiếp, không cần dây).
  */
 export const addTemplateAsAttributeNode = (
   project: PromptProject,
@@ -346,9 +348,44 @@ export const addTemplateAsAttributeNode = (
 ): PromptProject => {
   const proj = migrateProjectToGraph(project);
   const graphNodes = proj.graphNodes || [];
-  const firstBlockType = template.blocks[0]?.type;
   const maxY = Math.max(LAYOUT.rootY, ...graphNodes.map((n) => n.position.y));
+  const position = { x: LAYOUT.rootX - LAYOUT.colWidth, y: maxY + LAYOUT.attrNodeHeight + LAYOUT.nodeGapY };
+  const nonEmptyBlocks = template.blocks.filter((b) => (b.content || '').trim());
 
+  if (nonEmptyBlocks.length > 1) {
+    const group: GraphNode = {
+      id: newId('group'),
+      kind: 'attribute',
+      attrType: 'custom',
+      nodeType: 'group',
+      title: template.title,
+      content: '',
+      variables: [],
+      position,
+      enabled: true,
+      members: nonEmptyBlocks.map((b) => ({
+        id: newId('attr'),
+        kind: 'attribute' as const,
+        attrType: blockTypeToSlot(b.type),
+        title: b.title || 'Thuộc tính',
+        content: stripLegacyRefs(b.content.trim()),
+        variables: [],
+        position: { x: 0, y: 0 },
+        enabled: true,
+      })),
+    };
+    // Biến của template gắn vào thành viên đầu (nhóm gom biến từ mọi thành viên).
+    if (template.variables?.length && group.members!.length > 0) {
+      group.members![0].variables = template.variables.map((v) => ({ ...v }));
+    }
+    return {
+      ...proj,
+      graphNodes: [...graphNodes, group],
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  const firstBlockType = template.blocks[0]?.type;
   const attr: GraphNode = {
     id: newId('attr'),
     kind: 'attribute',
@@ -356,7 +393,7 @@ export const addTemplateAsAttributeNode = (
     title: template.title,
     content: stripLegacyRefs(joinBlocks(template.blocks)),
     variables: (template.variables || []).map((v) => ({ ...v })),
-    position: { x: LAYOUT.rootX - LAYOUT.colWidth, y: maxY + LAYOUT.attrNodeHeight + LAYOUT.nodeGapY },
+    position,
     enabled: true,
   };
 

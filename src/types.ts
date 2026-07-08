@@ -219,13 +219,18 @@ export interface PromptVersion {
 export type AttrSlot = 'role' | 'context' | 'task' | 'format' | 'tone' | 'constraints' | 'example' | 'fix' | 'custom';
 
 /**
- * v3.2: node không chỉ là "hộp text".
+ * v3.2+: node không chỉ là "hộp text".
  * - 'text' (mặc định): văn bản tự do trong `content`.
  * - 'preset': Modifier node (Meta-Prompt) — text sinh từ thư viện preset
  *   (graphPresets.ts) theo `presetId` + `presetParams` (dropdown/slider trên node).
  * - 'fewshot': node Ví dụ mẫu — cặp `examples[]` Input→Output có cấu trúc.
+ * - 'web' (v3.3): node cào dữ liệu từ URL — snapshot cache vào `content`
+ *   (compile vẫn thuần, chỉ đọc cache; bấm "Cào" mới fetch qua api/fetch-url).
+ * - 'group' (v3.3): Bundle node — gom nhiều node thành 1 card; mỗi thành viên
+ *   giữ attrType riêng và đóng góp section vào đúng cổng đó của Prompt Gốc
+ *   (không cần dây), mute nhóm = tắt cả cụm.
  */
-export type GraphNodeType = 'text' | 'preset' | 'fewshot';
+export type GraphNodeType = 'text' | 'preset' | 'fewshot' | 'web' | 'group';
 
 export interface FewShotExample {
   input: string;
@@ -237,16 +242,19 @@ export interface GraphNode {
   kind: 'root' | 'attribute';
   attrType: AttrSlot;          // với root: bỏ qua (giữ 'custom')
   title: string;
-  content: string;             // văn bản thuộc tính / nội dung lõi (root)
+  content: string;             // văn bản thuộc tính / nội dung lõi (root) / cache web
   variables: PromptVariable[];
   position: { x: number; y: number };
   enabled: boolean;            // false = mute (loại khỏi compile, dây mờ đi)
 
-  // v3.2 — node có cấu trúc (undefined = 'text', tương thích ngược)
+  // v3.2+ — node có cấu trúc (undefined = 'text', tương thích ngược)
   nodeType?: GraphNodeType;
   presetId?: string;                      // nodeType 'preset'
   presetParams?: Record<string, string>;  // giá trị các control của preset
   examples?: FewShotExample[];            // nodeType 'fewshot'
+  url?: string;                           // nodeType 'web'
+  fetchedAt?: string;                     // nodeType 'web' — ISO thời điểm cào
+  members?: GraphNode[];                  // nodeType 'group' — các node thành viên
 }
 
 export interface GraphEdge {

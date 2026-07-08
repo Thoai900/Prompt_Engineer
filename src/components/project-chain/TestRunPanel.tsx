@@ -33,7 +33,16 @@ export function TestRunPanel({
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [addedSuggestions, setAddedSuggestions] = useState<Record<number, boolean>>({});
 
+  // Vòng tự sửa lỗi (self-correction): 0 = chạy 1 lượt như thường; N vòng = sau
+  // lượt đầu, model tự phê bình & sửa N lần TRƯỚC KHI trả kết quả cuối.
+  const [selfCorrectRounds, setSelfCorrectRounds] = useState(0);
+  const [currentRound, setCurrentRound] = useState(0);
+  const [previousDrafts, setPreviousDrafts] = useState<string[]>([]);
+  const [showDrafts, setShowDrafts] = useState(false);
+
   const variables = collectGraphVariables(project);
+
+  const CRITIQUE_INSTRUCTION = 'Hãy rà soát câu trả lời phía trên của chính bạn theo TOÀN BỘ yêu cầu trong chỉ dẫn hệ thống: tìm mọi điểm chưa đạt (thiếu yêu cầu, sai định dạng, lan man, thiếu chính xác, ví dụ yếu...) và sửa hết. CHỈ trả về phiên bản cải thiện hoàn chỉnh cuối cùng — không kèm lời phê bình hay giải thích quá trình.';
 
   const handleRun = async () => {
     if (isRunning) return;
@@ -47,41 +56,59 @@ export function TestRunPanel({
     setOutput('');
     setEvaluation(null);
     setAddedSuggestions({});
+    setPreviousDrafts([]);
+    setShowDrafts(false);
+    setCurrentRound(0);
 
     const option = ALL_MODEL_OPTIONS.find((m) => m.value === model);
     const provider = option?.provider || 'gemini';
     const systemInstruction = withPersona(finalPrompt, personaInstructions);
 
     try {
-      let accumulated = '';
-      if (provider === 'gemini') {
-        // Gemini: stream cho trải nghiệm mượt.
-        await runPlaygroundChatStream(
-          'gemini',
-          systemInstruction,
-          [{ role: 'user', content: 'Hãy thực thi và phản hồi theo chỉ dẫn prompt hệ thống.' }],
-          { model },
-          (chunk) => {
-            accumulated += chunk;
-            setOutput(accumulated);
-          },
-        );
-      } else {
-        const { text } = await runPromptOnModel({
-          model,
-          provider,
-          systemInstruction,
-          userContent: 'Hãy thực thi và phản hồi theo chỉ dẫn prompt hệ thống.',
-        });
-        accumulated = text;
-        setOutput(text);
+      // Hội thoại tích luỹ qua các vòng: trả lời → phê bình & sửa → ...
+      const conversation: { role: 'user' | 'assistant'; content: string }[] = [
+        { role: 'user', content: 'Hãy thực thi và phản hồi theo chỉ dẫn prompt hệ thống.' },
+      ];
+      let current = '';
+
+      for (let round = 0; round <= selfCorrectRounds; round++) {
+        setCurrentRound(round);
+        if (round > 0) {
+          setPreviousDrafts((prev) => [...prev, current]);
+          conversation.push({ role: 'assistant', content: current });
+          conversation.push({ role: 'user', content: CRITIQUE_INSTRUCTION });
+        }
+        current = '';
+        if (provider === 'gemini') {
+          // Gemini: stream cho trải nghiệm mượt.
+          await runPlaygroundChatStream(
+            'gemini',
+            systemInstruction,
+            conversation,
+            { model },
+            (chunk) => {
+              current += chunk;
+              setOutput(current);
+            },
+          );
+        } else {
+          // Provider không stream đa lượt: gói hội thoại vào userContent.
+          const userContent = conversation
+            .map((m) => (m.role === 'user' ? `[Yêu cầu]\n${m.content}` : `[Bạn đã trả lời]\n${m.content}`))
+            .join('\n\n');
+          const { text } = await runPromptOnModel({ model, provider, systemInstruction, userContent });
+          current = text;
+          setOutput(text);
+        }
       }
-      onSaveTestRun({ ...inputs }, accumulated);
+
+      onSaveTestRun({ ...inputs }, current);
     } catch (err: any) {
       console.error(err);
       setOutput(`❌ Lỗi khi chạy thử: ${err.message}`);
     } finally {
       setIsRunning(false);
+      setCurrentRound(0);
     }
   };
 
@@ -144,30 +171,72 @@ export function TestRunPanel({
       </div>
 
       {/* Model + Run */}
-      <div className="p-3 border-b border-line/60 flex items-center gap-2">
-        <select
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          className="flex-1 min-w-0 bg-transparent border border-line/70 rounded-xl px-2 py-2 text-[11px] font-bold text-ink focus:outline-none cursor-pointer"
-        >
-          {ALL_MODEL_OPTIONS.filter((m) => !m.requiresUserKey).map((m) => (
-            <option key={m.value} value={m.value}>{m.label}</option>
-          ))}
-        </select>
-        <button
-          onClick={handleRun}
-          disabled={isRunning}
-          className="flex items-center gap-1.5 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-900/20 cursor-pointer transition-all active:scale-95 disabled:opacity-60"
-        >
-          {isRunning ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} fill="currentColor" />}
-          {isRunning ? 'Đang chạy...' : 'Chạy thử'}
-        </button>
+      <div className="p-3 border-b border-line/60 flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <select
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            className="flex-1 min-w-0 bg-transparent border border-line/70 rounded-xl px-2 py-2 text-[11px] font-bold text-ink focus:outline-none cursor-pointer"
+          >
+            {ALL_MODEL_OPTIONS.filter((m) => !m.requiresUserKey).map((m) => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+          </select>
+          <button
+            onClick={handleRun}
+            disabled={isRunning}
+            className="flex items-center gap-1.5 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-900/20 cursor-pointer transition-all active:scale-95 disabled:opacity-60"
+          >
+            {isRunning ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} fill="currentColor" />}
+            {isRunning
+              ? (selfCorrectRounds > 0 ? `Vòng ${currentRound}/${selfCorrectRounds}...` : 'Đang chạy...')
+              : 'Chạy thử'}
+          </button>
+        </div>
+
+        {/* Vòng tự sửa lỗi (self-correction loop) */}
+        <div className="flex items-center gap-2">
+          <RefreshCw size={11} className="text-violet-500 shrink-0" />
+          <label className="text-[10px] font-bold text-muted shrink-0">Vòng tự sửa lỗi</label>
+          <select
+            value={selfCorrectRounds}
+            onChange={(e) => setSelfCorrectRounds(Number(e.target.value))}
+            className="bg-transparent border border-line/70 rounded-lg px-2 py-1 text-[11px] font-bold text-ink focus:outline-none cursor-pointer"
+          >
+            <option value={0}>Tắt</option>
+            <option value={1}>1 vòng</option>
+            <option value={2}>2 vòng</option>
+            <option value={3}>3 vòng</option>
+          </select>
+          {selfCorrectRounds > 0 && (
+            <span className="text-[9px] text-amber-500 font-bold">
+              ≈ {selfCorrectRounds + 1} lượt gọi model (tốn token hơn)
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Kết quả */}
       <div className="flex-1 p-3 flex flex-col gap-3">
         {output ? (
           <>
+            {/* Các bản nháp trước khi tự sửa */}
+            {previousDrafts.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <button
+                  onClick={() => setShowDrafts((v) => !v)}
+                  className="self-start text-[10px] font-bold text-violet-500 hover:text-violet-400 cursor-pointer"
+                >
+                  {showDrafts ? '▾' : '▸'} {previousDrafts.length} bản nháp trước khi tự sửa
+                </button>
+                {showDrafts && previousDrafts.map((draft, i) => (
+                  <div key={i} className="border border-line/50 rounded-xl p-2.5 opacity-70">
+                    <div className="text-[9px] font-extrabold uppercase tracking-wider text-faint mb-1">Bản {i + 1}</div>
+                    <pre className="text-[10px] text-muted whitespace-pre-wrap break-words max-h-40 overflow-y-auto custom-scrollbar">{draft}</pre>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="border border-line/60 rounded-xl p-3 bg-black/[0.02] dark:bg-white/[0.02]">
               <AIResponseRenderer content={output} className="text-xs" />
             </div>
