@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { RefreshCw, Download, ExternalLink, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Download, ExternalLink, AlertTriangle, Copy, Check, Terminal } from 'lucide-react';
 import { CatalogEntry } from '../../data/skillCatalog';
+import { AgentCommand } from '../../utils/agentInstall';
 
 interface Props {
   entry: CatalogEntry | null;
@@ -11,9 +12,23 @@ interface Props {
   error: string | null;
   importing: boolean;
   onImport: () => void;
+  /** Lệnh cài cho agent — chỉ truyền khi entry là skill. */
+  installCommands?: AgentCommand[];
+  /** Nhập file làm nền Rule/Config (chỉ cho file KHÔNG phải skill). */
+  onImportAs?: (target: 'rule' | 'config') => void;
 }
 
-export default function CatalogPreviewPanel({ entry, content, loading, error, importing, onImport }: Props) {
+export default function CatalogPreviewPanel({
+  entry, content, loading, error, importing, onImport, installCommands, onImportAs,
+}: Props) {
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const copy = (key: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(key);
+    setTimeout(() => setCopied((c) => (c === key ? null : c)), 1600);
+  };
+
   if (!entry) {
     return (
       <div className="flex-1 flex items-center justify-center text-slate-400 text-xs italic p-6 text-center">
@@ -21,6 +36,7 @@ export default function CatalogPreviewPanel({ entry, content, loading, error, im
       </div>
     );
   }
+
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {/* Header */}
@@ -48,6 +64,21 @@ export default function CatalogPreviewPanel({ entry, content, loading, error, im
         </div>
       </div>
 
+      {/* Chọn đích khi nhập (file không phải skill → có thể làm nền Rule / LLM Config) */}
+      {onImportAs && entry.category !== 'skill' && (
+        <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 text-[11px]">
+          <span className="text-slate-400">Nhập làm nền:</span>
+          <button onClick={() => onImportAs('rule')} disabled={importing || !content}
+            className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 cursor-pointer">
+            Rule
+          </button>
+          <button onClick={() => onImportAs('config')} disabled={importing || !content}
+            className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 cursor-pointer">
+            LLM Config
+          </button>
+        </div>
+      )}
+
       {/* Body */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
         {loading ? (
@@ -61,6 +92,36 @@ export default function CatalogPreviewPanel({ entry, content, loading, error, im
           </div>
         ) : (
           <>
+            {/* Cài nhanh cho agent (skill) */}
+            {installCommands && installCommands.length > 0 && (
+              <div className="mb-4 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                <div className="px-3 py-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  <Terminal size={12} /> Cài nhanh cho agent
+                </div>
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {installCommands.map((c) => (
+                    <div key={c.agent} className="px-3 py-2">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                          {c.agent}
+                          {c.kind === 'native' && <span className="ml-1 text-[9px] text-amber-600 dark:text-amber-400">native</span>}
+                        </span>
+                        <button onClick={() => copy(c.agent, c.command)}
+                          className="text-[10px] font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1 cursor-pointer">
+                          {copied === c.agent ? <Check size={11} className="text-green-600" /> : <Copy size={11} />}
+                          {copied === c.agent ? 'Đã chép' : 'Chép'}
+                        </button>
+                      </div>
+                      <code className="block text-[10px] font-mono bg-slate-100 dark:bg-slate-950 rounded px-2 py-1 overflow-x-auto whitespace-pre text-slate-700 dark:text-slate-300">
+                        {c.command}
+                      </code>
+                      {c.note && <p className="text-[9px] text-slate-400 mt-1">{c.note}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {entry.format === 'skill-md' && (
               <p className="mb-3 text-[10px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/60 rounded-lg px-3 py-2">
                 Chỉ nhập nội dung <strong>SKILL.md</strong>; tài nguyên phụ (scripts/, references/) không được nhập — xem trên GitHub nếu cần.

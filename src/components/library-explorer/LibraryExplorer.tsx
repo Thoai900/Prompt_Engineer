@@ -1,10 +1,11 @@
 import { toast } from '../common/Toaster';
 import React, { useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
-import { Compass, Search, X } from 'lucide-react';
+import { Compass, Search, X, Github, Star, ChevronLeft, RefreshCw } from 'lucide-react';
 import { CatalogEntry, CatalogCategory } from '../../data/skillCatalog';
-import { staticCatalogSource } from '../../services/catalogService';
-import { routeImport, ImportTarget } from '../../utils/skillCatalog';
+import { staticCatalogSource, searchRepos, listRepoFiles, RepoHit } from '../../services/catalogService';
+import { routeImport, routeImportAs, ImportTarget } from '../../utils/skillCatalog';
+import { buildInstallCommands } from '../../utils/agentInstall';
 import { persistImport } from '../../services/importService';
 import CatalogCard from './CatalogCard';
 import CatalogPreviewPanel from './CatalogPreviewPanel';
@@ -30,11 +31,25 @@ interface Props {
 const CAT_LABEL: Record<CatalogCategory, string> = {
   skill: 'Skills', rule: 'Rules', config: 'Configs', guide: 'Guides',
 };
+const TARGET_LABEL: Record<ImportTarget, string> = { skill: 'Skills', rule: 'Rules', config: 'LLM Config' };
 
 export default function LibraryExplorer({ open, onClose, user, defaultCategory, categories, onImported }: Props) {
+  const [mode, setMode] = useState<'curated' | 'search'>('curated');
   const [category, setCategory] = useState<CatalogCategory | 'all'>(defaultCategory || 'all');
   const [text, setText] = useState('');
   const [entries, setEntries] = useState<CatalogEntry[]>([]);
+
+  // Live search state
+  const [repoQuery, setRepoQuery] = useState('');
+  const [repos, setRepos] = useState<RepoHit[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [activeRepo, setActiveRepo] = useState<RepoHit | null>(null);
+  const [repoFiles, setRepoFiles] = useState<CatalogEntry[]>([]);
+  const [filesLoading, setFilesLoading] = useState(false);
+  const [filesError, setFilesError] = useState<string | null>(null);
+
+  // Shared preview state
   const [selected, setSelected] = useState<CatalogEntry | null>(null);
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
@@ -42,18 +57,22 @@ export default function LibraryExplorer({ open, onClose, user, defaultCategory, 
   const [importing, setImporting] = useState(false);
   const [cache] = useState<Map<string, string>>(() => new Map());
 
-  // Reset bộ lọc mặc định mỗi lần mở.
-  useEffect(() => {
-    if (open) { setCategory(defaultCategory || 'all'); setText(''); setSelected(null); setContent(''); setError(null); }
-  }, [open, defaultCategory]);
-
-  // Liệt kê theo bộ lọc.
+  // Reset mỗi lần mở.
   useEffect(() => {
     if (!open) return;
+    setMode('curated');
+    setCategory(defaultCategory || 'all'); setText('');
+    setRepoQuery(''); setRepos([]); setSearchError(null); setActiveRepo(null); setRepoFiles([]); setFilesError(null);
+    setSelected(null); setContent(''); setError(null);
+  }, [open, defaultCategory]);
+
+  // Liệt kê catalog tĩnh (chỉ chế độ Tuyển chọn).
+  useEffect(() => {
+    if (!open || mode !== 'curated') return;
     staticCatalogSource
       .list({ category: category === 'all' ? undefined : category, text })
       .then(setEntries);
-  }, [open, category, text]);
+  }, [open, mode, category, text]);
 
   // Tải nội dung khi chọn — cache trong phiên (Map) + localStorage (giữ giữa các phiên).
   useEffect(() => {
@@ -72,13 +91,41 @@ export default function LibraryExplorer({ open, onClose, user, defaultCategory, 
     return () => { cancelled = true; };
   }, [selected, cache]);
 
-  const handleImport = async () => {
-    if (!selected || !content) return;
+  const switchMode = (m: 'curated' | 'search') => {
+    setMode(m); setSelected(null); setContent(''); setError(null);
+  };
+
+  const runSearch = async () => {
+    const q = repoQuery.trim();
+    if (!q) return;
+    setSearching(true); setSearchError(null); setActiveRepo(null); setRepoFiles([]); setSelected(null); setContent('');
+    try {
+      setRepos(await searchRepos(q));
+    } catch (e: any) {
+      setSearchError(e?.message || 'Tìm GitHub thất bại.');
+      setRepos([]);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const openRepo = async (repo: RepoHit) => {
+    setActiveRepo(repo); setSelected(null); setContent('');
+    setFilesLoading(true); setFilesError(null); setRepoFiles([]);
+    try {
+      setRepoFiles(await listRepoFiles(repo));
+    } catch (e: any) {
+      setFilesError(e?.message || 'Duyệt repo thất bại.');
+    } finally {
+      setFilesLoading(false);
+    }
+  };
+
+  const runImport = async (routed: ReturnType<typeof routeImport>, label: string) => {
     setImporting(true);
     try {
-      const routed = routeImport(selected, content);
       await persistImport(routed, user);
-      toast.success(`Đã nhập "${selected.title}" vào ${CAT_LABEL[selected.category]}.`);
+      toast.success(`Đã nhập "${selected!.title}" vào ${label}.`);
       onImported(routed.target);
     } catch (e) {
       console.error(e);
@@ -88,9 +135,30 @@ export default function LibraryExplorer({ open, onClose, user, defaultCategory, 
     }
   };
 
+  const handleImport = () => {
+    if (!selected || !content) return;
+    const routed = routeImport(selected, content);
+    runImport(routed, TARGET_LABEL[routed.target]);
+  };
+
+  const handleImportAs = (target: 'rule' | 'config') => {
+    if (!selected || !content) return;
+    runImport(routeImportAs(selected, content, target), TARGET_LABEL[target]);
+  };
+
   if (!open) return null;
 
   const chips: (CatalogCategory | 'all')[] = ['all', ...categories];
+  const installCommands = selected?.category === 'skill' ? buildInstallCommands(selected) : undefined;
+
+  const modeBtn = (m: 'curated' | 'search', label: React.ReactNode) => (
+    <button onClick={() => switchMode(m)}
+      className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+        mode === m ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+      }`}>
+      {label}
+    </button>
+  );
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-[999] animate-fade-in">
@@ -106,37 +174,103 @@ export default function LibraryExplorer({ open, onClose, user, defaultCategory, 
           </button>
         </div>
 
-        {/* Filter bar */}
+        {/* Mode + filter bar */}
         <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3 flex-wrap">
           <div className="flex bg-slate-100 dark:bg-slate-950 p-0.5 rounded-xl border border-slate-200/50 dark:border-slate-800">
-            {chips.map((c) => (
-              <button key={c} onClick={() => setCategory(c)}
-                className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
-                  category === c ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                }`}>
-                {c === 'all' ? 'Tất cả' : CAT_LABEL[c]}
+            {modeBtn('curated', 'Tuyển chọn')}
+            {modeBtn('search', <><Github size={12} /> Tìm GitHub</>)}
+          </div>
+
+          {mode === 'curated' ? (
+            <>
+              <div className="flex bg-slate-100 dark:bg-slate-950 p-0.5 rounded-xl border border-slate-200/50 dark:border-slate-800">
+                {chips.map((c) => (
+                  <button key={c} onClick={() => setCategory(c)}
+                    className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                      category === c ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                    }`}>
+                    {c === 'all' ? 'Tất cả' : CAT_LABEL[c]}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5 flex-1 min-w-[160px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5">
+                <Search size={13} className="text-slate-400" />
+                <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Tìm skill, rule, persona…"
+                  className="flex-1 bg-transparent text-xs focus:outline-none text-slate-700 dark:text-slate-200" />
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-2 flex-1 min-w-[220px]">
+              <div className="flex items-center gap-1.5 flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5">
+                <Search size={13} className="text-slate-400" />
+                <input value={repoQuery} onChange={(e) => setRepoQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') runSearch(); }}
+                  placeholder="Tìm repo GitHub (vd: agent skills, cursor rules)…"
+                  className="flex-1 bg-transparent text-xs focus:outline-none text-slate-700 dark:text-slate-200" />
+              </div>
+              <button onClick={runSearch} disabled={searching || !repoQuery.trim()}
+                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
+                {searching ? <RefreshCw size={12} className="animate-spin" /> : <Search size={12} />} Tìm
               </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-1.5 flex-1 min-w-[160px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5">
-            <Search size={13} className="text-slate-400" />
-            <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Tìm skill, rule, persona…"
-              className="flex-1 bg-transparent text-xs focus:outline-none text-slate-700 dark:text-slate-200" />
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Body: list + preview */}
         <div className="flex-1 flex min-h-0">
           <div className="w-2/5 border-r border-slate-100 dark:border-slate-800 overflow-y-auto custom-scrollbar p-3 space-y-2">
-            {entries.length === 0 ? (
-              <p className="text-xs text-slate-400 italic p-3">Không có mục nào khớp bộ lọc.</p>
+            {mode === 'curated' ? (
+              entries.length === 0 ? (
+                <p className="text-xs text-slate-400 italic p-3">Không có mục nào khớp bộ lọc.</p>
+              ) : (
+                entries.map((e) => (
+                  <CatalogCard key={e.id} entry={e} selected={selected?.id === e.id} onClick={() => setSelected(e)} />
+                ))
+              )
+            ) : !activeRepo ? (
+              searching ? (
+                <p className="text-xs text-slate-400 italic p-3 flex items-center gap-2"><RefreshCw size={12} className="animate-spin" /> Đang tìm repo…</p>
+              ) : searchError ? (
+                <div className="text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-lg p-3">{searchError}</div>
+              ) : repos.length === 0 ? (
+                <p className="text-xs text-slate-400 italic p-3">Nhập từ khoá rồi bấm Tìm để tìm repo trên GitHub.</p>
+              ) : (
+                repos.map((r) => (
+                  <button key={r.fullName} onClick={() => openRepo(r)}
+                    className="w-full text-left p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 transition-all cursor-pointer flex flex-col gap-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-xs text-slate-700 dark:text-slate-200 truncate">{r.fullName}</span>
+                      <span className="text-[10px] text-slate-400 flex items-center gap-0.5 shrink-0"><Star size={10} /> {r.stars.toLocaleString()}</span>
+                    </div>
+                    {r.description && <span className="text-[10px] text-slate-400 line-clamp-2">{r.description}</span>}
+                    {r.license && <span className="text-[9px] text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded w-fit">{r.license}</span>}
+                  </button>
+                ))
+              )
             ) : (
-              entries.map((e) => (
-                <CatalogCard key={e.id} entry={e} selected={selected?.id === e.id} onClick={() => setSelected(e)} />
-              ))
+              <>
+                <button onClick={() => { setActiveRepo(null); setRepoFiles([]); setSelected(null); setContent(''); }}
+                  className="w-full text-left text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 px-1 py-1 hover:underline cursor-pointer">
+                  <ChevronLeft size={13} /> {activeRepo.fullName}
+                </button>
+                {filesLoading ? (
+                  <p className="text-xs text-slate-400 italic p-3 flex items-center gap-2"><RefreshCw size={12} className="animate-spin" /> Đang liệt kê file…</p>
+                ) : filesError ? (
+                  <div className="text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-lg p-3">{filesError}</div>
+                ) : repoFiles.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic p-3">Repo này không có file skill/rule/config nhận diện được.</p>
+                ) : (
+                  repoFiles.map((e) => (
+                    <CatalogCard key={e.id} entry={e} selected={selected?.id === e.id} onClick={() => setSelected(e)} />
+                  ))
+                )}
+              </>
             )}
           </div>
-          <CatalogPreviewPanel entry={selected} content={content} loading={loading} error={error} importing={importing} onImport={handleImport} />
+          <CatalogPreviewPanel
+            entry={selected} content={content} loading={loading} error={error} importing={importing}
+            onImport={handleImport} installCommands={installCommands} onImportAs={handleImportAs}
+          />
         </div>
       </div>
     </div>
