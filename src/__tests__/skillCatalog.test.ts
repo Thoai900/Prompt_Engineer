@@ -145,3 +145,26 @@ describe('routeImport', () => {
     expect(r.rule).toBeUndefined();
   });
 });
+
+import { filterCatalog } from '../services/catalogService';
+
+describe('filterCatalog', () => {
+  const sample: CatalogEntry[] = [
+    mkEntry({ id: 'a', category: 'skill', collection: 'agent-skills', title: 'PDF', tags: ['pdf'] }),
+    mkEntry({ id: 'b', category: 'rule', collection: 'coding-rules', title: 'React', tags: ['react'] }),
+    mkEntry({ id: 'c', category: 'config', collection: 'system-prompts', title: 'Tutor', tags: ['edu'] }),
+  ];
+  it('lọc theo category', () => {
+    expect(filterCatalog(sample, { category: 'skill' }).map(e => e.id)).toEqual(['a']);
+  });
+  it('lọc theo collection', () => {
+    expect(filterCatalog(sample, { collection: 'coding-rules' }).map(e => e.id)).toEqual(['b']);
+  });
+  it('lọc theo text (title/description/tags, không phân biệt hoa thường)', () => {
+    expect(filterCatalog(sample, { text: 'react' }).map(e => e.id)).toEqual(['b']);
+    expect(filterCatalog(sample, { text: 'PDF' }).map(e => e.id)).toEqual(['a']);
+  });
+  it('query rỗng → trả tất cả', () => {
+    expect(filterCatalog(sample, {}).length).toBe(3);
+  });
+});
