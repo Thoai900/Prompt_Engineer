@@ -2,7 +2,7 @@ import { toast } from '../common/Toaster';
 import React, { useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
 import { Compass, Search, X } from 'lucide-react';
-import { CatalogEntry, CatalogCategory, CATALOG_COLLECTIONS } from '../../data/skillCatalog';
+import { CatalogEntry, CatalogCategory } from '../../data/skillCatalog';
 import { staticCatalogSource } from '../../services/catalogService';
 import { routeImport, ImportTarget } from '../../utils/skillCatalog';
 import { persistImport } from '../../services/importService';
@@ -58,6 +58,7 @@ export default function LibraryExplorer({ open, onClose, user, defaultCategory, 
   // Tải nội dung khi chọn — cache trong phiên (Map) + localStorage (giữ giữa các phiên).
   useEffect(() => {
     if (!selected) return;
+    let cancelled = false;
     const id = selected.id;
     const memo = cache.get(id) ?? readCachedContent(id);
     if (memo !== undefined && memo !== null) {
@@ -65,9 +66,10 @@ export default function LibraryExplorer({ open, onClose, user, defaultCategory, 
     }
     setLoading(true); setError(null); setContent('');
     staticCatalogSource.fetchContent(selected)
-      .then((t) => { cache.set(id, t); writeCachedContent(id, t); setContent(t); })
-      .catch((e) => setError(e?.message || 'Không tải được nội dung.'))
-      .finally(() => setLoading(false));
+      .then((t) => { cache.set(id, t); writeCachedContent(id, t); if (!cancelled) setContent(t); })
+      .catch((e) => { if (!cancelled) setError(e?.message || 'Không tải được nội dung.'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [selected, cache]);
 
   const handleImport = async () => {
