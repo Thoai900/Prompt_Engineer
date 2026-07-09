@@ -15,6 +15,8 @@ import { generateSkillInstructions, renderSkillPrompt, executeSkill } from '../.
 import { GEMINI_MODEL_OPTIONS } from '../../config/models';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import LibraryExplorer from '../library-explorer/LibraryExplorer';
+import { ExternalLink, Compass } from 'lucide-react';
 
 // Safely parse a localStorage JSON array; corrupt/legacy data returns [] instead of crashing the tab.
 function safeParseArray<T>(raw: string | null): T[] {
@@ -80,6 +82,8 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
   const [runHistory, setRunHistory] = useState<SkillRunRecord[]>([]);
 
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [skillKind, setSkillKind] = useState<'structured' | 'document'>('structured');
+  const [explorerOpen, setExplorerOpen] = useState(false);
 
   // Nạp localStorage + presets khi mount (nửa skills của effect cũ trong tab).
   useEffect(() => {
@@ -110,9 +114,11 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
           id: docSnap.id,
           title: data.title,
           description: data.description || '',
+          kind: data.kind === 'document' ? 'document' : 'structured',
           inputs: data.inputs || [],
           steps: data.steps || [],
           instructions: data.instructions || '',
+          source: data.source || undefined,
           updatedAt: data.updatedAt || new Date().toISOString()
         });
       });
@@ -157,6 +163,7 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
     setSkillInputs(skill.inputs || []);
     setSkillSteps(skill.steps || []);
     setSkillInstructions(skill.instructions || '');
+    setSkillKind(skill.kind === 'document' ? 'document' : 'structured');
     setIsSkillPreset(!!skill.isPreset);
     setCompiledSkillSpec('');
     // Reset run mode for the newly selected skill
@@ -197,13 +204,16 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
     }
 
     setIsSavingSkill(true);
+    const existing = skills.find(s => s.id === selectedSkillId);
     const updatedSkill: AiSkill = {
       id: selectedSkillId,
       title: skillTitle,
       description: skillDesc,
+      kind: skillKind,
       inputs: skillInputs,
       steps: skillSteps,
       instructions: skillInstructions,
+      source: existing?.source,
       updatedAt: new Date().toISOString()
     };
 
@@ -219,9 +229,11 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
           userId: user.uid,
           title: skillTitle,
           description: skillDesc,
+          kind: skillKind,
           inputs: skillInputs,
           steps: skillSteps,
           instructions: skillInstructions,
+          source: updatedSkill.source ?? null,
           updatedAt: serverTimestamp(),
           authorName: user.displayName || 'User'
         });
@@ -357,6 +369,9 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
   // Kept side-effect free so callers (compile button, push-to-builder) can use
   // the value synchronously instead of reading stale `compiledSkillSpec` state.
   const buildSkillSpec = (): string => {
+    if (skillKind === 'document') {
+      return skillInstructions || `# ${skillTitle}\n\n(Skill nhập từ GitHub — chưa có nội dung.)`;
+    }
     let md = `# KỸ NĂNG: ${skillTitle.toUpperCase()}\n`;
     md += `> ${skillDesc || 'Không có mô tả.'}\n\n`;
 
@@ -578,13 +593,22 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
         <div className="lg:col-span-3 flex flex-col bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 p-4 shadow-sm h-fit max-h-[500px] lg:max-h-none overflow-y-auto">
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Kỹ năng AI</h3>
-            <button
-              onClick={handleCreateNewSkill}
-              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-emerald-500 hover:text-emerald-600 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-slate-200/50"
-              title="Tạo kỹ năng mới"
-            >
-              <Plus size={16} />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setExplorerOpen(true)}
+                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-indigo-500 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-slate-200/50"
+                title="Khám phá & nhập skill từ GitHub"
+              >
+                <Compass size={16} />
+              </button>
+              <button
+                onClick={handleCreateNewSkill}
+                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-emerald-500 hover:text-emerald-600 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-slate-200/50"
+                title="Tạo kỹ năng mới"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
           </div>
 
           <div className="space-y-1.5 overflow-y-auto max-h-[300px] lg:max-h-none pr-1">
@@ -641,6 +665,17 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                 </div>
               </div>
 
+              {skillKind === 'document' && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/50 dark:bg-indigo-950/20 text-[11px] text-indigo-700 dark:text-indigo-300">
+                  <span className="font-bold">📥 Skill dạng tài liệu (nhập từ GitHub)</span>
+                  {(() => { const s = skills.find(x => x.id === selectedSkillId); return s?.source?.htmlUrl ? (
+                    <a href={s.source.htmlUrl} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 font-semibold hover:underline">
+                      <ExternalLink size={11} /> Nguồn{s.source.license ? ` · ${s.source.license}` : ''}
+                    </a>
+                  ) : null; })()}
+                </div>
+              )}
+
               {/* Edit / Run mode toggle */}
               <div className="flex items-center justify-center mt-1">
                 <div className="flex bg-slate-100 dark:bg-slate-950 p-0.5 rounded-xl border border-slate-200/50 dark:border-slate-800">
@@ -662,8 +697,9 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
               {skillMode === 'edit' && (
               <>
               {/* Dynamic Variables and Workflow Steps Manager */}
+              {skillKind === 'structured' && (
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-2">
-                
+
                 {/* A. Inputs Manager */}
                 <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50/30 dark:bg-slate-950/10">
                   <h4 className="text-xs font-bold text-slate-700 dark:text-slate-350 mb-3 flex items-center gap-1.5">
@@ -846,6 +882,7 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                 </div>
 
               </div>
+              )}
 
               {/* Instructions Markdown Editor */}
               <div className="flex flex-col bg-slate-50/50 dark:bg-slate-950/50 rounded-xl border border-slate-200 dark:border-slate-800 mt-2 overflow-hidden">
@@ -1132,6 +1169,21 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
             </div>
         </div>
       </div>
+
+      <LibraryExplorer
+        open={explorerOpen}
+        onClose={() => setExplorerOpen(false)}
+        user={user}
+        defaultCategory="skill"
+        categories={['skill']}
+        onImported={() => {
+          // Đọc lại localStorage (không phụ thuộc đăng nhập) để skill mới xuất hiện.
+          const parsed = safeParseArray<AiSkill>(localStorage.getItem('custom_skills')).filter(sk => !sk.isPreset);
+          setSkills([...PRESET_SKILLS, ...parsed]);
+          setExplorerOpen(false);
+          if (user) syncSkills();
+        }}
+      />
     </>
   );
 }
