@@ -33,11 +33,11 @@ export function inferEntryFromPath(repo: RepoHit, path: string): CatalogEntry | 
   } else if (base === 'agents.md' || base === 'claude.md') {
     category = 'rule'; format = 'markdown';
   } else if (base.endsWith('.md')) {
-    // Chỉ nhận .md làm guide nếu là README gốc hoặc nằm trong docs/prompts/personas —
-    // tránh nhận mọi .md linh tinh (CHANGELOG, issue templates...) thành rác.
-    const isReadme = base.startsWith('readme');
-    const inDocLikeDir = /(^|\/)(docs|prompts?|personas?|guides?)\//.test(lower);
-    if (isReadme || inDocLikeDir) { category = 'guide'; format = 'markdown'; }
+    // Guide phải HIGH-SIGNAL: README ở GỐC repo, hoặc .md trong prompts/personas/guides.
+    // Cố tình BỎ docs/** (đầy plan/tài liệu nội bộ → nhiễu) và README lồng sâu.
+    const isRootReadme = base.startsWith('readme') && !path.includes('/');
+    const inPromptDir = /(^|\/)(prompts?|personas?|guides?)\//.test(lower);
+    if (isRootReadme || inPromptDir) { category = 'guide'; format = 'markdown'; }
   }
 
   if (!category || !format) return null;

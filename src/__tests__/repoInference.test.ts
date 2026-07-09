@@ -36,16 +36,18 @@ describe('inferEntryFromPath', () => {
     expect(inferEntryFromPath(repo, 'CLAUDE.md')!.category).toBe('rule');
   });
 
-  it('README và .md trong docs/prompts → guide', () => {
+  it('README gốc và .md trong prompts/guides → guide', () => {
     expect(inferEntryFromPath(repo, 'README.md')!.category).toBe('guide');
-    expect(inferEntryFromPath(repo, 'docs/prompting.md')!.category).toBe('guide');
     expect(inferEntryFromPath(repo, 'prompts/socratic.md')!.category).toBe('guide');
+    expect(inferEntryFromPath(repo, 'guides/intro.md')!.category).toBe('guide');
   });
 
-  it('file lạ hoặc .md thường không thuộc docs/prompt → null', () => {
+  it('file lạ, .md thường, docs/** (nhiễu), README lồng → null', () => {
     expect(inferEntryFromPath(repo, 'src/index.ts')).toBeNull();
     expect(inferEntryFromPath(repo, 'logo.png')).toBeNull();
     expect(inferEntryFromPath(repo, 'CHANGELOG.md')).toBeNull();
+    expect(inferEntryFromPath(repo, 'docs/plans/2026-01-01-foo.md')).toBeNull();
+    expect(inferEntryFromPath(repo, 'docs/README.kimi.md')).toBeNull();
   });
 
   it('id an toàn (chỉ [a-z0-9._-])', () => {
