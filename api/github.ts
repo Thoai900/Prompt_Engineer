@@ -110,13 +110,23 @@ export default async function handler(req: any, res: any) {
         Accept: 'text/plain, text/markdown, application/json;q=0.9, */*;q=0.5',
       },
     });
-    clearTimeout(timer);
+
+    // Chống bypass allow-list qua redirect: host phản hồi CUỐI phải vẫn thuộc GitHub.
+    let finalHost = '';
+    try { finalHost = new URL(response.url).hostname.toLowerCase(); } catch { /* bỏ qua */ }
+    if (finalHost && !ALLOWED_HOSTS.has(finalHost)) {
+      clearTimeout(timer);
+      return res.status(422).json({ error: 'Redirect dẫn ra ngoài GitHub — từ chối.' });
+    }
 
     if (!response.ok) {
+      clearTimeout(timer);
       return res.status(422).json({ error: `GitHub trả về HTTP ${response.status}.` });
     }
 
+    // Giữ timer sống tới hết khi đọc body → deadline 10s phủ cả giai đoạn tải.
     const buffer = await response.arrayBuffer();
+    clearTimeout(timer);
     if (buffer.byteLength > MAX_DOWNLOAD_BYTES) {
       return res.status(422).json({ error: 'Tệp quá lớn (>3MB).' });
     }
