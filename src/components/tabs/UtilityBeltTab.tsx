@@ -985,8 +985,15 @@ ${outputFormat || '(Chưa điền)'}`;
             try {
               const stored = localStorage.getItem('llm_custom_profiles');
               const list: CustomProfile[] = stored ? JSON.parse(stored) : [];
-              setProfiles(list);
-              if (list.length) setActiveProfileId(list[list.length - 1].id);
+              const imported = list[list.length - 1];
+              if (imported) {
+                setProfiles(prev => {
+                  const merged = prev.some(p => p.id === imported.id) ? prev : [...prev, imported];
+                  saveToLocalStorage(merged);
+                  return merged;
+                });
+                setActiveProfileId(imported.id);
+              }
             } catch { /* bỏ qua */ }
           }
           setExplorerOpen(false);

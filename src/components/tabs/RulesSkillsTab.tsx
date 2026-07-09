@@ -364,14 +364,16 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
             </button>
           )}
 
-          <button
-            onClick={() => setExplorerOpen(true)}
-            className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 dark:bg-indigo-950/20 dark:border-indigo-900/50 text-xs font-semibold text-indigo-700 dark:text-indigo-400 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
-            title="Khám phá & nhập rule/skill/persona từ GitHub"
-          >
-            <Compass size={14} />
-            <span>Khám phá GitHub</span>
-          </button>
+          {activeSubTab === 'rules' && (
+            <button
+              onClick={() => setExplorerOpen(true)}
+              className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 dark:bg-indigo-950/20 dark:border-indigo-900/50 text-xs font-semibold text-indigo-700 dark:text-indigo-400 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Khám phá & nhập rule/skill/persona từ GitHub"
+            >
+              <Compass size={14} />
+              <span>Khám phá GitHub</span>
+            </button>
+          )}
 
           <div className="flex bg-slate-100 dark:bg-slate-900 p-0.5 rounded-xl border border-slate-200/50 dark:border-slate-800">
             <button
