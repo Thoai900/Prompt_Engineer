@@ -1,16 +1,17 @@
 import { toast } from '../common/Toaster';
 import { confirmDialog } from '../common/ConfirmDialog';
 import React, { useState, useEffect } from 'react';
-import { 
-  Zap, Brain, Settings, Sliders, Copy, Check, RotateCcw, 
+import {
+  Zap, Brain, Settings, Sliders, Copy, Check, RotateCcw,
   Sparkles, Plus, Trash2, HelpCircle, ArrowRight, BookOpen, Info,
-  CheckCircle, MessageSquare, Save, Terminal, Globe, Cpu
+  CheckCircle, MessageSquare, Save, Terminal, Globe, Cpu, Compass
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { optimizeCustomInstructions } from '../../services/aiService';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import BackupPanel from '../common/BackupPanel';
 import UsageStatsPanel from '../common/UsageStatsPanel';
+import LibraryExplorer from '../library-explorer/LibraryExplorer';
 import { CustomProfile } from '../../types';
 
 interface UtilityBeltTabProps {
@@ -87,6 +88,7 @@ export default function UtilityBeltTab({ user, onSaveTemplate }: UtilityBeltTabP
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [history, setHistory] = useState<Omit<CustomProfile, 'id' | 'name'> | null>(null);
   const [copyStates, setCopyStates] = useState<Record<string, boolean>>({});
+  const [explorerOpen, setExplorerOpen] = useState(false);
 
   // Sync editor fields with the active profile
   useEffect(() => {
@@ -326,6 +328,15 @@ ${outputFormat || '(Chưa điền)'}`;
           >
             <Sparkles size={14} />
             Gợi ý gõ nhanh: {ghostTextEnabled ? 'BẬT' : 'TẮT'}
+          </button>
+
+          <button
+            onClick={() => setExplorerOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/50 rounded-xl transition-all cursor-pointer active:scale-95"
+            title="Khám phá & nhập persona/system-prompt từ GitHub"
+          >
+            <Compass size={14} />
+            Khám phá GitHub
           </button>
 
           <button
@@ -962,6 +973,25 @@ ${outputFormat || '(Chưa điền)'}`;
           )}
         </div>
       </div>
+
+      <LibraryExplorer
+        open={explorerOpen}
+        onClose={() => setExplorerOpen(false)}
+        user={user}
+        defaultCategory="config"
+        categories={['config']}
+        onImported={(target) => {
+          if (target === 'config') {
+            try {
+              const stored = localStorage.getItem('llm_custom_profiles');
+              const list: CustomProfile[] = stored ? JSON.parse(stored) : [];
+              setProfiles(list);
+              if (list.length) setActiveProfileId(list[list.length - 1].id);
+            } catch { /* bỏ qua */ }
+          }
+          setExplorerOpen(false);
+        }}
+      />
     </div>
   );
 }

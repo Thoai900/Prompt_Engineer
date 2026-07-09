@@ -1,10 +1,10 @@
 import { toast } from '../common/Toaster';
 import { confirmDialog } from '../common/ConfirmDialog';
 import React, { useState, useEffect } from 'react';
-import { 
-  Sparkles, Plus, Trash, Copy, Check, FileDown, 
-  RefreshCw, Sliders, ChevronUp, ChevronDown, 
-  HelpCircle, Eye, Edit3, CheckCircle2, AlertTriangle, Play, BookOpen
+import {
+  Sparkles, Plus, Trash, Copy, Check, FileDown,
+  RefreshCw, Sliders, ChevronUp, ChevronDown,
+  HelpCircle, Eye, Edit3, CheckCircle2, AlertTriangle, Play, BookOpen, Compass
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { collection, doc, getDocs, query, setDoc, where, deleteDoc, serverTimestamp } from 'firebase/firestore';
@@ -13,6 +13,7 @@ import { TabType, AiRule, AiSkill, SkillVariable, SkillStep, PromptTemplate, Pro
 import { PRESET_RULES, PRESET_SKILLS } from '../../presets';
 import { optimizeAiRules } from '../../services/aiService';
 import SkillsPanel from '../rulesskills/SkillsPanel';
+import LibraryExplorer from '../library-explorer/LibraryExplorer';
 import { GEMINI_FLASH, GEMINI_MODEL_OPTIONS } from '../../config/models';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -59,6 +60,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
 
   // M3: toàn bộ state/logic skills đã tách sang components/rulesskills/SkillsPanel.tsx.
   const [syncToken, setSyncToken] = useState(0);
+  const [explorerOpen, setExplorerOpen] = useState(false);
 
     // Sync state
   const [isSyncing, setIsSyncing] = useState(false);
@@ -97,6 +99,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
           content: data.content || '',
           type: data.type || 'system-rules',
           tags: data.tags || [],
+          source: data.source || undefined,
           updatedAt: data.updatedAt || new Date().toISOString()
         });
       });
@@ -360,7 +363,16 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
               <span>{isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ đám mây'}</span>
             </button>
           )}
-          
+
+          <button
+            onClick={() => setExplorerOpen(true)}
+            className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 dark:bg-indigo-950/20 dark:border-indigo-900/50 text-xs font-semibold text-indigo-700 dark:text-indigo-400 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
+            title="Khám phá & nhập rule/skill/persona từ GitHub"
+          >
+            <Compass size={14} />
+            <span>Khám phá GitHub</span>
+          </button>
+
           <div className="flex bg-slate-100 dark:bg-slate-900 p-0.5 rounded-xl border border-slate-200/50 dark:border-slate-800">
             <button
               onClick={() => setActiveSubTab('rules')}
@@ -689,6 +701,23 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
           </div>
         </div>
       )}
+
+      <LibraryExplorer
+        open={explorerOpen}
+        onClose={() => setExplorerOpen(false)}
+        user={user}
+        defaultCategory="rule"
+        categories={['skill', 'rule', 'guide']}
+        onImported={(target) => {
+          if (target === 'rule') {
+            const parsed = safeParseArray<AiRule>(localStorage.getItem('custom_rules')).filter(r => !r.isPreset);
+            setRules([...PRESET_RULES, ...parsed]);
+          } else if (target === 'skill') {
+            setSyncToken(t => t + 1); // SkillsPanel đọc lại
+          }
+          setExplorerOpen(false);
+        }}
+      />
 
     </div>
   );
