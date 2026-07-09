@@ -11,16 +11,7 @@ import { optimizeCustomInstructions } from '../../services/aiService';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import BackupPanel from '../common/BackupPanel';
 import UsageStatsPanel from '../common/UsageStatsPanel';
-
-// Interfaces
-interface CustomProfile {
-  id: string;
-  name: string;
-  role: string;
-  context: string;
-  constraints: string;
-  outputFormat: string;
-}
+import { CustomProfile } from '../../types';
 
 interface UtilityBeltTabProps {
   user: User | null;

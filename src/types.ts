@@ -10,6 +10,18 @@ export interface PromptBlock {
   isPinned?: boolean; // 2. Tính năng Pinned Block
 }
 
+/** Xuất xứ của một mục nhập từ nguồn ngoài (GitHub). undefined ⇒ do người dùng tự tạo. */
+export interface ContentSource {
+  origin: 'github';
+  repo: string;         // "anthropics/skills"
+  path: string;         // "document-skills/pdf/SKILL.md"
+  htmlUrl?: string;     // link xem trên GitHub
+  license?: string;     // "MIT" | "Apache-2.0" | ...
+  author?: string;
+  importedAt: string;   // ISO
+  sha?: string;         // để phát hiện cũ / re-sync (đợt sau)
+}
+
 export interface AiRule {
   id: string;
   title: string;
@@ -17,6 +29,7 @@ export interface AiRule {
   content: string; // Markdown content of the rule/guide
   type: 'system-rules' | 'markdown-guide';
   tags: string[];
+  source?: ContentSource; // có nếu nhập từ GitHub
   isPreset?: boolean;
   updatedAt: string;
 }
@@ -41,6 +54,9 @@ export interface AiSkill {
   id: string;
   title: string;
   description: string;
+  /** undefined ⇒ 'structured' (mọi skill cũ). 'document' = skill markdown nhập từ GitHub. */
+  kind?: 'structured' | 'document';
+  source?: ContentSource;
   inputs: SkillVariable[];
   steps: SkillStep[];
   instructions: string; // Markdown instructions for executing the skill
@@ -335,4 +351,15 @@ export interface HealthSuite {
   workspaceId?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+// ── LLM Config (UtilityBeltTab) — dời khỏi component để dùng chung khi import ──
+export interface CustomProfile {
+  id: string;
+  name: string;
+  role: string;
+  context: string;
+  constraints: string;
+  outputFormat: string;
+  source?: ContentSource; // có nếu nhập từ GitHub
 }
