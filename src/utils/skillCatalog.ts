@@ -50,7 +50,7 @@ export function entryToSkill(entry: CatalogEntry, rawText: string): AiSkill {
   return {
     id: `skill-gh-${entry.id}-${Date.now()}`,
     title: data.name || data.title || entry.title,
-    description: data.description || entry.description,
+    description: (data.description || entry.description).slice(0, 2000),
     kind: 'document',
     inputs: [],
     steps: [],

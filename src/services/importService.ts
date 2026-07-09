@@ -20,35 +20,43 @@ export async function persistImport(routed: RoutedImport, user: User | null): Pr
     list.push(routed.skill);
     localStorage.setItem('custom_skills', JSON.stringify(list));
     if (user) {
-      await setDoc(doc(db, 'skills', routed.skill.id), {
-        userId: user.uid,
-        title: routed.skill.title,
-        description: routed.skill.description,
-        kind: routed.skill.kind ?? 'structured',
-        inputs: routed.skill.inputs,
-        steps: routed.skill.steps,
-        instructions: routed.skill.instructions,
-        source: routed.skill.source ?? null,
-        updatedAt: serverTimestamp(),
-        authorName: user.displayName || 'User',
-      });
+      try {
+        await setDoc(doc(db, 'skills', routed.skill.id), {
+          userId: user.uid,
+          title: routed.skill.title,
+          description: routed.skill.description,
+          kind: routed.skill.kind ?? 'structured',
+          inputs: routed.skill.inputs,
+          steps: routed.skill.steps,
+          instructions: routed.skill.instructions,
+          source: routed.skill.source ?? null,
+          updatedAt: serverTimestamp(),
+          authorName: user.displayName || 'User',
+        });
+      } catch (err) {
+        console.warn('Import: ghi Firestore thất bại, đã lưu cục bộ', err);
+      }
     }
   } else if (routed.target === 'rule' && routed.rule) {
     const list = readArr<any>('custom_rules');
     list.push(routed.rule);
     localStorage.setItem('custom_rules', JSON.stringify(list));
     if (user) {
-      await setDoc(doc(db, 'rules', routed.rule.id), {
-        userId: user.uid,
-        title: routed.rule.title,
-        description: routed.rule.description,
-        content: routed.rule.content,
-        type: routed.rule.type,
-        tags: routed.rule.tags,
-        source: routed.rule.source ?? null,
-        updatedAt: serverTimestamp(),
-        authorName: user.displayName || 'User',
-      });
+      try {
+        await setDoc(doc(db, 'rules', routed.rule.id), {
+          userId: user.uid,
+          title: routed.rule.title,
+          description: routed.rule.description,
+          content: routed.rule.content,
+          type: routed.rule.type,
+          tags: routed.rule.tags,
+          source: routed.rule.source ?? null,
+          updatedAt: serverTimestamp(),
+          authorName: user.displayName || 'User',
+        });
+      } catch (err) {
+        console.warn('Import: ghi Firestore thất bại, đã lưu cục bộ', err);
+      }
     }
   } else if (routed.target === 'config' && routed.profile) {
     const list = readArr<any>('llm_custom_profiles');

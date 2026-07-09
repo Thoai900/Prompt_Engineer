@@ -163,6 +163,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
     }
 
     setIsSavingRule(true);
+    const existingRule = rules.find(r => r.id === selectedRuleId);
     const updatedRule: AiRule = {
       id: selectedRuleId,
       title: ruleTitle,
@@ -170,6 +171,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
       content: ruleContent,
       type: ruleType,
       tags: ruleTags.split(',').map(t => t.trim()).filter(Boolean),
+      source: existingRule?.source,
       updatedAt: new Date().toISOString()
     };
 
@@ -192,6 +194,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
           content: ruleContent,
           type: ruleType,
           tags: updatedRule.tags,
+          source: existingRule?.source ?? null,
           updatedAt: serverTimestamp(),
           authorName: user.displayName || 'User'
         });

@@ -96,6 +96,11 @@ describe('entryToSkill', () => {
     expect(skill.description).toBe('Entry Desc');
     expect(skill.instructions).toBe('chỉ body');
   });
+  it('description dài từ frontmatter bị clamp về ≤2000 ký tự', () => {
+    const long = 'x'.repeat(2500);
+    const skill = entryToSkill(mkEntry({ category: 'skill' }), `---\nname: Big\ndescription: ${long}\n---\nbody`);
+    expect(skill.description.length).toBe(2000);
+  });
 });
 
 describe('entryToRule', () => {

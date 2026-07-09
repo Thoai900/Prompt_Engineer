@@ -895,7 +895,7 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                     {renderModelSelect()}
                     <button
                       onClick={handleAiAutoInstructions}
-                      disabled={isCompilingSkill || isSkillPreset}
+                      disabled={isCompilingSkill || isSkillPreset || skillKind === 'document'}
                       className="text-[9px] font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 px-2 py-1 rounded-md shadow-2xs flex items-center gap-1 disabled:opacity-50 cursor-pointer"
                     >
                       {isCompilingSkill ? <RefreshCw size={10} className="animate-spin" /> : <Sparkles size={10} />}
