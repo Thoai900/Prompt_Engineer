@@ -120,6 +120,16 @@ describe('entryToProfile', () => {
     expect(p.outputFormat).toBe('');
     expect(p.source?.origin).toBe('github');
   });
+  it('frontmatter nhưng body rỗng → role rỗng (không rò dấu ---)', () => {
+    const p = entryToProfile(mkEntry({ category: 'config', format: 'system-prompt' }), '---\nname: Tutor\n---\n');
+    expect(p.name).toBe('Tutor');
+    expect(p.role).toBe('');
+  });
+  it('không có name trong frontmatter → tên lấy từ entry.title', () => {
+    const p = entryToProfile(mkEntry({ category: 'config', format: 'system-prompt', title: 'Persona X' }), 'Bạn là trợ lý.');
+    expect(p.name).toBe('Persona X');
+    expect(p.role).toContain('Bạn là trợ lý.');
+  });
 });
 
 describe('routeImport', () => {

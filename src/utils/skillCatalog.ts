@@ -78,7 +78,7 @@ export function entryToProfile(entry: CatalogEntry, rawText: string): CustomProf
   return {
     id: `profile-gh-${entry.id}-${Date.now()}`,
     name: data.name || data.title || entry.title,
-    role: (body || rawText).trim(),
+    role: body.trim(),
     context: '',
     constraints: '',
     outputFormat: '',
