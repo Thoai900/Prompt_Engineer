@@ -104,3 +104,27 @@ export function routeImport(entry: CatalogEntry, rawText: string): RoutedImport 
     default:       return { target: 'rule',   rule: entryToRule(entry, rawText) };
   }
 }
+
+/**
+ * Dùng file repo làm NỀN cho LLM Config: nội dung đổ vào ô `context` (bối cảnh dự án),
+ * khác `entryToProfile` (đổ vào `role`). Phục vụ luồng "trích repo làm nền config".
+ */
+export function entryToProfileContext(entry: CatalogEntry, rawText: string): CustomProfile {
+  const { data, body } = parseFrontmatter(rawText);
+  return {
+    id: `profile-gh-${entry.id}-${Date.now()}`,
+    name: data.name || data.title || entry.title,
+    role: '',
+    context: (body || rawText).trim(),
+    constraints: '',
+    outputFormat: '',
+    source: makeSource(entry),
+  };
+}
+
+/** Như routeImport nhưng ÉP target do người dùng chọn (config → dùng context làm nền). */
+export function routeImportAs(entry: CatalogEntry, rawText: string, target: ImportTarget): RoutedImport {
+  if (target === 'skill') return { target: 'skill', skill: entryToSkill(entry, rawText) };
+  if (target === 'config') return { target: 'config', profile: entryToProfileContext(entry, rawText) };
+  return { target: 'rule', rule: entryToRule(entry, rawText) };
+}

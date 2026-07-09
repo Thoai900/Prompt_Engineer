@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { SKILL_CATALOG, CATALOG_COLLECTIONS } from '../data/skillCatalog';
 import {
   isAllowedGithubRawUrl, parseFrontmatter, entryToSkill, entryToRule, entryToProfile, routeImport,
+  entryToProfileContext, routeImportAs,
 } from '../utils/skillCatalog';
 import type { CatalogEntry } from '../data/skillCatalog';
 
@@ -171,5 +172,26 @@ describe('filterCatalog', () => {
   });
   it('query rỗng → trả tất cả', () => {
     expect(filterCatalog(sample, {}).length).toBe(3);
+  });
+});
+
+describe('entryToProfileContext', () => {
+  it('đổ nội dung vào context (không phải role), giữ source', () => {
+    const p = entryToProfileContext(mkEntry({ category: 'config' }), '---\nname: Base\n---\nnội dung nền dự án');
+    expect(p.name).toBe('Base');
+    expect(p.context).toContain('nội dung nền dự án');
+    expect(p.role).toBe('');
+    expect(p.constraints).toBe('');
+    expect(p.source?.origin).toBe('github');
+  });
+});
+
+describe('routeImportAs', () => {
+  it('ép target bất kể category; config → có profile (context)', () => {
+    const asConfig = routeImportAs(mkEntry({ category: 'guide' }), '# readme', 'config');
+    expect(asConfig.target).toBe('config');
+    expect(asConfig.profile?.context).toContain('readme');
+    expect(routeImportAs(mkEntry({ category: 'skill' }), 'x', 'rule').target).toBe('rule');
+    expect(routeImportAs(mkEntry({ category: 'guide' }), 'x', 'skill').skill).toBeTruthy();
   });
 });
