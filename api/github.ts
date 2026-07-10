@@ -201,6 +201,12 @@ async function handleSearch(req: any, res: any) {
           htmlUrl: it.html_url,
           defaultBranch: it.default_branch || 'main',
           license: it.license?.spdx_id || undefined,
+          owner: it.owner?.login || undefined,
+          ownerAvatar: it.owner?.avatar_url || undefined,
+          language: it.language || undefined,
+          topics: Array.isArray(it.topics) ? it.topics.slice(0, 6) : [],
+          forks: it.forks_count || 0,
+          updatedAt: it.pushed_at || it.updated_at || undefined,
         }))
       : [];
     return res.status(200).json({ repos });

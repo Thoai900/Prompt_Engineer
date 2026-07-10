@@ -8,6 +8,13 @@ export interface RepoHit {
   htmlUrl: string;       // https://github.com/owner/repo
   defaultBranch: string; // để dựng raw URL
   license?: string;
+  // Trường bổ sung (tuỳ chọn) để hiển thị card repo phong phú hơn.
+  owner?: string;        // login chủ repo
+  ownerAvatar?: string;  // ảnh đại diện chủ repo
+  language?: string;     // ngôn ngữ chính
+  topics?: string[];     // nhãn chủ đề
+  forks?: number;
+  updatedAt?: string;    // ISO — lần push gần nhất
 }
 
 function basename(path: string): string {

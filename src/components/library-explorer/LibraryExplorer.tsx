@@ -1,7 +1,7 @@
 import { toast } from '../common/Toaster';
 import React, { useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
-import { Compass, Search, X, Github, Star, ChevronLeft, RefreshCw } from 'lucide-react';
+import { Compass, Search, X, Github, ChevronLeft, RefreshCw } from 'lucide-react';
 import { CatalogEntry, CatalogCategory } from '../../data/skillCatalog';
 import { staticCatalogSource, searchRepos, listRepoFiles, RepoHit } from '../../services/catalogService';
 import { routeImport, routeImportAs, ImportTarget } from '../../utils/skillCatalog';
@@ -9,6 +9,8 @@ import { buildInstallCommands } from '../../utils/agentInstall';
 import { persistImport } from '../../services/importService';
 import CatalogCard from './CatalogCard';
 import CatalogPreviewPanel from './CatalogPreviewPanel';
+import RepoCard from './RepoCard';
+import RepoCommandsPanel from './RepoCommandsPanel';
 
 // Cache nội dung raw qua localStorage để mở lại tức thì giữa các phiên (spec Phần D).
 const CACHE_PREFIX = 'gh_catalog_cache_';
@@ -236,15 +238,7 @@ export default function LibraryExplorer({ open, onClose, user, defaultCategory, 
                 <p className="text-xs text-slate-400 italic p-3">Nhập từ khoá rồi bấm Tìm để tìm repo trên GitHub.</p>
               ) : (
                 repos.map((r) => (
-                  <button key={r.fullName} onClick={() => openRepo(r)}
-                    className="w-full text-left p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 transition-all cursor-pointer flex flex-col gap-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-bold text-xs text-slate-700 dark:text-slate-200 truncate">{r.fullName}</span>
-                      <span className="text-[10px] text-slate-400 flex items-center gap-0.5 shrink-0"><Star size={10} /> {r.stars.toLocaleString()}</span>
-                    </div>
-                    {r.description && <span className="text-[10px] text-slate-400 line-clamp-2">{r.description}</span>}
-                    {r.license && <span className="text-[9px] text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded w-fit">{r.license}</span>}
-                  </button>
+                  <RepoCard key={r.fullName} repo={r} selected={false} onClick={() => openRepo(r)} />
                 ))
               )
             ) : (
@@ -267,10 +261,14 @@ export default function LibraryExplorer({ open, onClose, user, defaultCategory, 
               </>
             )}
           </div>
-          <CatalogPreviewPanel
-            entry={selected} content={content} loading={loading} error={error} importing={importing}
-            onImport={handleImport} installCommands={installCommands} onImportAs={handleImportAs}
-          />
+          {mode === 'search' && activeRepo && !selected ? (
+            <RepoCommandsPanel repo={activeRepo} />
+          ) : (
+            <CatalogPreviewPanel
+              entry={selected} content={content} loading={loading} error={error} importing={importing}
+              onImport={handleImport} installCommands={installCommands} onImportAs={handleImportAs}
+            />
+          )}
         </div>
       </div>
     </div>
