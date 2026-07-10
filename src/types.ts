@@ -30,6 +30,7 @@ export interface AiRule {
   type: 'system-rules' | 'markdown-guide';
   tags: string[];
   source?: ContentSource; // có nếu nhập từ GitHub
+  domain?: string;      // nhãn ngành cho preset built-in (vd "Lập trình")
   isPreset?: boolean;
   updatedAt: string;
 }
@@ -60,6 +61,7 @@ export interface AiSkill {
   inputs: SkillVariable[];
   steps: SkillStep[];
   instructions: string; // Markdown instructions for executing the skill
+  domain?: string;      // nhãn ngành cho preset built-in (vd "Lập trình")
   isPreset?: boolean;
   updatedAt: string;
 }
@@ -361,5 +363,6 @@ export interface CustomProfile {
   context: string;
   constraints: string;
   outputFormat: string;
+  domain?: string;        // nhãn ngành cho preset built-in
   source?: ContentSource; // có nếu nhập từ GitHub
 }
