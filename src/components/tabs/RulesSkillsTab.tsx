@@ -14,6 +14,7 @@ import { PRESET_RULES, PRESET_SKILLS } from '../../presets';
 import { optimizeAiRules } from '../../services/aiService';
 import SkillsPanel from '../rulesskills/SkillsPanel';
 import LibraryExplorer from '../library-explorer/LibraryExplorer';
+import AuthoringWizard from '../authoring/AuthoringWizard';
 import { GEMINI_FLASH, GEMINI_MODEL_OPTIONS } from '../../config/models';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -61,6 +62,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
   // M3: toàn bộ state/logic skills đã tách sang components/rulesskills/SkillsPanel.tsx.
   const [syncToken, setSyncToken] = useState(0);
   const [explorerOpen, setExplorerOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
     // Sync state
   const [isSyncing, setIsSyncing] = useState(false);
@@ -375,6 +377,17 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
             >
               <Compass size={14} />
               <span>Khám phá GitHub</span>
+            </button>
+          )}
+
+          {activeSubTab === 'rules' && (
+            <button
+              onClick={() => setWizardOpen(true)}
+              className="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              title="Tạo quy tắc bằng AI từ 1 câu mô tả"
+            >
+              <Sparkles size={14} />
+              <span>Tạo bằng AI</span>
             </button>
           )}
 
@@ -721,6 +734,20 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
             setSyncToken(t => t + 1); // SkillsPanel đọc lại
           }
           setExplorerOpen(false);
+        }}
+      />
+
+      <AuthoringWizard
+        open={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        user={user}
+        defaultKind="rule"
+        model={selectedModel}
+        onCreated={(k) => {
+          if (k === 'rule') {
+            const parsed = safeParseArray<AiRule>(localStorage.getItem('custom_rules')).filter(r => !r.isPreset);
+            setRules([...PRESET_RULES, ...parsed]);
+          }
         }}
       />
 

@@ -12,7 +12,9 @@ import { useWorkspace } from '../../context/WorkspaceContext';
 import BackupPanel from '../common/BackupPanel';
 import UsageStatsPanel from '../common/UsageStatsPanel';
 import LibraryExplorer from '../library-explorer/LibraryExplorer';
+import AuthoringWizard from '../authoring/AuthoringWizard';
 import { CustomProfile } from '../../types';
+import { DEFAULT_MODEL } from '../../config/models';
 
 interface UtilityBeltTabProps {
   user: User | null;
@@ -89,6 +91,7 @@ export default function UtilityBeltTab({ user, onSaveTemplate }: UtilityBeltTabP
   const [history, setHistory] = useState<Omit<CustomProfile, 'id' | 'name'> | null>(null);
   const [copyStates, setCopyStates] = useState<Record<string, boolean>>({});
   const [explorerOpen, setExplorerOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   // Sync editor fields with the active profile
   useEffect(() => {
@@ -337,6 +340,15 @@ ${outputFormat || '(Chưa điền)'}`;
           >
             <Compass size={14} />
             Khám phá GitHub
+          </button>
+
+          <button
+            onClick={() => setWizardOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-white bg-violet-600 hover:bg-violet-500 rounded-xl transition-all cursor-pointer active:scale-95 shadow-sm"
+            title="Tạo cấu hình bằng AI từ 1 câu mô tả"
+          >
+            <Sparkles size={14} />
+            Tạo bằng AI
           </button>
 
           <button
@@ -997,6 +1009,25 @@ ${outputFormat || '(Chưa điền)'}`;
             } catch { /* bỏ qua */ }
           }
           setExplorerOpen(false);
+        }}
+      />
+
+      <AuthoringWizard
+        open={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        user={user}
+        defaultKind="config"
+        model={DEFAULT_MODEL}
+        onCreated={() => {
+          try {
+            const stored = localStorage.getItem('llm_custom_profiles');
+            const list: CustomProfile[] = stored ? JSON.parse(stored) : [];
+            const created = list[list.length - 1];
+            if (created) {
+              setProfiles(prev => (prev.some(p => p.id === created.id) ? prev : [...prev, created]));
+              setActiveProfileId(created.id);
+            }
+          } catch { /* bỏ qua */ }
         }}
       />
     </div>

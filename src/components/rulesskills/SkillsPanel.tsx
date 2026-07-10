@@ -17,6 +17,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import LibraryExplorer from '../library-explorer/LibraryExplorer';
 import { ExternalLink, Compass } from 'lucide-react';
+import AuthoringWizard from '../authoring/AuthoringWizard';
 
 // Safely parse a localStorage JSON array; corrupt/legacy data returns [] instead of crashing the tab.
 function safeParseArray<T>(raw: string | null): T[] {
@@ -84,6 +85,7 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
   const [syncError, setSyncError] = useState<string | null>(null);
   const [skillKind, setSkillKind] = useState<'structured' | 'document'>('structured');
   const [explorerOpen, setExplorerOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   // Nạp localStorage + presets khi mount (nửa skills của effect cũ trong tab).
   useEffect(() => {
@@ -594,6 +596,13 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Kỹ năng AI</h3>
             <div className="flex items-center gap-1">
+              <button
+                onClick={() => setWizardOpen(true)}
+                className="p-1.5 hover:bg-violet-50 dark:hover:bg-violet-950/30 text-violet-500 hover:text-violet-600 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-violet-200/50"
+                title="Tạo kỹ năng bằng AI từ 1 câu mô tả"
+              >
+                <Sparkles size={16} />
+              </button>
               <button
                 onClick={() => setExplorerOpen(true)}
                 className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-indigo-500 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-slate-200/50"
@@ -1181,6 +1190,19 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
           const parsed = safeParseArray<AiSkill>(localStorage.getItem('custom_skills')).filter(sk => !sk.isPreset);
           setSkills([...PRESET_SKILLS, ...parsed]);
           setExplorerOpen(false);
+          if (user) syncSkills();
+        }}
+      />
+
+      <AuthoringWizard
+        open={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        user={user}
+        defaultKind="skill"
+        model={selectedModel}
+        onCreated={() => {
+          const parsed = safeParseArray<AiSkill>(localStorage.getItem('custom_skills')).filter(sk => !sk.isPreset);
+          setSkills([...PRESET_SKILLS, ...parsed]);
           if (user) syncSkills();
         }}
       />
