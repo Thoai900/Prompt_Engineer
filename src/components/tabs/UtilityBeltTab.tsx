@@ -16,6 +16,8 @@ import AuthoringWizard from '../authoring/AuthoringWizard';
 import { CustomProfile } from '../../types';
 import { DEFAULT_MODEL } from '../../config/models';
 import { LLM_CONFIG_PRESETS as PRESETS } from '../../data/llmConfigPresets';
+import DomainChips from '../common/DomainChips';
+import { filterByDomain } from '../../utils/presetFilter';
 
 interface UtilityBeltTabProps {
   user: User | null;
@@ -57,6 +59,7 @@ export default function UtilityBeltTab({ user, onSaveTemplate }: UtilityBeltTabP
   const [copyStates, setCopyStates] = useState<Record<string, boolean>>({});
   const [explorerOpen, setExplorerOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [profileDomain, setProfileDomain] = useState<string | null>(null);
 
   // Sync editor fields with the active profile
   useEffect(() => {
@@ -333,8 +336,11 @@ ${outputFormat || '(Chưa điền)'}`;
         <div className="w-full lg:w-1/2 flex flex-col border-b lg:border-b-0 lg:border-r border-slate-200 overflow-hidden bg-white shrink-0">
           
           {/* Quick Select Profile Slider */}
-          <div className="flex-none p-4 border-b border-slate-100 bg-slate-50/50 overflow-x-auto flex gap-2 custom-scrollbar">
-            {profiles.map(p => {
+          <div className="flex-none px-4 pt-3 bg-slate-50/50">
+            <DomainChips items={profiles} value={profileDomain} onChange={setProfileDomain} />
+          </div>
+          <div className="flex-none px-4 pb-4 border-b border-slate-100 bg-slate-50/50 overflow-x-auto flex gap-2 custom-scrollbar">
+            {filterByDomain(profiles, profileDomain).map(p => {
               const isActive = p.id === activeProfileId;
               const isPreset = PRESETS.some(preset => preset.id === p.id);
               return (

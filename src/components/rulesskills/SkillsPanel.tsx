@@ -18,6 +18,8 @@ import remarkGfm from 'remark-gfm';
 import LibraryExplorer from '../library-explorer/LibraryExplorer';
 import { ExternalLink, Compass } from 'lucide-react';
 import AuthoringWizard from '../authoring/AuthoringWizard';
+import DomainChips from '../common/DomainChips';
+import { filterByDomain } from '../../utils/presetFilter';
 
 // Safely parse a localStorage JSON array; corrupt/legacy data returns [] instead of crashing the tab.
 function safeParseArray<T>(raw: string | null): T[] {
@@ -86,6 +88,7 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
   const [skillKind, setSkillKind] = useState<'structured' | 'document'>('structured');
   const [explorerOpen, setExplorerOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [skillDomain, setSkillDomain] = useState<string | null>(null);
 
   // Nạp localStorage + presets khi mount (nửa skills của effect cũ trong tab).
   useEffect(() => {
@@ -620,8 +623,9 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
             </div>
           </div>
 
+          <DomainChips items={skills} value={skillDomain} onChange={setSkillDomain} />
           <div className="space-y-1.5 overflow-y-auto max-h-[300px] lg:max-h-none pr-1">
-            {skills.map(s => (
+            {filterByDomain(skills, skillDomain).map(s => (
                 <button
                   key={s.id}
                   onClick={() => selectSkill(s)}

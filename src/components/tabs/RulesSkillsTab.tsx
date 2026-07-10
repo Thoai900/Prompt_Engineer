@@ -16,6 +16,8 @@ import SkillsPanel from '../rulesskills/SkillsPanel';
 import LibraryExplorer from '../library-explorer/LibraryExplorer';
 import AuthoringWizard from '../authoring/AuthoringWizard';
 import { toSkillMd, toAgentsMd, toClaudeMd, downloadText } from '../../utils/exporters';
+import DomainChips from '../common/DomainChips';
+import { filterByDomain } from '../../utils/presetFilter';
 import { GEMINI_FLASH, GEMINI_MODEL_OPTIONS } from '../../config/models';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -64,6 +66,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
   const [syncToken, setSyncToken] = useState(0);
   const [explorerOpen, setExplorerOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [ruleDomain, setRuleDomain] = useState<string | null>(null);
 
     // Sync state
   const [isSyncing, setIsSyncing] = useState(false);
@@ -461,8 +464,9 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
             </button>
           </div>
 
+          <DomainChips items={rules} value={ruleDomain} onChange={setRuleDomain} />
           <div className="space-y-1.5 overflow-y-auto max-h-[300px] lg:max-h-none pr-1">
-            {rules.map(r => (
+            {filterByDomain(rules, ruleDomain).map(r => (
                 <button
                   key={r.id}
                   onClick={() => selectRule(r)}
