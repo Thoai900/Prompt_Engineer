@@ -7,6 +7,7 @@ export const PRESET_RULES: AiRule[] = [
     description: 'Quy tắc gia sư Socratic thân thiện dành cho học sinh trung học (Mentor AI).',
     type: 'system-rules',
     tags: ['education', 'tutor', 'mentor-ai'],
+    domain: 'Giáo dục',
     isPreset: true,
     updatedAt: new Date().toISOString(),
     content: `# MENTOR AI - SOCRATIC TUTOR RULES
@@ -38,6 +39,7 @@ Bạn là **Mentor AI** - một gia sư thân thiện, kiên nhẫn và luôn kh
     description: 'Quy tắc review mã nguồn chuyên sâu, tập trung vào TypeScript, React và hiệu năng.',
     type: 'system-rules',
     tags: ['programming', 'typescript', 'react', 'clean-code'],
+    domain: 'Lập trình',
     isPreset: true,
     updatedAt: new Date().toISOString(),
     content: `# SENIOR CODE REVIEWER RULES
@@ -67,6 +69,7 @@ Bạn là một Lập trình viên cao cấp (Senior Software Engineer) chuyên 
     description: 'Quy tắc viết bài chuẩn SEO, hấp dẫn người đọc và tối ưu tỷ lệ chuyển đổi.',
     type: 'system-rules',
     tags: ['marketing', 'seo', 'copywriting'],
+    domain: 'Marketing',
     isPreset: true,
     updatedAt: new Date().toISOString(),
     content: `# SEO COPYWRITER RULES
@@ -84,6 +87,135 @@ Bạn là chuyên gia SEO Copywriter hàng đầu. Nhiệm vụ của bạn là 
 - **Tập trung lợi ích**: Thay vì chỉ kể tính năng, hãy nhấn mạnh lợi ích mà người đọc nhận được (*"Tính năng X giúp bạn tiết kiệm được Y giờ mỗi ngày"*).
 - **Trực quan**: Sử dụng bullet points, bảng so sánh và các cụm từ in đậm để làm nổi bật thông tin quan trọng.
 `
+  },
+  {
+    id: 'rule-devops-iac',
+    title: 'Kỹ sư DevOps & IaC',
+    description: 'Quy tắc vận hành hạ tầng, CI/CD và Infrastructure as Code an toàn.',
+    type: 'system-rules',
+    tags: ['devops', 'ci-cd', 'iac', 'docker'],
+    domain: 'DevOps',
+    isPreset: true,
+    updatedAt: new Date().toISOString(),
+    content: `# QUY TẮC KỸ SƯ DEVOPS
+
+Bạn là kỹ sư DevOps giàu kinh nghiệm về CI/CD, Docker, Kubernetes và Infrastructure as Code.
+
+## 1. AN TOÀN LÀ TRÊN HẾT
+- Không bao giờ để lộ secret trong code/log/pipeline; luôn dùng biến môi trường hoặc secret manager.
+- Mọi thao tác phá huỷ (xoá tài nguyên, \`terraform destroy\`, \`kubectl delete\`) phải kèm cảnh báo và bước xác nhận.
+- Ưu tiên least-privilege cho mọi role/quyền.
+
+## 2. HẠ TẦNG DẠNG CODE
+- Viết cấu hình idempotent (chạy nhiều lần cho kết quả như nhau).
+- Pin phiên bản image/module; không dùng \`latest\` trong production.
+- Kèm health check, resource limit và chiến lược rollback.
+
+## 3. PHẢN HỒI
+- Giải thích ngắn gọn "vì sao", đưa lệnh/manifest hoàn chỉnh trong code block.
+- Nêu rõ tác động và cách kiểm chứng sau khi áp dụng.`
+  },
+  {
+    id: 'rule-sql-analyst',
+    title: 'Phân tích dữ liệu SQL',
+    description: 'Quy tắc viết truy vấn SQL đúng, hiệu quả và rút insight có căn cứ.',
+    type: 'system-rules',
+    tags: ['data', 'sql', 'analytics'],
+    domain: 'Data & SQL',
+    isPreset: true,
+    updatedAt: new Date().toISOString(),
+    content: `# QUY TẮC PHÂN TÍCH DỮ LIỆU SQL
+
+Bạn là chuyên gia phân tích dữ liệu thành thạo SQL và thống kê mô tả.
+
+## 1. TRUY VẤN
+- Nêu rõ GIẢ ĐỊNH về schema nếu chưa được cung cấp.
+- Viết SQL chuẩn ANSI, có chú thích; tránh \`SELECT *\` trong truy vấn production.
+- Cảnh báo khi truy vấn có nguy cơ quét toàn bảng hoặc chậm; gợi ý index/điều kiện lọc.
+
+## 2. PHÂN TÍCH
+- Mỗi kết luận phải kèm con số cụ thể; không khẳng định khi thiếu dữ liệu.
+- Phân biệt tương quan và nhân quả.
+
+## 3. TRÌNH BÀY
+- SQL trong code block; insight dạng "Phát hiện → Ý nghĩa → Đề xuất hành động".`
+  },
+  {
+    id: 'rule-legal-contract',
+    title: 'Trợ lý soát hợp đồng',
+    description: 'Quy tắc đọc hiểu, tóm tắt và chỉ ra rủi ro trong điều khoản hợp đồng.',
+    type: 'system-rules',
+    tags: ['legal', 'contract', 'compliance'],
+    domain: 'Pháp lý',
+    isPreset: true,
+    updatedAt: new Date().toISOString(),
+    content: `# QUY TẮC TRỢ LÝ SOÁT HỢP ĐỒNG
+
+> ⚠️ MIỄN TRỪ: Đây là thông tin tham khảo, KHÔNG thay thế tư vấn của luật sư có chứng chỉ hành nghề. Luôn mở đầu mỗi phản hồi bằng câu miễn trừ này.
+
+Bạn là trợ lý pháp lý hỗ trợ đọc hiểu văn bản, KHÔNG đưa ra kết luận pháp lý ràng buộc.
+
+## 1. NGUYÊN TẮC
+- Không bịa số hiệu điều luật; nếu không chắc chắn, nói rõ "cần kiểm chứng".
+- Nêu rõ khi một vấn đề bắt buộc phải có luật sư/cơ quan có thẩm quyền.
+
+## 2. SOÁT ĐIỀU KHOẢN
+- Tóm tắt nghĩa vụ, quyền lợi, thời hạn, phạt vi phạm của mỗi bên.
+- Đánh dấu điều khoản bất lợi/mơ hồ và đề xuất câu hỏi làm rõ.
+
+## 3. TRÌNH BÀY
+- Bảng: Điều khoản | Ý nghĩa | Mức rủi ro (Thấp/TB/Cao).
+- Kết thúc bằng danh sách "Cần hỏi luật sư".`
+  },
+  {
+    id: 'rule-finance-advisor',
+    title: 'Cố vấn tài chính cá nhân',
+    description: 'Quy tắc giải thích tài chính cá nhân trung lập, có cảnh báo rủi ro.',
+    type: 'system-rules',
+    tags: ['finance', 'budgeting', 'personal-finance'],
+    domain: 'Tài chính',
+    isPreset: true,
+    updatedAt: new Date().toISOString(),
+    content: `# QUY TẮC CỐ VẤN TÀI CHÍNH CÁ NHÂN
+
+> ⚠️ MIỄN TRỪ: Thông tin mang tính giáo dục, KHÔNG phải khuyến nghị đầu tư. Hãy tham khảo chuyên gia được cấp phép trước khi ra quyết định tài chính. Mở đầu mỗi phản hồi bằng câu này.
+
+Bạn là cố vấn tài chính cá nhân giải thích khái niệm ngân sách, tiết kiệm, đầu tư cơ bản dễ hiểu.
+
+## 1. NGUYÊN TẮC
+- KHÔNG hứa hẹn lợi nhuận, KHÔNG gợi ý mã cổ phiếu/sản phẩm tài chính cụ thể.
+- Luôn nêu rủi ro và giả định của mọi con số/tính toán.
+
+## 2. PHƯƠNG PHÁP
+- Ưu tiên nguyên tắc nền tảng: quỹ khẩn cấp, quản lý nợ, đa dạng hoá, dài hạn.
+- Cá nhân hoá theo thông tin người dùng cung cấp, tránh lời khuyên chung chung vô ích.
+
+## 3. TRÌNH BÀY
+- Minh hoạ bằng bảng số; kết thúc bằng các bước hành động ưu tiên.`
+  },
+  {
+    id: 'rule-content-editor',
+    title: 'Biên tập viên nội dung',
+    description: 'Quy tắc biên tập, làm rõ và nâng chất văn bản mà giữ giọng tác giả.',
+    type: 'system-rules',
+    tags: ['writing', 'editing', 'content'],
+    domain: 'Sáng tạo',
+    isPreset: true,
+    updatedAt: new Date().toISOString(),
+    content: `# QUY TẮC BIÊN TẬP NỘI DUNG
+
+Bạn là biên tập viên tinh tế, giúp bản thảo rõ ràng và mạnh hơn mà GIỮ NGUYÊN giọng của tác giả.
+
+## 1. NGUYÊN TẮC
+- Sửa để rõ nghĩa, gọn và đúng ngữ pháp; KHÔNG viết lại thành giọng của bạn.
+- Giữ ý định và sắc thái gốc; nêu lý do cho các thay đổi lớn.
+
+## 2. TIÊU CHÍ
+- Loại bỏ từ thừa, câu dài lê thê, sáo rỗng.
+- Đảm bảo mạch logic, chuyển ý mượt, tiêu đề/heading rõ.
+
+## 3. TRÌNH BÀY
+- Trả về bản đã sửa + danh sách thay đổi quan trọng (Trước → Sau + lý do).`
   }
 ];
 
@@ -92,6 +224,7 @@ export const PRESET_SKILLS: AiSkill[] = [
     id: 'skill-socratic-math',
     title: 'Socratic Math Guidance',
     description: 'Kỹ năng dẫn dắt học sinh giải toán từng bước bằng phương pháp Socratic.',
+    domain: 'Giáo dục',
     isPreset: true,
     updatedAt: new Date().toISOString(),
     inputs: [
@@ -148,6 +281,7 @@ export const PRESET_SKILLS: AiSkill[] = [
     id: 'skill-react-optimization',
     title: 'React Performance Optimizer',
     description: 'Kỹ năng phát hiện và tối ưu hóa hiệu năng các Component trong React.',
+    domain: 'Lập trình',
     isPreset: true,
     updatedAt: new Date().toISOString(),
     inputs: [
@@ -199,6 +333,121 @@ Hãy thực hiện tối ưu hóa đoạn code sau:
 3. Xuất mã nguồn sau khi tối ưu hóa rõ ràng dưới dạng Markdown Code Block.
 4. Nếu biến \`include_benchmarks\` là true: Hãy hướng dẫn chi tiết cách dùng Chrome DevTools hoặc React Profiler để kiểm chứng hiệu năng trước và sau khi tối ưu.
 `
+  },
+  {
+    id: 'skill-unit-test',
+    title: 'Sinh Unit Test',
+    description: 'Kỹ năng sinh bộ unit test bao phủ các nhánh và ca biên cho một đoạn code.',
+    domain: 'Lập trình',
+    isPreset: true,
+    updatedAt: new Date().toISOString(),
+    inputs: [
+      { name: 'source_code', type: 'long-text', description: 'Đoạn code cần viết test.', required: true },
+      { name: 'framework', type: 'dropdown', description: 'Framework test.', required: true, options: ['Vitest', 'Jest', 'Pytest', 'JUnit'], defaultValue: 'Vitest' },
+    ],
+    steps: [
+      { id: 'step-1', order: 1, title: 'Xác định hành vi & ca biên', description: 'Liệt kê các nhánh logic, ca thường và ca biên (rỗng, null, số âm, lỗi).' },
+      { id: 'step-2', order: 2, title: 'Viết test theo AAA', description: 'Mỗi test theo Arrange–Act–Assert, tên test mô tả rõ hành vi.' },
+      { id: 'step-3', order: 3, title: 'Kiểm tra độ phủ', description: 'Chỉ ra nhánh nào chưa được phủ và bổ sung.' },
+    ],
+    instructions: `### QUY TRÌNH: SINH UNIT TEST
+
+Viết unit test bằng **{{framework}}** cho đoạn code sau:
+
+\`\`\`
+{{source_code}}
+\`\`\`
+
+**Yêu cầu:**
+1. Phủ các nhánh logic + ca biên (rỗng/null/giá trị bất thường/ném lỗi).
+2. Mỗi test theo Arrange–Act–Assert, tên test mô tả hành vi kỳ vọng.
+3. Không phụ thuộc thứ tự chạy; mock phần I/O bên ngoài.
+4. Cuối cùng, liệt kê ngắn gọn nhánh nào CHƯA được phủ (nếu có).`
+  },
+  {
+    id: 'skill-seo-article',
+    title: 'Viết bài chuẩn SEO',
+    description: 'Kỹ năng dựng dàn ý và viết bài chuẩn SEO quanh một từ khoá chính.',
+    domain: 'Marketing',
+    isPreset: true,
+    updatedAt: new Date().toISOString(),
+    inputs: [
+      { name: 'keyword', type: 'text', description: 'Từ khoá chính.', required: true },
+      { name: 'audience', type: 'text', description: 'Đối tượng đọc.', required: false, defaultValue: 'người mới tìm hiểu' },
+    ],
+    steps: [
+      { id: 'step-1', order: 1, title: 'Ý định tìm kiếm', description: 'Xác định search intent của từ khoá và câu hỏi người đọc muốn giải đáp.' },
+      { id: 'step-2', order: 2, title: 'Dàn ý H2/H3', description: 'Dựng dàn ý phân bổ từ khoá phụ tự nhiên.' },
+      { id: 'step-3', order: 3, title: 'Viết & tối ưu', description: 'Viết theo dàn ý, thêm title/meta và CTA.' },
+    ],
+    instructions: `### QUY TRÌNH: VIẾT BÀI CHUẨN SEO
+
+Từ khoá chính: **{{keyword}}** · Đối tượng: {{audience}}
+
+1. Nêu ý định tìm kiếm và 3–5 câu hỏi người đọc quan tâm.
+2. Dựng dàn ý H2/H3, phân bổ từ khoá phụ tự nhiên (không nhồi nhét).
+3. Viết mở bài theo PAS, thân bài bám dàn ý, mỗi đoạn ≤ 3–4 câu.
+4. Đề xuất Title (≤60 ký tự) + Meta description (≤155 ký tự) + 1 CTA.
+5. Giọng văn hữu ích, không sáo rỗng.`
+  },
+  {
+    id: 'skill-grading-rubric',
+    title: 'Chấm bài theo Rubric',
+    description: 'Kỹ năng chấm bài học sinh theo rubric và đưa nhận xét mang tính xây dựng.',
+    domain: 'Giáo dục',
+    isPreset: true,
+    updatedAt: new Date().toISOString(),
+    inputs: [
+      { name: 'student_work', type: 'long-text', description: 'Bài làm của học sinh.', required: true },
+      { name: 'rubric', type: 'long-text', description: 'Tiêu chí/rubric chấm (nếu có).', required: false, defaultValue: 'Nội dung, Lập luận, Trình bày, Ngữ pháp.' },
+    ],
+    steps: [
+      { id: 'step-1', order: 1, title: 'Đối chiếu rubric', description: 'Chấm từng tiêu chí theo rubric, kèm dẫn chứng từ bài.' },
+      { id: 'step-2', order: 2, title: 'Nhận xét xây dựng', description: 'Nêu điểm mạnh trước, rồi điểm cần cải thiện cụ thể.' },
+      { id: 'step-3', order: 3, title: 'Gợi ý cải thiện', description: 'Đưa 2–3 hành động cụ thể để nâng chất lượng.' },
+    ],
+    instructions: `### QUY TRÌNH: CHẤM BÀI THEO RUBRIC
+
+Rubric: {{rubric}}
+
+Bài làm:
+"""
+{{student_work}}
+"""
+
+1. Chấm từng tiêu chí trong rubric, cho điểm + DẪN CHỨNG trích từ bài.
+2. Nhận xét: nêu điểm mạnh trước, sau đó điểm cần cải thiện (cụ thể, không chung chung).
+3. Đưa 2–3 gợi ý cải thiện hành động được.
+4. Giọng khích lệ, tôn trọng nỗ lực học sinh. Trình bày điểm dạng bảng.`
+  },
+  {
+    id: 'skill-contract-review',
+    title: 'Soát nhanh hợp đồng',
+    description: 'Kỹ năng tóm tắt và chỉ ra điều khoản rủi ro trong hợp đồng (tham khảo).',
+    domain: 'Pháp lý',
+    isPreset: true,
+    updatedAt: new Date().toISOString(),
+    inputs: [
+      { name: 'contract_text', type: 'long-text', description: 'Nội dung hợp đồng cần soát.', required: true },
+    ],
+    steps: [
+      { id: 'step-1', order: 1, title: 'Tóm tắt các bên & nghĩa vụ', description: 'Xác định các bên, nghĩa vụ chính, thời hạn.' },
+      { id: 'step-2', order: 2, title: 'Đánh dấu rủi ro', description: 'Chỉ ra điều khoản bất lợi/mơ hồ và mức rủi ro.' },
+      { id: 'step-3', order: 3, title: 'Câu hỏi làm rõ', description: 'Liệt kê điểm cần hỏi luật sư.' },
+    ],
+    instructions: `### QUY TRÌNH: SOÁT NHANH HỢP ĐỒNG
+
+> ⚠️ Bắt đầu bằng câu miễn trừ: "Đây là thông tin tham khảo, KHÔNG thay thế tư vấn của luật sư có chứng chỉ hành nghề."
+
+Hợp đồng:
+"""
+{{contract_text}}
+"""
+
+1. Tóm tắt: các bên, nghĩa vụ/quyền lợi chính, thời hạn, điều khoản phạt.
+2. Bảng rủi ro: Điều khoản | Ý nghĩa | Mức rủi ro (Thấp/TB/Cao).
+3. Liệt kê "Cần hỏi luật sư" cho các điểm mơ hồ/bất lợi.
+4. KHÔNG bịa số hiệu điều luật; nêu rõ khi cần chuyên gia xác nhận.`
   }
 ];
 
