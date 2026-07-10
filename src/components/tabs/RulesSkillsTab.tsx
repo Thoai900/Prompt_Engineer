@@ -15,6 +15,7 @@ import { optimizeAiRules } from '../../services/aiService';
 import SkillsPanel from '../rulesskills/SkillsPanel';
 import LibraryExplorer from '../library-explorer/LibraryExplorer';
 import AuthoringWizard from '../authoring/AuthoringWizard';
+import { toSkillMd, toAgentsMd, toClaudeMd, downloadText } from '../../utils/exporters';
 import { GEMINI_FLASH, GEMINI_MODEL_OPTIONS } from '../../config/models';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -285,6 +286,17 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
     navigator.clipboard.writeText(ruleContent);
     setCopiedRule(true);
     setTimeout(() => setCopiedRule(false), 2000);
+  };
+
+  // Xuất đa định dạng agent (dùng exporters chung).
+  const exportRuleAs = (fmt: 'skill' | 'agents' | 'claude') => {
+    const rule: AiRule = {
+      id: selectedRuleId, title: ruleTitle, description: ruleDesc, content: ruleContent,
+      type: ruleType, tags: ruleTags.split(',').map(t => t.trim()).filter(Boolean), updatedAt: new Date().toISOString(),
+    };
+    if (fmt === 'skill') downloadText('SKILL.md', toSkillMd(rule));
+    else if (fmt === 'agents') downloadText('AGENTS.md', toAgentsMd(rule));
+    else downloadText('CLAUDE.md', toClaudeMd(rule));
   };
 
   const handleExportRuleFile = (filename: string, filetype: 'cursorrules' | 'markdown') => {
@@ -561,6 +573,15 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
                       >
                         Tải rules.md
                       </button>
+                      {(['skill', 'agents', 'claude'] as const).map((f) => (
+                        <button
+                          key={f}
+                          onClick={() => exportRuleAs(f)}
+                          className="w-full text-left px-3.5 py-2 text-[11px] hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer"
+                        >
+                          Tải {f === 'skill' ? 'SKILL.md' : f === 'agents' ? 'AGENTS.md' : 'CLAUDE.md'}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
