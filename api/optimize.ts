@@ -169,6 +169,8 @@ interface OptimizeBody {
   basePrompt: string;
   criteria?: string[];
   testInput?: string;
+  /** Đợt 2 (Prompt Git): tối ưu theo NHIỀU test — điểm ứng viên = TB điểm các test. Tối đa 5. */
+  tests?: Array<{ input?: string; criteria?: string[] }>;
   populationN?: number;
   rounds?: number;
   /** M6: true → trả tiến trình từng vòng qua SSE thay vì im lặng tới khi xong. */
@@ -176,6 +178,44 @@ interface OptimizeBody {
 }
 
 interface Candidate { prompt: string; score: number; feedback: string; output: string; }
+
+const MAX_TESTS = 5;
+export interface TestSpec { input: string; criteria: string[] }
+
+/**
+ * Chuẩn hoá danh sách test từ body (thuần, export để unit-test). Mỗi test gộp tiêu chí
+ * chung + tiêu chí riêng (bỏ trùng), input rỗng → TRIGGER. Trả null nếu body không có `tests`.
+ * Ném lỗi (chuỗi tiếng Việt) nếu input quá dài.
+ */
+export function normalizeTests(raw: unknown, sharedCriteria: string[]): TestSpec[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  return raw.slice(0, MAX_TESTS).map((t: any) => {
+    const input = typeof t?.input === 'string' ? t.input.trim() : '';
+    if (input.length > MAX_PROMPT_CHARS) throw new Error(`Input thử quá dài (> ${MAX_PROMPT_CHARS} ký tự).`);
+    const own = (Array.isArray(t?.criteria) ? t.criteria : [])
+      .filter((c: unknown) => typeof c === 'string' && c.trim())
+      .map((c: string) => c.slice(0, 500));
+    const criteria = [...new Set([...sharedCriteria, ...own])].slice(0, MAX_CRITERIA);
+    return { input: input || TRIGGER, criteria };
+  });
+}
+
+/**
+ * Gộp kết quả một prompt trên nhiều test (thuần, export để unit-test): điểm = TB làm tròn,
+ * output/feedback lấy từ test ĐIỂM THẤP NHẤT (chỗ cần cải thiện nhất).
+ */
+export function combineEvals(prompt: string, evals: Array<{ score: number; feedback: string; output: string }>): Candidate {
+  if (evals.length === 0) return { prompt, score: 0, feedback: '', output: '' };
+  const worst = evals.reduce((w, e) => (e.score < w.score ? e : w), evals[0]);
+  const score = Math.round(evals.reduce((n, e) => n + e.score, 0) / evals.length);
+  const feedback = evals.length > 1 ? `[Test yếu nhất: ${worst.score}] ${worst.feedback}` : worst.feedback;
+  return { prompt, score, feedback, output: worst.output };
+}
+
+/** Ước tính số lời gọi model: mỗi lần chấm 1 prompt trên 1 test = 2 lời gọi (chạy + chấm). */
+export function estimateCalls(testCount: number, populationN: number, rounds: number): number {
+  return 2 * testCount * (1 + populationN * rounds) + rounds;
+}
 
 function clampInt(v: any, def: number, min: number, max: number): number {
   const n = Math.round(Number(v));
@@ -251,26 +291,39 @@ export default async function handler(req: any, res: any) {
     if (body.testInput && body.testInput.length > MAX_PROMPT_CHARS) {
       res.status(400).json({ error: `Input thử quá dài (> ${MAX_PROMPT_CHARS} ký tự).` }); return;
     }
+    if (body.tests !== undefined && !Array.isArray(body.tests)) {
+      res.status(400).json({ error: '`tests` phải là mảng.' }); return;
+    }
 
     const basePrompt = body.basePrompt.trim();
     const criteria = (Array.isArray(body.criteria) ? body.criteria.filter((c) => typeof c === 'string' && c.trim()) : [])
       .slice(0, MAX_CRITERIA)
       .map((c) => c.slice(0, 500));
-    const testInput = (body.testInput && body.testInput.trim()) || TRIGGER;
-    const populationN = clampInt(body.populationN, 3, 2, 5);
-    const rounds = clampInt(body.rounds, 2, 1, 3);
+    let multi: TestSpec[] | null;
+    try { multi = normalizeTests(body.tests, criteria); } catch (e: any) { res.status(400).json({ error: e.message }); return; }
+    // Không có `tests` → đường cũ: 1 test từ testInput + criteria chung.
+    const tests: TestSpec[] = multi || [{ input: (body.testInput && body.testInput.trim()) || TRIGGER, criteria }];
+    // Chi phí tăng tuyến tính theo số test → nhiều test thì hạ trần quần thể/số vòng (giữ trong 60s).
+    const heavy = tests.length > 2;
+    const populationN = heavy ? clampInt(body.populationN, 2, 2, 3) : clampInt(body.populationN, 3, 2, 5);
+    const rounds = heavy ? clampInt(body.rounds, 1, 1, 2) : clampInt(body.rounds, 2, 1, 3);
+    const estimatedCalls = estimateCalls(tests.length, populationN, rounds);
+    // Biến thể sinh ra nhắm vào hợp các tiêu chí của mọi test.
+    const allCriteria = [...new Set(tests.flatMap((t) => t.criteria))].slice(0, MAX_CRITERIA);
+    const evaluateAll = async (prompt: string): Promise<Candidate> =>
+      combineEvals(prompt, await Promise.all(tests.map((t) => evaluate(prompt, t.input, t.criteria))));
 
     // M6: vòng tiến hoá có "emit" — chế độ SSE phát tiến trình sau baseline và
     // sau MỖI vòng (UI không còn câm lặng tới 60s); chế độ cũ giữ nguyên JSON.
     const runOptimization = async (emit?: (ev: Record<string, unknown>) => void) => {
       const history: { round: number; best: Candidate; candidates: Candidate[] }[] = [];
-      const baseline = await evaluate(basePrompt, testInput, criteria);
-      emit?.({ type: 'baseline', score: baseline.score, rounds });
+      const baseline = await evaluateAll(basePrompt);
+      emit?.({ type: 'baseline', score: baseline.score, rounds, estimatedCalls });
       let best: Candidate = baseline;
 
       for (let round = 1; round <= rounds; round++) {
-        const variants = await generateVariants(basePrompt, criteria, populationN, round === 1 ? undefined : best.prompt);
-        const evaluated = await Promise.all(variants.map((v) => evaluate(v, testInput, criteria)));
+        const variants = await generateVariants(basePrompt, allCriteria, populationN, round === 1 ? undefined : best.prompt);
+        const evaluated = await Promise.all(variants.map((v) => evaluateAll(v)));
 
         const pool = [best, ...evaluated];
         pool.sort((a, b) => b.score - a.score);
@@ -285,6 +338,8 @@ export default async function handler(req: any, res: any) {
         bestScore: best.score,
         baselineScore: baseline.score,
         improvement: best.score - baseline.score,
+        testCount: tests.length,
+        estimatedCalls,
         history,
       };
     };

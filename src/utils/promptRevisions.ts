@@ -1,4 +1,4 @@
-import { HealthRun, HealthSuite, PromptRevision } from '../types';
+import { HealthRun, HealthSuite, HealthTest, PromptRevision } from '../types';
 
 // Prompt Git (Đợt 1 — spec 2026-11-18-prompt-flywheel-versioning-design.md):
 // Health suite giữ lịch sử REVISION của prompt; mỗi run trỏ tới revision đã chạy
@@ -172,4 +172,52 @@ export function blameByTest(suite: HealthSuite, revA: string, revB: string, mode
 export function migrateSuite(suite: HealthSuite, now: Date = new Date()): HealthSuite {
   if ((suite.revisions && suite.revisions.length > 0) || !suite.prompt.trim()) return suite;
   return commitRevision(suite, suite.prompt, 'manual', 'Phiên bản đầu (tạo khi bật lịch sử)', now);
+}
+
+// ── Đợt 2: tối ưu theo test trượt ────────────────────────────────────────────
+
+/** Điểm dưới ngưỡng này = test "trượt" (spec: cố định 70/100). */
+export const FAIL_THRESHOLD = 70;
+/** Một test giảm quá số điểm này khi đổi bản = "tụt" (spec: cố định 15). */
+export const REGRESSION_DROP = 15;
+/** Số test trượt tối thiểu để gợi ý chạy Optimizer. */
+export const MIN_FAILING_TO_SUGGEST = 2;
+
+/**
+ * Test trượt ở lần chạy gần nhất của revision (mặc định: head), cùng model của suite.
+ * Sắp điểm tăng dần (trượt nặng nhất trước), tối đa `max` (giới hạn của api/optimize).
+ */
+export function pickFailingTests(
+  suite: HealthSuite,
+  revisionId: string | undefined = suite.headRevisionId,
+  threshold = FAIL_THRESHOLD,
+  max = 5,
+): Array<{ test: HealthTest; score: number }> {
+  if (!revisionId) return [];
+  const run = (suite.runs || []).find((r) => r.revisionId === revisionId && r.model === suite.model);
+  if (!run) return [];
+  return suite.testCases
+    .map((test) => ({ test, score: run.results.find((r) => r.testId === test.id)?.score }))
+    .filter((x): x is { test: HealthTest; score: number } => typeof x.score === 'number' && x.score < threshold)
+    .sort((a, b) => a.score - b.score)
+    .slice(0, max);
+}
+
+export interface RevisionVerdict {
+  ready: boolean;          // cả hai bản đã có run cùng model
+  ok: boolean;             // bản mới không kém hơn: TB ≥ bản cũ VÀ không test nào tụt > REGRESSION_DROP
+  avgDelta: number | null; // TB mới - TB cũ
+  regressions: TestBlame[]; // các test tụt quá ngưỡng
+}
+
+/** So bản mới (vd từ Optimizer) với bản cũ sau khi chạy lại TOÀN suite. */
+export function judgeRevision(suite: HealthSuite, oldRevId: string, newRevId: string): RevisionVerdict {
+  const runs = (suite.runs || []).filter((r) => r.model === suite.model);
+  const oldRun = runs.find((r) => r.revisionId === oldRevId);
+  const newRun = runs.find((r) => r.revisionId === newRevId);
+  if (!oldRun || !newRun) return { ready: false, ok: false, avgDelta: null, regressions: [] };
+  const regressions = blameByTest(suite, oldRevId, newRevId, suite.model)
+    .filter((b) => b.delta !== null && b.delta < -REGRESSION_DROP);
+  const avgDelta = newRun.avgScore - oldRun.avgScore;
+  return { ready: true, ok: avgDelta >= 0 && regressions.length === 0, avgDelta, regressions };
 }

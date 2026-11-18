@@ -9,7 +9,10 @@ import {
 import { toast } from '../common/Toaster';
 import { confirmDialog } from '../common/ConfirmDialog';
 import RevisionTimeline from './health/RevisionTimeline';
-import { commitRevision, restoreRevision, hasUncommittedPrompt, headRevision } from '../../utils/promptRevisions';
+import OptimizeSuggestion from './health/OptimizeSuggestion';
+import {
+  commitRevision, restoreRevision, hasUncommittedPrompt, headRevision, judgeRevision, REGRESSION_DROP,
+} from '../../utils/promptRevisions';
 import { blocksToText } from '../../utils/templateVersionUtils';
 import { promptToTemplate } from '../../utils/labUtils';
 
@@ -36,6 +39,8 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate }: 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Đợt 2: bản do Optimizer tạo đang chờ so với bản trước nó (sau khi chạy lại toàn suite).
+  const [pendingJudge, setPendingJudge] = useState<{ suiteId: string; oldRevId: string; newRevId: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,9 +113,8 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate }: 
     finally { setSaving(false); }
   };
 
-  const runCheck = async () => {
-    if (!active) return;
-    if (active.testCases.length === 0) { toast.error('Thêm ít nhất một test case.'); return; }
+  /** Chạy toàn bộ test của `base` (đã commit revision), cập nhật state + lưu. */
+  const runSuite = async (base: HealthSuite) => {
     setRunning(true);
     const apiKeys = {
       gemini: useSystemGeminiKey ? undefined : (geminiApiKey || undefined),
@@ -118,14 +122,32 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate }: 
       openai: openaiApiKey || undefined,
     };
     try {
-      const committed = commitRevision(active, active.prompt, 'manual');
-      const run = await runHealthCheck(committed, apiKeys);
-      const updated: HealthSuite = { ...committed, runs: [run, ...committed.runs].slice(0, 10) };
-      setSuites((prev) => prev.map((s) => (s.id === active.id ? updated : s)));
+      const run = await runHealthCheck(base, apiKeys);
+      const updated: HealthSuite = { ...base, runs: [run, ...base.runs].slice(0, 10) };
+      setSuites((prev) => prev.map((s) => (s.id === base.id ? updated : s)));
       try { await saveHealthSuite(user, updated); } catch { /* toast trong service */ }
     } finally {
       setRunning(false);
     }
+  };
+
+  const runCheck = async () => {
+    if (!active) return;
+    if (active.testCases.length === 0) { toast.error('Thêm ít nhất một test case.'); return; }
+    await runSuite(commitRevision(active, active.prompt, 'manual'));
+  };
+
+  // Đợt 2: nhận bản từ Optimizer → revision 'optimizer' (thành hiện hành) → chạy lại TOÀN suite
+  // → so với bản trước (judgeRevision). Kém hơn thì hiện cảnh báo + nút quay lại.
+  const acceptOptimized = async (prompt: string, note: string) => {
+    if (!active) return;
+    const oldRevId = active.headRevisionId;
+    const next = commitRevision(active, prompt, 'optimizer', note);
+    if (next === active || !next.headRevisionId) return;
+    if (oldRevId && oldRevId !== next.headRevisionId) {
+      setPendingJudge({ suiteId: next.id, oldRevId, newRevId: next.headRevisionId });
+    }
+    await runSuite(next);
   };
 
   const restore = async (revisionId: string) => {
@@ -159,6 +181,11 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate }: 
     if (!active || !onApplyTemplate) return;
     onApplyTemplate(promptToTemplate(headRevision(active)?.content || active.prompt, 'health'));
   };
+
+  const verdict = active && pendingJudge?.suiteId === active.id
+    ? judgeRevision(active, pendingJudge.oldRevId, pendingJudge.newRevId)
+    : null;
+  const testNo = (testId: string) => (active?.testCases.findIndex((t) => t.id === testId) ?? -1) + 1;
 
   const latest = active?.runs[0];
   const prev = active?.runs[1];
@@ -303,6 +330,29 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate }: 
               </button>
             </div>
           </div>
+
+          {!running && <OptimizeSuggestion suite={active} signedIn={!!user} onAccept={acceptOptimized} />}
+
+          {verdict?.ready && (
+            <div className={`rounded-2xl border p-4 text-sm ${verdict.ok ? 'border-emerald-300 bg-emerald-50/60 dark:border-emerald-800 dark:bg-emerald-950/20' : 'border-rose-300 bg-rose-50/60 dark:border-rose-800 dark:bg-rose-950/20'}`}>
+              <div className="flex flex-wrap items-center gap-2 text-ink">
+                {verdict.ok
+                  ? <>Bản tối ưu <b>đạt</b> trên toàn suite ({verdict.avgDelta! >= 0 ? '+' : ''}{verdict.avgDelta} điểm TB), không test nào tụt quá {REGRESSION_DROP} điểm. Đang là phiên bản hiện hành.</>
+                  : <>Bản tối ưu <b>chưa đạt</b> trên toàn suite: TB {verdict.avgDelta! >= 0 ? '+' : ''}{verdict.avgDelta} điểm{verdict.regressions.length > 0 && <>, tụt quá {REGRESSION_DROP} điểm ở {verdict.regressions.map((r) => `Test ${testNo(r.testId)} (${r.scoreA}→${r.scoreB})`).join(', ')}</>}.</>}
+                <span className="ml-auto flex gap-2">
+                  {!verdict.ok && active.headRevisionId === pendingJudge!.newRevId && (
+                    <button
+                      onClick={async () => { await replaceAndSave(restoreRevision(active, pendingJudge!.oldRevId)); setPendingJudge(null); toast.success('Đã quay lại bản trước.'); }}
+                      className="rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-rose-500"
+                    >
+                      Quay lại bản trước
+                    </button>
+                  )}
+                  <button onClick={() => setPendingJudge(null)} className="rounded-xl border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-muted hover:bg-hover">Đóng</button>
+                </span>
+              </div>
+            </div>
+          )}
 
           <RevisionTimeline suite={active} onRestore={restore} />
 

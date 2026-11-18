@@ -198,3 +198,16 @@ Hợp nhất 3 hệ version cũ; blame theo khối/node; tự động hoá hoàn
 - Điểm trên dòng thời gian lọc theo model hiện tại của suite.
 - Rules: thêm kiểm `revisions ≤ 20`, `headRevisionId`, `source` vào `isValidHealthSuite` → cần
   `firebase deploy --only firestore:rules`. (Rule cũ không dùng `hasOnly` nên trước khi deploy vẫn ghi được.)
+
+## Ghi chú triển khai Đợt 2
+
+- `api/optimize.ts` nhận `tests` (≤ 5); hàm thuần `normalizeTests`/`combineEvals`/`estimateCalls` export từ chính file
+  (vẫn tự chứa) và có test `src/__tests__/optimizeMultiTest.test.ts`. Nhiều hơn 2 test → quần thể 2–3 (mặc định 2),
+  1–2 vòng (mặc định 1). Biến thể nhắm vào hợp tiêu chí của mọi test; output/feedback lấy từ test yếu nhất.
+- Optimizer chạy **ngay trong Prompt Health** (banner `OptimizeSuggestion`), không chuyển sang panel Auto-Optimizer.
+  Tối ưu trên nội dung **revision hiện hành** (không phải chỗ đang sửa dở).
+- "Lưu thành phiên bản" → revision `optimizer` thành hiện hành NGAY, chạy lại toàn suite, rồi `judgeRevision` so với
+  bản trước: đạt → báo xanh; chưa đạt → liệt kê test tụt + nút "Quay lại bản trước" (thay cho "Đặt làm hiện hành"
+  có điều kiện trong Phần C2 — kết quả tương đương, ít bước hơn). Xuất bản lại Shared App để Đợt 3.
+- Lưu ý: Optimizer chấm bằng chuỗi model của backend, Health chấm bằng model của suite → điểm hai bên không so
+  trực tiếp được; quyết định cuối luôn dựa trên lần chạy lại Health.

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   hashPrompt, commitRevision, restoreRevision, trimRevisions, scoreByRevision, bestRevision,
   blameByTest, migrateSuite, hasUncommittedPrompt, headRevision, MAX_REVISIONS,
+  pickFailingTests, judgeRevision,
 } from '../utils/promptRevisions';
 import { HealthRun, HealthSuite, PromptRevision } from '../types';
 
@@ -164,5 +165,49 @@ describe('migrateSuite', () => {
     expect(migrateSuite(s)).toBe(s);
     const empty = suite();
     expect(migrateSuite(empty)).toBe(empty);
+  });
+});
+
+describe('pickFailingTests', () => {
+  const tests = [{ id: 't1', input: 'a', criteria: [] }, { id: 't2', input: 'b', criteria: [] }, { id: 't3', input: 'c', criteria: [] }];
+  const r = (revisionId: string, scores: number[], model = 'm1'): HealthRun => ({
+    at: '', model, avgScore: 0, revisionId, results: scores.map((score, i) => ({ testId: `t${i + 1}`, score })),
+  });
+
+  it('lấy test < 70 ở run gần nhất của head, trượt nặng trước', () => {
+    const s = suite({ testCases: tests, headRevisionId: 'h', runs: [r('h', [65, 90, 30]), r('h', [10, 10, 10])] });
+    expect(pickFailingTests(s).map((x) => [x.test.id, x.score])).toEqual([['t3', 30], ['t1', 65]]);
+  });
+
+  it('bỏ run khác model / khác revision; không có head → rỗng', () => {
+    const s = suite({ testCases: tests, headRevisionId: 'h', runs: [r('h', [10, 10, 10], 'm2'), r('x', [10, 10, 10])] });
+    expect(pickFailingTests(s)).toEqual([]);
+    expect(pickFailingTests(suite({ runs: [r('h', [10])] }))).toEqual([]);
+  });
+
+  it('giới hạn số lượng', () => {
+    const s = suite({ testCases: tests, headRevisionId: 'h', runs: [r('h', [1, 2, 3])] });
+    expect(pickFailingTests(s, 'h', 70, 2)).toHaveLength(2);
+  });
+});
+
+describe('judgeRevision', () => {
+  it('đạt khi TB không giảm và không test nào tụt > 15', () => {
+    const s = suite({ runs: [run('new', 80, [70, 90]), run('old', 70, [80, 60])] });
+    const v = judgeRevision(s, 'old', 'new');
+    expect(v).toMatchObject({ ready: true, ok: true, avgDelta: 10 });
+    expect(v.regressions).toEqual([]);
+  });
+
+  it('không đạt khi một test tụt > 15 dù TB tăng', () => {
+    const s = suite({ runs: [run('new', 75, [50, 100]), run('old', 70, [80, 60])] });
+    const v = judgeRevision(s, 'old', 'new');
+    expect(v.ok).toBe(false);
+    expect(v.regressions.map((b) => b.testId)).toEqual(['t1']);
+  });
+
+  it('không đạt khi TB giảm; chưa đủ run → ready=false', () => {
+    expect(judgeRevision(suite({ runs: [run('new', 60, [60, 60]), run('old', 65, [65, 65])] }), 'old', 'new').ok).toBe(false);
+    expect(judgeRevision(suite({ runs: [run('old', 65, [65, 65])] }), 'old', 'new').ready).toBe(false);
   });
 });
