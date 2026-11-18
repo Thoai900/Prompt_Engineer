@@ -1,13 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, Play, Loader2, Save, Activity, TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Play, Loader2, Save, Activity, TrendingUp, TrendingDown, Minus, AlertTriangle, RefreshCw, ExternalLink } from 'lucide-react';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { ALL_MODEL_OPTIONS, GEMINI_FLASH } from '../../config/models';
-import { HealthSuite, HealthTest } from '../../types';
+import { HealthSuite, HealthTest, PromptTemplate } from '../../types';
 import {
   loadHealthSuites, saveHealthSuite, deleteHealthSuite, runHealthCheck, newHealthSuite, compareRuns,
 } from '../../services/healthService';
 import { toast } from '../common/Toaster';
 import { confirmDialog } from '../common/ConfirmDialog';
+import RevisionTimeline from './health/RevisionTimeline';
+import { commitRevision, restoreRevision, hasUncommittedPrompt, headRevision } from '../../utils/promptRevisions';
+import { blocksToText } from '../../utils/templateVersionUtils';
+import { promptToTemplate } from '../../utils/labUtils';
 
 function scoreColor(score: number): string {
   if (score >= 80) return 'text-emerald-600 dark:text-emerald-400';
@@ -17,8 +21,15 @@ function scoreColor(score: number): string {
 
 function tid(): string { return `t_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`; }
 
+interface HealthPanelProps {
+  /** Template trong thư viện — để lấy prompt làm nguồn cho suite. */
+  libraryTemplates?: PromptTemplate[];
+  /** Mở prompt trong Builder (App.tsx điều hướng). */
+  onApplyTemplate?: (t: PromptTemplate) => void;
+}
+
 /** Prompt Health/CI: suite có version + bộ test, chạy "khám sức khoẻ" và bắt hồi quy. */
-export default function HealthPanel() {
+export default function HealthPanel({ libraryTemplates = [], onApplyTemplate }: HealthPanelProps) {
   const { user, geminiApiKey, groqApiKey, openaiApiKey, useSystemGeminiKey, activeWorkspaceId } = useWorkspace();
 
   const [suites, setSuites] = useState<HealthSuite[]>([]);
@@ -79,10 +90,20 @@ export default function HealthPanel() {
     patchActive({ testCases: active.testCases.filter((t) => t.id !== testId) });
   };
 
+  /** Thay suite đang mở bằng `next` và lưu ngay (dùng cho thao tác revision). */
+  const replaceAndSave = async (next: HealthSuite) => {
+    setSuites((prev) => prev.map((s) => (s.id === next.id ? next : s)));
+    try { await saveHealthSuite(user, next); } catch { /* toast trong service */ }
+  };
+
+  // Prompt Git: "Lưu" ghi prompt đã sửa thành revision mới — để cron (chạy theo prompt
+  // đã lưu) luôn gắn run vào đúng revision.
   const saveActive = async () => {
     if (!active) return;
     setSaving(true);
-    try { await saveHealthSuite(user, active); toast.success('Đã lưu suite.'); }
+    const next = commitRevision(active, active.prompt, 'manual');
+    setSuites((prev) => prev.map((s) => (s.id === next.id ? next : s)));
+    try { await saveHealthSuite(user, next); toast.success('Đã lưu suite.'); }
     catch { toast.error('Không lưu được suite.'); }
     finally { setSaving(false); }
   };
@@ -97,13 +118,46 @@ export default function HealthPanel() {
       openai: openaiApiKey || undefined,
     };
     try {
-      const run = await runHealthCheck(active, apiKeys);
-      const updated: HealthSuite = { ...active, runs: [run, ...active.runs].slice(0, 10) };
+      const committed = commitRevision(active, active.prompt, 'manual');
+      const run = await runHealthCheck(committed, apiKeys);
+      const updated: HealthSuite = { ...committed, runs: [run, ...committed.runs].slice(0, 10) };
       setSuites((prev) => prev.map((s) => (s.id === active.id ? updated : s)));
       try { await saveHealthSuite(user, updated); } catch { /* toast trong service */ }
     } finally {
       setRunning(false);
     }
+  };
+
+  const restore = async (revisionId: string) => {
+    if (!active) return;
+    if (hasUncommittedPrompt(active) && !(await confirmDialog({ message: 'Prompt đang sửa chưa được lưu thành phiên bản. Bỏ thay đổi đó?', danger: true, confirmText: 'Bỏ & khôi phục' }))) return;
+    await replaceAndSave(restoreRevision(active, revisionId));
+    toast.success('Đã đặt phiên bản làm hiện hành. Chạy kiểm tra để cập nhật điểm.');
+  };
+
+  // Nguồn template: lấy prompt từ template trong thư viện (ghi thành revision 'source-sync').
+  const sourceTemplate = active?.source ? libraryTemplates.find((t) => t.id === active.source!.id) : undefined;
+  const linkTemplate = async (templateId: string) => {
+    if (!active) return;
+    if (!templateId) { await replaceAndSave({ ...active, source: undefined }); return; }
+    const t = libraryTemplates.find((x) => x.id === templateId);
+    if (!t) return;
+    const text = blocksToText(t.blocks);
+    if (!text.trim()) { toast.error('Template này chưa có nội dung.'); return; }
+    const linked: HealthSuite = { ...active, source: { kind: 'template', id: t.id, title: t.title } };
+    await replaceAndSave(commitRevision(linked, text, 'source-sync', `Từ template "${t.title}"`));
+    toast.success(`Đã lấy prompt từ "${t.title}".`);
+  };
+  const syncFromSource = async () => {
+    if (!active || !sourceTemplate) return;
+    const next = commitRevision(active, blocksToText(sourceTemplate.blocks), 'source-sync', `Đồng bộ từ "${sourceTemplate.title}"`);
+    if (next === active) { toast('Prompt đã trùng với template — không có gì mới.'); return; }
+    await replaceAndSave(next);
+    toast.success('Đã đồng bộ prompt mới nhất từ template.');
+  };
+  const openInBuilder = () => {
+    if (!active || !onApplyTemplate) return;
+    onApplyTemplate(promptToTemplate(headRevision(active)?.content || active.prompt, 'health'));
   };
 
   const latest = active?.runs[0];
@@ -160,7 +214,36 @@ export default function HealthPanel() {
               </span>
             </label>
 
-            <label className="mb-1.5 block text-xs font-bold text-muted">Prompt được kiểm thử</label>
+            {/* Prompt Git: nguồn prompt (template trong thư viện) */}
+            <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+              <span className="font-bold text-muted">Nguồn:</span>
+              <select
+                value={active.source?.id || ''}
+                onChange={(e) => linkTemplate(e.target.value)}
+                className="max-w-xs rounded-lg border border-line bg-surface px-2 py-1 text-ink"
+              >
+                <option value="">— Không liên kết —</option>
+                {active.source && !sourceTemplate && <option value={active.source.id}>{active.source.title || 'Template'} (không còn trong thư viện)</option>}
+                {libraryTemplates.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
+              </select>
+              {sourceTemplate && (
+                <button onClick={syncFromSource} className="flex items-center gap-1 rounded-lg px-2 py-1 font-semibold text-emerald-600 hover:bg-hover dark:text-emerald-400" title="Lấy nội dung mới nhất của template thành phiên bản mới">
+                  <RefreshCw size={12} /> Đồng bộ từ nguồn
+                </button>
+              )}
+              {onApplyTemplate && active.prompt.trim() && (
+                <button onClick={openInBuilder} className="flex items-center gap-1 rounded-lg px-2 py-1 font-semibold text-muted hover:bg-hover" title="Mở phiên bản hiện hành trong Builder để sửa/lưu thành template">
+                  <ExternalLink size={12} /> Mở trong Builder
+                </button>
+              )}
+            </div>
+
+            <label className="mb-1.5 flex items-center gap-2 text-xs font-bold text-muted">
+              Prompt được kiểm thử
+              {hasUncommittedPrompt(active) && (active.revisions || []).length > 0 && (
+                <span className="rounded bg-amber-100 px-1.5 py-0.5 font-semibold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">Đã sửa — chạy hoặc Lưu để tạo phiên bản mới</span>
+              )}
+            </label>
             <textarea
               value={active.prompt}
               onChange={(e) => patchActive({ prompt: e.target.value })}
@@ -220,6 +303,8 @@ export default function HealthPanel() {
               </button>
             </div>
           </div>
+
+          <RevisionTimeline suite={active} onRestore={restore} />
 
           {/* Kết quả & lịch sử */}
           {latest && (

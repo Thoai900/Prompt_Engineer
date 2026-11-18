@@ -99,7 +99,7 @@ export default function LabTab({ libraryTemplates = [], onApplyTemplate, onSaveT
 
         {mode === 'bakeoff' && <BakeoffPanel />}
         {mode === 'optimizer' && <OptimizerPanel initialPrompt={optimizerSeed} onApplyTemplate={onApplyTemplate} onSaveTemplate={onSaveTemplate} />}
-        {mode === 'health' && <HealthPanel />}
+        {mode === 'health' && <HealthPanel libraryTemplates={libraryTemplates} onApplyTemplate={onApplyTemplate} />}
         {mode === 'linter' && <LinterPanel onOptimize={sendToOptimizer} />}
         {mode === 'taste' && <TastePanel />}
         {mode === 'tutor' && <TutorPanel libraryTemplates={libraryTemplates} />}

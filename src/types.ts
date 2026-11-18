@@ -339,6 +339,18 @@ export interface HealthRun {
   model: string;        // model đã chạy lần này (để phát hiện "đổi model")
   avgScore: number;     // điểm trung bình toàn suite
   results: HealthTestResult[];
+  revisionId?: string;  // Prompt Git: revision đã chạy (trống = run trước khi có lịch sử)
+}
+
+// Prompt Git: một bản lưu của prompt trong Health suite (xem utils/promptRevisions.ts).
+export interface PromptRevision {
+  id: string;
+  at: string;           // ISO date string
+  content: string;      // prompt đầy đủ tại revision này
+  hash: string;         // hashPrompt(content) — phát hiện trùng
+  origin: 'manual' | 'optimizer' | 'source-sync' | 'restore';
+  note?: string;
+  parentId?: string;    // revision trước đó
 }
 
 export interface HealthSuite {
@@ -349,6 +361,9 @@ export interface HealthSuite {
   testCases: HealthTest[];
   runs: HealthRun[];    // mới nhất ở đầu, giữ tối đa ~10 lần
   cronEnabled?: boolean; // H3: bật chạy tự động hằng ngày (Vercel Cron, cần đăng nhập)
+  revisions?: PromptRevision[]; // Prompt Git: mới nhất ở đầu, tối đa 20
+  headRevisionId?: string;      // revision đang là prompt hiện hành
+  source?: { kind: 'template'; id: string; title?: string }; // nguồn prompt (đợt sau: project/sharedApp)
   userId?: string;
   workspaceId?: string;
   createdAt?: string;

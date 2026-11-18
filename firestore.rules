@@ -144,6 +144,10 @@ service cloud.firestore {
         && ( !('workspaceId' in data.keys()) || (data.workspaceId is string && data.workspaceId.size() <= 128) )
         && ( !('testCases' in data.keys()) || (data.testCases is list && data.testCases.size() <= 50) )
         && ( !('runs' in data.keys()) || (data.runs is list && data.runs.size() <= 50) )
+        && ( !('revisions' in data.keys()) || (data.revisions is list && data.revisions.size() <= 20) )
+        && ( !('headRevisionId' in data.keys()) || (data.headRevisionId is string && data.headRevisionId.size() <= 64) )
+        && ( !('source' in data.keys()) || (data.source is map && data.source.keys().hasOnly(['kind', 'id', 'title'])
+              && data.source.kind is string && data.source.id is string && data.source.id.size() <= 128) )
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }

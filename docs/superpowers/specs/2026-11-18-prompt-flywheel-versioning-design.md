@@ -1,7 +1,7 @@
 # Thiết kế: Prompt Flywheel (#1) + Prompt Git (#2)
 
 Ngày: 2026-11-18
-Trạng thái: NHÁP — chờ duyệt (xem mục "Câu hỏi mở" trước khi build)
+Trạng thái: ĐÃ DUYỆT (2026-11-18, chấp nhận cả 4 đề xuất ở mục "Câu hỏi mở") · Đợt 1 đã build
 
 ## Mục tiêu
 
@@ -179,9 +179,22 @@ CI 4 bước xanh; không phá test cũ.
 
 Hợp nhất 3 hệ version cũ; blame theo khối/node; tự động hoá hoàn toàn (auto-convert, auto-optimize, auto-publish); A/B traffic thật giữa 2 revision trên Shared App; phản hồi ẩn danh; dashboard tổng hợp nhiều app.
 
-## Câu hỏi mở (cần chốt trước khi build)
+## Câu hỏi mở — ĐÃ CHỐT theo đề xuất (đăng nhập · (b) · lưu trong doc tối đa 20/cắt 10 · ngưỡng cố định 70/15)
 
 1. **Phản hồi có cần đăng nhập?** Đề xuất: có (đơn giản, chống spam, khớp cách Shared App chạy). Ẩn danh sẽ phải ghi qua `api/` có rate-limit.
 2. **Xuất bản lại app khi prompt đã tối ưu là chuỗi phẳng**: (a) thay graph của app bằng 1 node text chứa prompt mới — đơn giản nhưng mất cấu trúc graph; (b) chỉ cho "Áp dụng về nguồn" dạng revision và để chủ app tự sửa graph — an toàn hơn. Đề xuất (b) ở đợt 3, (a) để sau.
 3. **Giới hạn kích thước doc Firestore**: lưu `revisions` trong doc suite (đơn giản, có thể chạm 1 MiB với prompt dài) hay subcollection `healthSuites/{id}/revisions` (an toàn, thêm rule + lượt đọc)? Đề xuất: trong doc, tối đa 20, và cắt còn 10 nếu tổng nội dung > 400k ký tự.
 4. **Ngưỡng "trượt"** mặc định 70/100 và "tụt" 15 điểm — chấp nhận hay để chủ suite chỉnh?
+
+## Ghi chú triển khai Đợt 1 (khác/thu hẹp so với Phần A)
+
+- **Revision sinh khi "Chạy kiểm tra" hoặc bấm "Lưu"** (không có nút "Lưu phiên bản" riêng): cron chạy theo prompt
+  ĐÃ LƯU và gắn `headRevisionId`, nên Lưu phải ghi revision để run cron không bị gắn nhầm bản.
+- Commit nội dung trùng một revision CŨ → không nhân bản, chỉ chuyển head về bản đó.
+- **Nguồn chỉ hỗ trợ template** (`source.kind = 'template'`): chọn template → lấy `blocksToText(blocks)` thành
+  revision `source-sync`; "Đồng bộ từ nguồn" kéo bản mới nhất. Project/sharedApp để Đợt 3.
+- **"Áp dụng về nguồn" = "Mở trong Builder"** (bọc prompt bằng `promptToTemplate`) để người dùng tự lưu — KHÔNG ghi
+  đè thẳng blocks template bằng văn bản phẳng (mất cấu trúc), nhất quán với quyết định (b).
+- Điểm trên dòng thời gian lọc theo model hiện tại của suite.
+- Rules: thêm kiểm `revisions ≤ 20`, `headRevisionId`, `source` vào `isValidHealthSuite` → cần
+  `firebase deploy --only firestore:rules`. (Rule cũ không dùng `hasOnly` nên trước khi deploy vẫn ghi được.)

@@ -181,6 +181,7 @@ interface SuiteDoc {
   model: string;
   testCases: { id: string; input: string; criteria: string[] }[];
   runs: any[];
+  headRevisionId?: string; // Prompt Git: gắn vào run để client biết run thuộc revision nào
 }
 
 async function scoreOutput(preferredModel: string, output: string, criteria: string[]): Promise<{ score: number; feedback: string }> {
@@ -199,7 +200,7 @@ async function scoreOutput(preferredModel: string, output: string, criteria: str
   return { score, feedback: typeof parsed?.feedback === 'string' ? parsed.feedback : '' };
 }
 
-async function runSuite(suite: SuiteDoc): Promise<{ at: string; model: string; avgScore: number; results: any[] }> {
+async function runSuite(suite: SuiteDoc): Promise<{ at: string; model: string; avgScore: number; results: any[]; revisionId?: string }> {
   const tests = (suite.testCases || []).slice(0, MAX_TESTS_PER_SUITE);
   const results = await Promise.all(tests.map(async (t) => {
     try {
@@ -211,7 +212,10 @@ async function runSuite(suite: SuiteDoc): Promise<{ at: string; model: string; a
     }
   }));
   const avgScore = results.length ? Math.round(results.reduce((s, r) => s + r.score, 0) / results.length) : 0;
-  return { at: new Date().toISOString(), model: suite.model || 'gemini-3.5-flash-lite', avgScore, results };
+  const run: { at: string; model: string; avgScore: number; results: any[]; revisionId?: string } =
+    { at: new Date().toISOString(), model: suite.model || 'gemini-3.5-flash-lite', avgScore, results };
+  if (suite.headRevisionId) run.revisionId = suite.headRevisionId;
+  return run;
 }
 
 // ── Handler ──────────────────────────────────────────────────────────────────
@@ -258,6 +262,7 @@ export default async function handler(req: any, res: any) {
           model: data.model || 'gemini-3.5-flash-lite',
           testCases: Array.isArray(data.testCases) ? data.testCases : [],
           runs: Array.isArray(data.runs) ? data.runs : [],
+          headRevisionId: typeof data.headRevisionId === 'string' ? data.headRevisionId : undefined,
         };
       })
       .filter((s) => s.testCases.length > 0);
