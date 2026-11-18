@@ -29,10 +29,10 @@ const MAX_RUNS_KEPT = 10;
 
 // Chuỗi model dự phòng — trùng CÓ CHỦ ĐÍCH với api/optimize.ts (function tự chứa).
 const MODEL_CHAIN: { provider: 'gemini' | 'groq'; model: string }[] = [
-  { provider: 'gemini', model: 'gemini-2.5-flash' },
+  { provider: 'gemini', model: 'gemini-3.5-flash-lite' },
   { provider: 'gemini', model: 'gemini-3.5-flash' },
-  { provider: 'gemini', model: 'gemini-2.5-pro' },
-  { provider: 'groq', model: 'llama-3.1-8b-instant' },
+  { provider: 'gemini', model: 'gemini-3.8-flash' },
+  { provider: 'groq', model: 'openai/gpt-oss-20b' },
 ];
 
 // ── OAuth service account (jose, không cần firebase-admin) ──────────────────
@@ -122,6 +122,8 @@ async function callGroq(model: string, system: string, user: string, temperature
     model,
     messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
     temperature,
+    // GPT-OSS là model suy luận — mức thấp để nhanh và không ăn hết token trả lời.
+    ...(model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}),
   };
   if (json) body.response_format = { type: 'json_object' };
   const r = await fetch(GROQ_ENDPOINT, {
@@ -134,7 +136,15 @@ async function callGroq(model: string, system: string, user: string, temperature
   return data?.choices?.[0]?.message?.content || (json ? '{}' : '');
 }
 
+// Tên model đã bị ngừng (suite lưu từ trước) → model thay thế trong chain.
+const LEGACY_MODEL_ALIASES: Record<string, string> = {
+  'gemini-2.5-flash': 'gemini-3.5-flash-lite',
+  'gemini-2.5-pro': 'gemini-3.8-flash',
+  'llama-3.1-8b-instant': 'openai/gpt-oss-20b',
+};
+
 async function callAny(preferredModel: string, system: string, user: string, temperature: number, json: boolean): Promise<string> {
+  preferredModel = LEGACY_MODEL_ALIASES[preferredModel] || preferredModel;
   // Ưu tiên model của suite (nếu thuộc chain), sau đó xoay vòng phần còn lại.
   const chain = [
     ...MODEL_CHAIN.filter((m) => m.model === preferredModel),
@@ -201,7 +211,7 @@ async function runSuite(suite: SuiteDoc): Promise<{ at: string; model: string; a
     }
   }));
   const avgScore = results.length ? Math.round(results.reduce((s, r) => s + r.score, 0) / results.length) : 0;
-  return { at: new Date().toISOString(), model: suite.model || 'gemini-2.5-flash', avgScore, results };
+  return { at: new Date().toISOString(), model: suite.model || 'gemini-3.5-flash-lite', avgScore, results };
 }
 
 // ── Handler ──────────────────────────────────────────────────────────────────
@@ -245,7 +255,7 @@ export default async function handler(req: any, res: any) {
           docId: String(r.document.name).split('/').pop() as string,
           name: data.name || '',
           prompt: data.prompt || '',
-          model: data.model || 'gemini-2.5-flash',
+          model: data.model || 'gemini-3.5-flash-lite',
           testCases: Array.isArray(data.testCases) ? data.testCases : [],
           runs: Array.isArray(data.runs) ? data.runs : [],
         };

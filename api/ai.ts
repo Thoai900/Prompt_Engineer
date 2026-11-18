@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Vercel Serverless Function: proxy AI giấu API key mặc định (Gemini + Groq/Llama).
+// Vercel Serverless Function: proxy AI giấu API key mặc định (Gemini + Groq).
 // Client gọi POST /api/ai kèm Firebase ID token; hàm này xác thực token (bằng jose,
 // không cần service account) rồi gọi nhà cung cấp bằng key trong biến môi trường
 // (GEMINI_API_KEY / GROQ_API_KEY đặt ở Vercel → Project Settings → Environment).
@@ -19,7 +19,7 @@ const JWKS = createRemoteJWKSet(
 );
 
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
-const DEFAULT_GROQ_MODEL = 'llama-3.1-8b-instant';
+const DEFAULT_GROQ_MODEL = 'openai/gpt-oss-20b';
 const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
 const DEFAULT_ANTHROPIC_MODEL = 'claude-opus-4-8';
 
@@ -27,10 +27,22 @@ const DEFAULT_ANTHROPIC_MODEL = 'claude-opus-4-8';
 // Allowlist model: client KHÔNG được truyền tên model tuỳ ý (tránh gọi model đắt
 // tiền/không dự kiến bằng key chung). Phải khớp src/config/models.ts.
 const ALLOWED_MODELS: Record<'gemini' | 'groq' | 'anthropic', Set<string>> = {
-  gemini: new Set(['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-pro']),
-  groq: new Set(['llama-3.1-8b-instant']),
+  gemini: new Set(['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash']),
+  groq: new Set(['openai/gpt-oss-20b']),
   anthropic: new Set(['claude-opus-4-8', 'claude-haiku-4-5']),
 };
+// Tên model đã bị nhà cung cấp ngừng → model thay thế. Dữ liệu người dùng lưu từ trước
+// (bộ Health, cấu hình…) vẫn mang tên cũ; ánh xạ ở đây để chúng không bị allowlist chặn.
+const LEGACY_MODEL_ALIASES: Record<string, string> = {
+  'gemini-2.5-flash': 'gemini-3.5-flash-lite',
+  'gemini-2.5-pro': 'gemini-3.8-flash',
+  'llama-3.1-8b-instant': 'openai/gpt-oss-20b',
+};
+// GPT-OSS là model suy luận: token suy luận tính chung vào max_tokens. Đặt mức thấp để
+// trần token nhỏ (vd. 768 khi viết khối ngắn) không bị suy luận ăn hết → trả lời rỗng.
+function groqReasoningParams(model: string): Record<string, string> {
+  return model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {};
+}
 // Trần token ĐẦU RA — vừa chặn lạm dụng key chung, vừa đủ rộng để KHÔNG cắt cụt phản hồi.
 // LƯU Ý (Anthropic): token "thinking" của Opus 4.8 tính CHUNG vào max_tokens, nên trần
 // quá thấp khiến suy luận ăn hết ngân sách → trả lời cụt/rỗng. Chỉnh qua ENV nếu cần.
@@ -213,6 +225,7 @@ async function callProvider(b: ProxyBody): Promise<string> {
       messages: groqMessages(b),
       temperature: b.temperature !== undefined ? b.temperature : 0.7,
       top_p: b.topP !== undefined ? b.topP : 0.95,
+      ...groqReasoningParams(b.model || DEFAULT_GROQ_MODEL),
     };
     if (b.maxTokens) body.max_tokens = b.maxTokens;
     if (b.json) body.response_format = { type: 'json_object' };
@@ -256,6 +269,7 @@ async function streamProvider(b: ProxyBody, onChunk: (t: string) => void): Promi
       temperature: b.temperature !== undefined ? b.temperature : 0.7,
       top_p: b.topP !== undefined ? b.topP : 0.95,
       stream: true,
+      ...groqReasoningParams(b.model || DEFAULT_GROQ_MODEL),
     };
     if (b.maxTokens) body.max_tokens = b.maxTokens;
 
@@ -350,6 +364,7 @@ export default async function handler(req: any, res: any) {
   // Allowlist model + trần tham số (bảo vệ key chung).
   const allowed = ALLOWED_MODELS[body.provider];
   if (!allowed) { res.status(400).json({ error: 'Provider không được hỗ trợ.' }); return; }
+  if (body.model && LEGACY_MODEL_ALIASES[body.model]) body.model = LEGACY_MODEL_ALIASES[body.model];
   if (body.model && !allowed.has(body.model)) {
     res.status(400).json({ error: `Model "${body.model}" không nằm trong danh sách cho phép.` });
     return;

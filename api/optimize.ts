@@ -17,10 +17,10 @@ const TRIGGER = 'Hãy thực hiện theo chỉ dẫn hệ thống ở trên.';
 // Chuỗi model dự phòng: mỗi model free-tier có HẠN MỨC RIÊNG (Gemini) + Groq quota
 // riêng. Khi một model chạm giới hạn (429), tự xoay sang model kế tiếp thay vì chờ.
 const MODEL_CHAIN: { provider: 'gemini' | 'groq'; model: string }[] = [
-  { provider: 'gemini', model: 'gemini-2.5-flash' },
+  { provider: 'gemini', model: 'gemini-3.5-flash-lite' },
   { provider: 'gemini', model: 'gemini-3.5-flash' },
-  { provider: 'gemini', model: 'gemini-2.5-pro' },
-  { provider: 'groq', model: 'llama-3.1-8b-instant' },
+  { provider: 'gemini', model: 'gemini-3.8-flash' },
+  { provider: 'groq', model: 'openai/gpt-oss-20b' },
 ];
 
 function isRateLimitError(e: any): boolean {
@@ -119,6 +119,8 @@ async function callGroqModel(model: string, system: string, user: string, temper
     model,
     messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
     temperature,
+    // GPT-OSS là model suy luận — mức thấp để nhanh và không ăn hết token trả lời.
+    ...(model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}),
   };
   if (json) body.response_format = { type: 'json_object' };
   const r = await fetch(GROQ_ENDPOINT, {

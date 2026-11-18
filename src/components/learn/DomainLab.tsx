@@ -1,5 +1,6 @@
 import { toast } from '../common/Toaster';
 import React, { useState, useEffect, useRef } from 'react';
+import { GEMINI_FLASH } from '../../config/models';
 import { 
   ArrowLeft, Atom, Lightbulb, Briefcase, Gamepad2, Settings, Send, 
   Trash2, Award, CheckCircle2, AlertTriangle, Sparkles, RefreshCw, 
@@ -242,7 +243,7 @@ export default function DomainLab({ domainId, onBack, onEarnXP }: DomainLabProps
         'gemini',
         systemPrompt,
         chatPayload,
-        { model: 'gemini-2.5-flash', temperature: 0.7 },
+        { model: GEMINI_FLASH, temperature: 0.7 },
         (chunk) => {
           accumulatedText += chunk;
           setMessages(prev => {

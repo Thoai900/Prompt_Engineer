@@ -14,13 +14,17 @@
 // ra nhiều model để cộng dồn quota, thay vì dồn tải vào một model rồi cụt hạn mức.
 /** Model flash MỚI NHẤT, chất lượng cao nhất — dùng cho tác vụ sinh nội dung hướng người dùng. */
 export const GEMINI_FLASH_LATEST = 'gemini-3.5-flash';
-/** Model nhanh, rẻ (workhorse) — dùng cho tác vụ nền tần suất cao: điền JSON, chấm điểm, tin tức. */
-export const GEMINI_FLASH = 'gemini-2.5-flash';
-/** Model suy luận sâu — dùng khi cần reasoning chất lượng cao. */
-export const GEMINI_PRO = 'gemini-2.5-pro';
+/** Model nhanh, rẻ (workhorse) — dùng cho tác vụ nền tần suất cao: điền JSON, chấm điểm, tin tức.
+ *  Thay gemini-2.5-flash (Google ngừng 01/12/2026 và tự chuyển sang model này). */
+export const GEMINI_FLASH = 'gemini-3.5-flash-lite';
+/** Model suy luận sâu — dùng khi cần reasoning chất lượng cao.
+ *  Thay gemini-2.5-pro (Google ngừng 01/12/2026 và tự chuyển sang model này). */
+export const GEMINI_PRO = 'gemini-3.8-flash';
 
-// --- Groq (Llama) ---
-export const GROQ_LLAMA_8B = 'llama-3.1-8b-instant';
+// --- Groq ---
+/** Model Groq mặc định (dự phòng khi Gemini lỗi). Thay llama-3.1-8b-instant — Groq đã ngừng
+ *  ở gói Free/Developer (16/08/2026). Là model suy luận: api/ai.ts gửi reasoning_effort thấp. */
+export const GROQ_DEFAULT = 'openai/gpt-oss-20b';
 
 // --- Anthropic (Claude, qua proxy — M1) ---
 /** Model Opus mạnh nhất — mặc định khi chọn Claude. */
@@ -53,9 +57,9 @@ export interface ModelOption {
 /** Nguồn master: mọi model app hỗ trợ chọn trong UI. */
 export const ALL_MODEL_OPTIONS: readonly ModelOption[] = [
   { value: GEMINI_FLASH_LATEST, label: 'Gemini 3.5 Flash (Mới nhất)',     provider: 'gemini', requiresUserKey: false },
-  { value: GEMINI_FLASH,  label: 'Gemini 2.5 Flash (Nhanh)',       provider: 'gemini', requiresUserKey: false },
-  { value: GEMINI_PRO,    label: 'Gemini 2.5 Pro (Pro)',           provider: 'gemini', requiresUserKey: false },
-  { value: GROQ_LLAMA_8B, label: 'Llama 3.1 8B (Groq · siêu nhanh)', provider: 'groq',  requiresUserKey: false },
+  { value: GEMINI_FLASH,  label: 'Gemini 3.5 Flash-Lite (Nhanh)',  provider: 'gemini', requiresUserKey: false },
+  { value: GEMINI_PRO,    label: 'Gemini 3.8 Flash (Suy luận)',    provider: 'gemini', requiresUserKey: false },
+  { value: GROQ_DEFAULT,  label: 'GPT-OSS 20B (Groq · siêu nhanh)', provider: 'groq',  requiresUserKey: false },
   { value: CLAUDE_OPUS,   label: 'Claude Opus 4.8 (Anthropic)',    provider: 'anthropic', requiresUserKey: false },
   { value: CLAUDE_HAIKU,  label: 'Claude Haiku 4.5 (Anthropic · nhanh)', provider: 'anthropic', requiresUserKey: false },
   { value: GPT_MINI,      label: 'GPT-4o mini (OpenAI)',           provider: 'openai', requiresUserKey: true  },
@@ -101,11 +105,13 @@ export interface ModelCost {
   outputPer1M: number; // USD / 1M token đầu ra
 }
 
+// LƯU Ý: giá của GEMINI_FLASH, GEMINI_PRO, GROQ_DEFAULT đang GIỮ TẠM giá của model cũ mà
+// chúng thay thế (2.5-flash / 2.5-pro / llama-3.1-8b) — CẦN cập nhật theo bảng giá chính thức.
 export const MODEL_COSTS: Record<string, ModelCost> = {
   [GEMINI_FLASH_LATEST]: { inputPer1M: 0.10, outputPer1M: 0.40 },
   [GEMINI_FLASH]:        { inputPer1M: 0.075, outputPer1M: 0.30 },
   [GEMINI_PRO]:          { inputPer1M: 1.25, outputPer1M: 10.0 },
-  [GROQ_LLAMA_8B]:       { inputPer1M: 0.05, outputPer1M: 0.08 },
+  [GROQ_DEFAULT]:        { inputPer1M: 0.05, outputPer1M: 0.08 },
   [CLAUDE_OPUS]:         { inputPer1M: 5.00, outputPer1M: 25.0 },
   [CLAUDE_HAIKU]:        { inputPer1M: 1.00, outputPer1M: 5.0 },
   [GPT_MINI]:            { inputPer1M: 0.15, outputPer1M: 0.60 },

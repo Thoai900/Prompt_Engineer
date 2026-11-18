@@ -89,6 +89,6 @@ console.log('OK — đăng xuất/đăng nhập lại để token mới có clai
 ## Sự cố thường gặp (đã gặp thật)
 
 - **`/api/*` trả `500 FUNCTION_INVOCATION_FAILED`** (mù, không JSON): function crash lúc nạp module. Nguyên nhân từng gặp: import file phụ `_`-prefix mà Vercel không bundle → **giữ mỗi serverless function TỰ CHỨA** (không import file helper cục bộ), giống `api/ai.ts`, `api/optimize.ts`. Luôn bọc cả handler trong `try/catch` trả JSON.
-- **`429 / RESOURCE_EXHAUSTED`**: Gemini free-tier chỉ **5 request/phút MỖI model**. `api/optimize.ts` đã **xoay vòng model** (gemini-2.5-flash → 3.5-flash → 2.5-pro → Groq) khi chạm giới hạn. Nếu vẫn hết: giảm số biến thể/vòng, hoặc nâng key Gemini trả phí.
+- **`429 / RESOURCE_EXHAUSTED`**: Gemini free-tier chỉ **5 request/phút MỖI model**. `api/optimize.ts` đã **xoay vòng model** (gemini-3.5-flash-lite → 3.5-flash → 3.8-flash → Groq gpt-oss-20b) khi chạm giới hạn. Nếu vẫn hết: giảm số biến thể/vòng, hoặc nâng key Gemini trả phí.
 - **`Missing or insufficient permissions`**: chưa deploy `firestore.rules` (xem mục 2).
 - **Đổi env mà không thấy tác dụng**: chưa redeploy Vercel sau khi set env.

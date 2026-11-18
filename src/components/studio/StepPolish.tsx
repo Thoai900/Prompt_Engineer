@@ -8,7 +8,7 @@
 import React, { useState } from 'react';
 import { Gauge, Loader2, Play, Scale, Wand2 } from 'lucide-react';
 import { toast } from '../common/Toaster';
-import { DEFAULT_MODEL, GROQ_LLAMA_8B, estimateCostUSD } from '../../config/models';
+import { DEFAULT_MODEL, GROQ_DEFAULT, estimateCostUSD } from '../../config/models';
 import { StudioDraft } from '../../utils/studioFlow';
 import SuggestionCard from './SuggestionCard';
 
@@ -119,7 +119,7 @@ export default function StepPolish({ draft, assembledText, onPatch }: StepPolish
       const { runPromptOnModel } = await import('../../services/aiService');
       const contenders = [
         { model: DEFAULT_MODEL, provider: 'gemini' as const },
-        { model: GROQ_LLAMA_8B, provider: 'groq' as const },
+        { model: GROQ_DEFAULT, provider: 'groq' as const },
       ];
       const results = await Promise.all(contenders.map(async (c): Promise<BakeoffResult> => {
         try {

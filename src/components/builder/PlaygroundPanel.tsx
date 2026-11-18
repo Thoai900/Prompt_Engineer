@@ -1,5 +1,6 @@
 import React from 'react';
 import { Sparkles, Loader2, Send } from 'lucide-react';
+import { GEMINI_FLASH, GEMINI_MODEL_OPTIONS } from '../../config/models';
 import AIResponseRenderer from '../common/AIResponseRenderer';
 import StepNarrator from '../common/StepNarrator';
 
@@ -91,7 +92,7 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
                 onChange={(e) => {
                   const val = e.target.value as 'gemini' | 'openai';
                   setPlaygroundProvider(val);
-                  setPlaygroundModel(val === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4o-mini');
+                  setPlaygroundModel(val === 'gemini' ? GEMINI_FLASH : 'gpt-4o-mini');
                 }}
                 className="text-xs px-2.5 py-1.5 border border-slate-200 dark:border-slate-880 bg-slate-50 dark:bg-slate-955 rounded-lg text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-500 font-semibold cursor-pointer"
               >
@@ -108,10 +109,9 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
               >
                 {playgroundProvider === 'gemini' ? (
                   <>
-                    <option value="gemini-2.5-flash">gemini-2.5-flash (Nhanh)</option>
-                    <option value="gemini-2.5-pro">gemini-2.5-pro (Pro)</option>
-                    <option value="gemini-1.5-flash">gemini-1.5-flash</option>
-                    <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+                    {GEMINI_MODEL_OPTIONS.map((m) => (
+                      <option key={m.value} value={m.value}>{m.label}</option>
+                    ))}
                   </>
                 ) : (
                   <>
@@ -162,14 +162,14 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
             </div>
           )}
 
-          {/* Llama-3-8B (Groq) — mô hình hỗ trợ DÀNH RIÊNG cho việc tạo prompt,
-              giúp tiết kiệm hạn mức Gemini. Áp dụng toàn cục, lưu cục bộ. */}
+          {/* Groq — mô hình DỰ PHÒNG cho việc tạo prompt khi Gemini lỗi/hết hạn mức.
+              Áp dụng toàn cục, lưu cục bộ. */}
           <div className="flex flex-col gap-0.5 pt-2 border-t border-dashed border-slate-200 dark:border-slate-800">
             <label className="text-[10px] font-bold text-amber-600 dark:text-amber-400 block flex items-center gap-1">
-              🦙 Llama-3-8B (Groq) — hỗ trợ tạo prompt
+              ⚡ Groq (GPT-OSS 20B) — dự phòng khi tạo prompt
             </label>
             <span className="text-[9px] text-slate-500 dark:text-slate-500 leading-snug mb-0.5">
-              Key mặc định của ứng dụng (Gemini + Llama) được giấu an toàn ở backend — chỉ cần đăng nhập là dùng được, việc tạo prompt ưu tiên Llama và tự chuyển sang Llama khi Gemini hết hạn mức. Nhập key Groq riêng vào đây để gọi thẳng bằng key của bạn (không qua backend).
+              Key mặc định của ứng dụng (Gemini + Groq) được giấu an toàn ở backend — chỉ cần đăng nhập là dùng được, việc tạo prompt dùng Gemini và tự chuyển sang Groq khi Gemini lỗi hoặc hết hạn mức. Nhập key Groq riêng vào đây để gọi thẳng bằng key của bạn (không qua backend).
             </span>
             <input
               type="password"

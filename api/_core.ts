@@ -22,8 +22,8 @@ function getJwks() {
 }
 
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
-const DEFAULT_GROQ_MODEL = 'llama-3.1-8b-instant';
-const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
+const DEFAULT_GROQ_MODEL = 'openai/gpt-oss-20b';
+const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash-lite';
 
 export async function verifyFirebaseToken(authHeader?: string): Promise<boolean> {
   if (!authHeader) return false;

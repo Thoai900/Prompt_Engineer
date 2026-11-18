@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { GEMINI_FLASH } from '../../config/models';
 import {
   Activity, Bot, Check, ChevronRight, Copy, Info, Newspaper, RefreshCw, Search, X,
 } from 'lucide-react';
@@ -39,7 +40,7 @@ export default function AiNewsSection() {
     const logs = [
       "📡 Đang kết nối tới trạm dữ liệu AI toàn cầu...",
       "🔍 Quét các trang tin công nghệ và AI Press Hub...",
-      "⚙️ Đang xử lý dữ liệu qua mô hình gemini-2.5-flash...",
+      `⚙️ Đang xử lý dữ liệu qua mô hình ${GEMINI_FLASH}...`,
       "📝 Tổng hợp tóm tắt bản tin và đánh giá chỉ số ảnh hưởng...",
       "✅ Hoàn tất! Đã cập nhật bản tin AI mới nhất."
     ];
@@ -111,7 +112,7 @@ export default function AiNewsSection() {
                 <h2 className="text-2xl font-bold text-slate-850 dark:text-white">Bản Tin Trí Tuệ Nhân Tạo 2026</h2>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-400">
-                AI Agent quét thông tin, dịch thuật và tổng hợp bản tin công nghệ thời gian thực bằng mô hình <strong className="text-indigo-650 dark:text-indigo-300">gemini-2.5-flash</strong>.
+                AI Agent quét thông tin, dịch thuật và tổng hợp bản tin công nghệ thời gian thực bằng mô hình <strong className="text-indigo-650 dark:text-indigo-300">{GEMINI_FLASH}</strong>.
               </p>
             </div>
 

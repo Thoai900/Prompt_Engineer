@@ -1,12 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
 import { proxyGenerate, proxyGenerateStream } from "./aiProxy";
-import { GEMINI_FLASH, GEMINI_FLASH_LATEST, GEMINI_PRO, GROQ_LLAMA_8B, GPT_MINI, TASK_DEFAULTS, type ModelProvider } from "../config/models";
+import { GEMINI_FLASH, GEMINI_FLASH_LATEST, GEMINI_PRO, GROQ_DEFAULT, GPT_MINI, TASK_DEFAULTS, type ModelProvider } from "../config/models";
 import { recordUsage } from "../utils/usageStats";
 import { sanitizeJsonString, extractJson, safeJsonParse } from "../utils/jsonUtils";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Quản lý API key:
-//  - Key MẶC ĐỊNH của ứng dụng (Gemini + Groq/Llama) KHÔNG còn nằm trong bundle
+//  - Key MẶC ĐỊNH của ứng dụng (Gemini + Groq) KHÔNG còn nằm trong bundle
 //    trình duyệt; chúng được giấu trong Firebase Cloud Functions (backend proxy).
 //    Khi client không có key riêng, mọi lời gọi đi qua proxy (yêu cầu đăng nhập).
 //  - Nếu người dùng tự nhập key riêng (Gemini qua options.apiKey, Groq qua
@@ -51,7 +51,7 @@ function buildGroqBody(
   stream: boolean
 ): Record<string, any> {
   const body: Record<string, any> = {
-    model: opts.model || GROQ_LLAMA_8B,
+    model: opts.model || GROQ_DEFAULT,
     messages: [
       { role: 'system', content: systemInstruction },
       { role: 'user', content: userContent },
@@ -59,6 +59,8 @@ function buildGroqBody(
     temperature: opts.temperature !== undefined ? opts.temperature : 0.7,
     top_p: opts.topP !== undefined ? opts.topP : 0.95,
   };
+  // GPT-OSS là model suy luận: token suy luận tính chung vào max_tokens → để mức thấp.
+  if (String(body.model).startsWith('openai/gpt-oss')) body.reasoning_effort = 'low';
   if (opts.maxTokens) body.max_tokens = opts.maxTokens;
   if (stream) body.stream = true;
   // response_format chỉ áp dụng cho lời gọi không stream (Groq không kết hợp được với stream)
@@ -66,7 +68,7 @@ function buildGroqBody(
   return body;
 }
 
-// Gọi Groq (Llama-3-8B) và trả về text thuần. Ném lỗi nếu thiếu key hoặc API lỗi.
+// Gọi Groq và trả về text thuần. Ném lỗi nếu thiếu key hoặc API lỗi.
 async function callGroqChat(
   systemInstruction: string,
   userContent: string,
@@ -103,7 +105,7 @@ async function callGroqChat(
 
   const data = await response.json();
   const text = data?.choices?.[0]?.message?.content || '';
-  recordUsage(opts.model || GROQ_LLAMA_8B, systemInstruction.length + userContent.length, text.length);
+  recordUsage(opts.model || GROQ_DEFAULT, systemInstruction.length + userContent.length, text.length);
   return text;
 }
 
@@ -177,12 +179,12 @@ async function callGroqChatStream(
       }
     }
   } finally {
-    recordUsage(opts.model || GROQ_LLAMA_8B, systemInstruction.length + userContent.length, outChars);
+    recordUsage(opts.model || GROQ_DEFAULT, systemInstruction.length + userContent.length, outChars);
   }
 }
 
-// Sinh JSON cho tác vụ tạo prompt: Gemini trước, fallback Llama-3-8B (Groq).
-// Llama 8B ở JSON mode hay lỗi `json_validate_failed` với JSON tiếng Việt dài
+// Sinh JSON cho tác vụ tạo prompt: Gemini trước, fallback Groq (GROQ_DEFAULT).
+// Model Groq nhỏ ở JSON mode dễ lỗi `json_validate_failed` với JSON tiếng Việt dài
 // (đứt trước khi hợp lệ → proxy trả 502) nên chỉ giữ làm dự phòng, kèm maxTokens
 // chặn vòng lặp sinh vô hạn. callGroqChat tự định tuyến (key riêng → gọi thẳng;
 // không có key → backend proxy).
@@ -205,7 +207,7 @@ async function generatePromptJson(
       options,
     });
   } catch (geminiError) {
-    console.warn('Gemini thất bại, chuyển về Groq (Llama-3-8B):', geminiError);
+    console.warn('Gemini thất bại, chuyển về Groq:', geminiError);
     return await callGroqChat(systemInstruction, userContent, {
       apiKey: options?.groqApiKey,
       model: options?.groqModel,
@@ -321,7 +323,7 @@ async function geminiGenerateWithFallback(params: GeminiCallParams): Promise<str
   try {
     return await geminiGenerate(params);
   } catch (geminiError) {
-    console.warn('Gemini lỗi — fallback tự động sang Groq (Llama-3-8B):', geminiError);
+    console.warn('Gemini lỗi — fallback tự động sang Groq:', geminiError);
     try {
       return await callGroqChat(params.systemInstruction, params.userContent, {
         apiKey: params.options?.groqApiKey,
@@ -352,7 +354,7 @@ async function geminiStreamWithFallback(
   } catch (geminiError) {
     // Chỉ fallback khi chưa phát ra chunk nào, tránh lặp/ghép nội dung sai.
     if (emitted) throw geminiError;
-    console.warn('Gemini stream lỗi — fallback tự động sang Groq (Llama-3-8B):', geminiError);
+    console.warn('Gemini stream lỗi — fallback tự động sang Groq:', geminiError);
     await callGroqChatStream(params.systemInstruction, params.userContent, onChunk, {
       apiKey: params.options?.groqApiKey,
       model: params.options?.groqModel,
@@ -376,8 +378,8 @@ export interface AiGenParams {
   useDeepReasoning?: boolean;
   customInstruction?: string;
   apiKey?: string;
-  groqApiKey?: string; // Ghi đè key Groq (Llama-3-8B); nếu trống lấy từ UI/env
-  groqModel?: string;  // Model Groq tùy chỉnh (mặc định llama-3.1-8b-instant)
+  groqApiKey?: string; // Ghi đè key Groq; nếu trống lấy từ UI/env
+  groqModel?: string;  // Model Groq tùy chỉnh (mặc định GROQ_DEFAULT)
   personaInstructions?: string; // Chỉ dẫn của Persona đang chọn — chèn lên đầu systemInstruction
 }
 
@@ -386,6 +388,17 @@ export function withPersona(systemInstruction: string, personaInstructions?: str
   const p = personaInstructions?.trim();
   if (!p) return systemInstruction;
   return `[PERSONA]\n${p}\n\n${systemInstruction}`;
+}
+
+/**
+ * Chọn model Gemini để viết một khối prompt.
+ * Bật "suy luận sâu" → GEMINI_PRO (trừ khối đơn giản: giọng văn/định dạng/ràng buộc);
+ * ngược lại dùng model người dùng chọn, mặc định model flash mới nhất.
+ */
+export function pickBlockModel(blockType: string, options?: AiGenParams): string {
+  const isSimpleBlock = ['tone', 'format', 'constraints'].includes(blockType);
+  if (options?.useDeepReasoning && !isSimpleBlock) return GEMINI_PRO;
+  return options?.model || GEMINI_FLASH_LATEST;
 }
 
 export async function generateAutoBlockStream(
@@ -461,45 +474,25 @@ Sinh ra chính xác đoạn nội dung trực tiếp cần thiết để điền
 QUAN TRỌNG: Nội dung này là VĂN BẢN PROMPT THẬT — viết như đang RA LỆNH TRỰC TIẾP cho AI sẽ thực thi prompt (xưng "Bạn", dùng câu mệnh lệnh "Hãy...", "Bạn là..."). TUYỆT ĐỐI KHÔNG viết theo kiểu mô tả/khuyên người dùng nên điền gì (SAI: "Khai báo vai trò..."; ĐÚNG: "Bạn là...").
 Ưu tiên súc tích, đi thẳng trọng tâm, không lặp ý, không thêm lời dẫn. KHÔNG GIẢI THÍCH, KHÔNG CHÀO HỎI.`;
 
-    // Dynamic model routing for speed and reasoning
-    let modelName = options?.model;
-    if (!modelName) {
-      const isSimpleBlock = ['tone', 'format', 'constraints'].includes(blockType);
-      if (isSimpleBlock || !options?.useDeepReasoning) {
-        modelName = GEMINI_FLASH_LATEST;
-      } else {
-        modelName = GEMINI_PRO;
-      }
-    }
+    const modelName = pickBlockModel(blockType, options);
     const temperature = options?.temperature !== undefined ? options.temperature : TASK_DEFAULTS.blockGeneration.temperature;
     const topP = options?.topP !== undefined ? options.topP : TASK_DEFAULTS.blockGeneration.topP;
     const userContent = currentText ? `Cải thiện đoạn: ${currentText}` : `Viết phần ${blockTitle}`;
 
-    // Ưu tiên Llama-3-8B (Groq) cho việc tạo nội dung khối để tiết kiệm hạn mức Gemini;
-    // nếu Groq lỗi thì fallback sang Gemini. Cả hai tự định tuyến key riêng/proxy.
-    try {
-      await callGroqChatStream(systemInstruction, userContent, onChunk, {
-        apiKey: options?.groqApiKey,
-        model: options?.groqModel,
+    // Gemini (model người dùng chọn / suy luận sâu) trước; lỗi trước khi phát chunk nào
+    // thì tự chuyển sang Groq. Cả hai tự định tuyến key riêng/proxy.
+    await geminiStreamWithFallback(
+      {
+        model: modelName,
+        systemInstruction,
+        userContent,
         temperature,
         topP,
-        maxTokens: maxOutputTokens,
-      });
-    } catch (groqError) {
-      console.warn('Groq (Llama-3-8B) stream thất bại, chuyển về Gemini:', groqError);
-      await geminiStream(
-        {
-          model: modelName,
-          systemInstruction,
-          userContent,
-          temperature,
-          topP,
-          maxOutputTokens,
-          options,
-        },
-        onChunk
-      );
-    }
+        maxOutputTokens,
+        options,
+      },
+      onChunk
+    );
   } catch (error) {
     console.error("AI Stream Generation failed:", error);
     throw error;

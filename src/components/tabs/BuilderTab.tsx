@@ -31,6 +31,7 @@ import { PRESET_RULES, PRESET_SKILLS } from '../../presets';
 import { DEFAULT_FRAMEWORKS } from '../../utils/builderUtils';
 import { templateToGraphProject } from '../../utils/graphMigration';
 import { openProjectInGraph } from '../../services/graphExportService';
+import { GEMINI_FLASH } from '../../config/models';
 
 interface BuilderTabProps {
   initialTemplate: PromptTemplate | null;
@@ -148,7 +149,7 @@ export default function BuilderTab({
   const [customInstructions, setCustomInstructions] = useState<Record<string, string>>({});
 
   // AI Configuration states for block generation
-  const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-flash');
+  const [selectedModel, setSelectedModel] = useState<string>(GEMINI_FLASH);
   const [useDeepReasoning, setUseDeepReasoning] = useState<boolean>(false);
   const [customTemp, setCustomTemp] = useState<number>(0.7);
   const [customTopP, setCustomTopP] = useState<number>(0.95);

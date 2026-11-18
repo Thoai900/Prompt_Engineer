@@ -1,6 +1,6 @@
 import { auth } from '../firebase';
 import { recordUsage } from '../utils/usageStats';
-import { CLAUDE_OPUS, GEMINI_FLASH_LATEST, GROQ_LLAMA_8B } from '../config/models';
+import { CLAUDE_OPUS, GEMINI_FLASH_LATEST, GROQ_DEFAULT } from '../config/models';
 
 // Client gọi backend proxy (Firebase Cloud Function `aiProxy`) để dùng key MẶC ĐỊNH
 // của ứng dụng mà KHÔNG lộ key ra bundle trình duyệt. Bắt buộc đăng nhập: mỗi request
@@ -39,7 +39,7 @@ const OPTIMIZE_URL: string =
 // Thống kê usage (M2): model hiệu dụng + tổng ký tự đầu vào của một request proxy.
 function effectiveModel(req: ProxyRequest): string {
   if (req.model) return req.model;
-  if (req.provider === 'groq') return GROQ_LLAMA_8B;
+  if (req.provider === 'groq') return GROQ_DEFAULT;
   if (req.provider === 'anthropic') return CLAUDE_OPUS;
   return GEMINI_FLASH_LATEST;
 }

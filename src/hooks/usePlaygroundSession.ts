@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { GEMINI_FLASH } from '../config/models';
 import { runPlaygroundChatStream } from '../services/aiService';
 import { useWorkspace } from '../context/WorkspaceContext';
 
@@ -16,7 +17,7 @@ export const usePlaygroundSession = () => {
   
   // Playground Config Parameters
   const [playgroundProvider, setPlaygroundProvider] = useState<'gemini' | 'openai'>('gemini');
-  const [playgroundModel, setPlaygroundModel] = useState<string>('gemini-2.5-flash');
+  const [playgroundModel, setPlaygroundModel] = useState<string>(GEMINI_FLASH);
   const [playgroundTemp, setPlaygroundTemp] = useState<number>(0.7);
   const [playgroundMaxTokens, setPlaygroundMaxTokens] = useState<number>(2048);
   const [showPlaygroundConfig, setShowPlaygroundConfig] = useState(false);

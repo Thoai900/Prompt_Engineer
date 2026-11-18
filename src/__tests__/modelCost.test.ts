@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { estimateTokens, estimateCostUSD, MODEL_COSTS, GEMINI_FLASH, GROQ_LLAMA_8B } from '../config/models';
+import { estimateTokens, estimateCostUSD, MODEL_COSTS, GEMINI_FLASH, GROQ_DEFAULT } from '../config/models';
 
 describe('estimateTokens', () => {
   it('~ 4 ký tự / token, làm tròn lên', () => {
@@ -24,6 +24,6 @@ describe('estimateCostUSD', () => {
 
   it('model rẻ hơn cho chi phí thấp hơn với cùng nội dung', () => {
     const t = 'x'.repeat(4000);
-    expect(estimateCostUSD(GROQ_LLAMA_8B, t, t)).toBeLessThan(estimateCostUSD(GEMINI_FLASH, t, t));
+    expect(estimateCostUSD(GROQ_DEFAULT, t, t)).toBeLessThan(estimateCostUSD(GEMINI_FLASH, t, t));
   });
 });
