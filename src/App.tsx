@@ -4,7 +4,7 @@
  */
 
 import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { Brain, Briefcase, Drama, FlaskConical, GraduationCap, Home, Library, LogIn, LogOut, Loader2, Moon, Sun, Zap, Menu, X, ScrollText, PenTool, PencilLine, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Brain, Briefcase, Drama, FlaskConical, GraduationCap, Home, Library, LogIn, LogOut, Loader2, Moon, Sun, Zap, X, SquarePen, MoreHorizontal, ScrollText, PenTool, PencilLine, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, getDocFromServer, limit, onSnapshot, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
@@ -37,6 +37,7 @@ import { loadLocalProjects } from './services/chainAppService';
 import { bumpTemplateUsage } from './services/metricsService';
 import { blocksChanged, pushVersion, snapshotVersion } from './utils/templateVersionUtils';
 import { PRESET_RULES, PRESET_SKILLS } from './presets';
+import { NAV_GROUPS, groupOfTab, targetTabForGroup, type NavGroupId } from './utils/navGroups';
 import type { AiRule, AiSkill } from './types';
 
 // Deep-linking: đồng bộ tab hiện tại với URL hash (vd: #builder) để chia sẻ link
@@ -76,6 +77,14 @@ export default function App() {
   useEffect(() => {
     setVisitedTabs((prev) => (prev.has(activeTab) ? prev : new Set(prev).add(activeTab)));
   }, [activeTab]);
+
+  // Tab dùng gần nhất của từng nhóm điều hướng — bấm lại nhóm trên thanh đáy mobile sẽ quay về đúng tab đó.
+  const [lastTabByGroup, setLastTabByGroup] = useState<Partial<Record<NavGroupId, TabType>>>({});
+  useEffect(() => {
+    const g = groupOfTab(activeTab);
+    if (g) setLastTabByGroup((prev) => (prev[g.id] === activeTab ? prev : { ...prev, [g.id]: activeTab }));
+  }, [activeTab]);
+  const activeGroup = groupOfTab(activeTab);
 
   // Ghi tab hiện tại lên URL hash khi đổi tab (không tạo thêm entry rác cho 'studio' lúc mới vào).
   useEffect(() => {
@@ -137,6 +146,52 @@ export default function App() {
     { tab: 'lab' as TabType, label: 'Lab', icon: <FlaskConical size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
     { tab: 'aifuture' as TabType, label: 'AI Future', icon: <Brain size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
   ], []);
+
+  const navItemByTab = useMemo(
+    () => Object.fromEntries(navigationItems.map((it) => [it.tab, it])) as Record<TabType, (typeof navigationItems)[number]>,
+    [navigationItems],
+  );
+
+  const GROUP_ICONS: Record<NavGroupId, React.ReactNode> = {
+    create: <SquarePen size={20} />,
+    library: <Library size={20} />,
+    experiment: <FlaskConical size={20} />,
+    learn: <GraduationCap size={20} />,
+  };
+
+  // Danh sách điều hướng chia nhóm — dùng chung cho sidebar desktop và menu trượt mobile.
+  const renderGroupedNav = (collapsed: boolean, onSelect: (tab: TabType) => void) => {
+    const renderItem = (tab: TabType) => {
+      const item = navItemByTab[tab];
+      return (
+        <NavItem
+          key={tab}
+          icon={item.icon}
+          label={item.label}
+          isActive={activeTab === tab}
+          onClick={() => onSelect(tab)}
+          activeColorClass={item.active}
+          iconColorClass={item.iconColor}
+          isCollapsed={collapsed}
+        />
+      );
+    };
+    return (
+      <div className="space-y-1">
+        {renderItem('home')}
+        {NAV_GROUPS.map((g) => (
+          <div key={g.id} className="pt-3">
+            {collapsed ? (
+              <div className="mx-3 mb-2 border-t border-line" aria-hidden />
+            ) : (
+              <div className="px-3 pb-1 text-xs font-medium text-faint">{g.label}</div>
+            )}
+            <div className="space-y-0.5">{g.tabs.map(renderItem)}</div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   useEffect(() => {
     localStorage.setItem('theme', theme);
@@ -396,15 +451,33 @@ export default function App() {
           >
             {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
           </button>
-          <button
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="touch-manipulation rounded-xl p-2 text-slate-650 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-900 cursor-pointer"
-            title="Mở Menu"
-          >
-            <Menu size={20} />
-          </button>
         </div>
       </header>
+      )}
+
+      {/* Tab con của nhóm đang mở (mobile) — chỉ hiện khi nhóm có từ 2 tab */}
+      {activeTab !== 'home' && activeGroup && activeGroup.tabs.length > 1 && (
+        <div className="md:hidden shrink-0 border-b border-line bg-panel">
+          <div className="flex overflow-x-auto px-2 no-scrollbar" role="tablist" aria-label={activeGroup.label}>
+            {activeGroup.tabs.map((tab) => {
+              const item = navItemByTab[tab];
+              const isActive = activeTab === tab;
+              return (
+                <button
+                  key={tab}
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setActiveTab(tab)}
+                  className={`touch-manipulation shrink-0 whitespace-nowrap min-h-11 px-3 text-sm border-b-2 transition-colors cursor-pointer ${
+                    isActive ? 'border-emerald-600 font-semibold text-ink' : 'border-transparent font-medium text-muted'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {/* Drawer trượt trên Mobile */}
@@ -455,24 +528,8 @@ export default function App() {
               </div>
 
               {/* Tabs trong Drawer */}
-              <div className="flex-1 space-y-1.5 overflow-y-auto pr-1">
-                {navigationItems.map((item) => (
-                  <button
-                    key={item.tab}
-                    onClick={() => {
-                      setActiveTab(item.tab);
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className={`flex w-full items-center space-x-3.5 rounded-xl border border-transparent px-3.5 py-3 text-sm font-semibold transition-all cursor-pointer ${
-                      activeTab === item.tab
-                        ? item.active
-                        : 'text-muted hover:bg-hover'
-                    }`}
-                  >
-                    <span className={activeTab === item.tab ? '' : item.iconColor}>{item.icon}</span>
-                    <span>{item.label}</span>
-                  </button>
-                ))}
+              <div className="flex-1 overflow-y-auto pr-1">
+                {renderGroupedNav(false, (tab) => { setActiveTab(tab); setIsMobileMenuOpen(false); })}
               </div>
 
               {/* Footer Drawer */}
@@ -527,7 +584,7 @@ export default function App() {
           </button>
         </div>
 
-        <div className="flex flex-1 flex-col space-y-1">
+        <div className="flex min-h-0 flex-1 flex-col space-y-1">
           <div className="mb-4 px-2 flex flex-col items-center gap-2">
             {!isSidebarCollapsed ? (
               <>
@@ -565,18 +622,9 @@ export default function App() {
             )}
           </div>
 
-          {navigationItems.map((item) => (
-            <NavItem
-              key={item.tab}
-              icon={item.icon}
-              label={item.label}
-              isActive={activeTab === item.tab}
-              onClick={() => setActiveTab(item.tab)}
-              activeColorClass={item.active}
-              iconColorClass={item.iconColor}
-              isCollapsed={isSidebarCollapsed}
-            />
-          ))}
+          <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
+            {renderGroupedNav(isSidebarCollapsed, setActiveTab)}
+          </div>
         </div>
 
         <div className="mt-auto w-full border-t border-slate-100 px-2 pt-4 dark:border-slate-900">
@@ -694,6 +742,38 @@ export default function App() {
         </Suspense>
       </main>
 
+      {/* Thanh tab đáy (mobile): 4 nhóm + "Thêm" (menu đầy đủ: workspace, persona, đăng nhập) */}
+      {activeTab !== 'home' && (
+        <nav className="md:hidden shrink-0 border-t border-line bg-panel pb-safe" aria-label="Điều hướng chính">
+          <div className="grid grid-cols-5">
+            {NAV_GROUPS.map((g) => {
+              const isActive = activeGroup?.id === g.id;
+              return (
+                <button
+                  key={g.id}
+                  onClick={() => setActiveTab(isActive ? activeTab : targetTabForGroup(g.id, lastTabByGroup))}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`touch-manipulation flex min-h-14 flex-col items-center justify-center gap-1 text-xs cursor-pointer ${
+                    isActive ? 'font-semibold text-emerald-700 dark:text-emerald-400' : 'font-medium text-muted'
+                  }`}
+                >
+                  {GROUP_ICONS[g.id]}
+                  <span>{g.label}</span>
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              title="Mở Menu"
+              className="touch-manipulation flex min-h-14 flex-col items-center justify-center gap-1 text-xs font-medium text-muted cursor-pointer"
+            >
+              <MoreHorizontal size={20} />
+              <span>Thêm</span>
+            </button>
+          </div>
+        </nav>
+      )}
+
       <PersonaManagerModal isOpen={isPersonaModalOpen} onClose={() => setIsPersonaModalOpen(false)} />
     </div>
   );
@@ -738,7 +818,7 @@ function NavItem({
     <button
       onClick={onClick}
       title={isCollapsed ? label : undefined}
-      className={`relative flex w-full items-center rounded-lg border border-transparent py-2.5 text-sm font-medium transition-colors duration-200 ${
+      className={`relative flex w-full items-center rounded-lg border border-transparent min-h-11 md:min-h-0 py-2 text-sm font-medium transition-colors duration-200 ${
         isCollapsed ? 'justify-center px-0' : 'space-x-3 px-3'
       } ${
         isActive

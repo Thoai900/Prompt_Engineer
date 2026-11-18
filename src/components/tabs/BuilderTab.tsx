@@ -6,7 +6,7 @@ import {
   ChevronDown, ChevronRight, AlignLeft, Minimize2, Briefcase, 
   Menu, User, Pin, Send, Clock, Undo, Redo, Shield, AlertCircle, Brain,
   Download, FileText, FileJson, Printer, ScrollText, Workflow,
-  Wrench, Settings, Loader2
+  Wrench, Settings, Loader2, Eye
 } from 'lucide-react';
 import { AVAILABLE_BLOCKS, BLOCK_SUGGESTIONS } from '../../data';
 import { PromptBlock, PromptTemplate, AiRule, AiSkill, TabType, PromptVariable, BlockType } from '../../types';
@@ -187,10 +187,13 @@ export default function BuilderTab({
   const [previewMode, setPreviewMode] = useState<'combined' | 'split'>('combined');
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  // Màn vừa (768–1439px): bảng xem trước thành ngăn kéo trượt từ phải để cột soạn thảo đủ rộng.
+  const [isCompact, setIsCompact] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);
+      setIsCompact(window.innerWidth >= 768 && window.innerWidth < 1440);
     };
     handleResize();
     window.addEventListener('resize', handleResize);
@@ -833,6 +836,17 @@ export default function BuilderTab({
                  <span className="hidden md:inline">Thêm vào Dự án</span>
                </button>
 
+               {isCompact && (
+                 <button
+                   onClick={() => setShowMobilePanel(showMobilePanel === 'preview' ? 'build' : 'preview')}
+                   aria-expanded={showMobilePanel === 'preview'}
+                   className="touch-manipulation flex items-center justify-center gap-1.5 px-3 h-9 rounded-lg border border-line bg-panel text-ink text-sm font-medium hover:bg-hover cursor-pointer"
+                 >
+                   <Eye size={15} />
+                   Xem trước
+                 </button>
+               )}
+
                <div className="md:hidden">
                  <button 
                    onClick={() => setIsBottomSheetOpen(true)}
@@ -890,9 +904,14 @@ export default function BuilderTab({
           />
         </div>
 
-        {/* 3. RIGHT SIDEBAR (PREVIEW & PLAYGROUND SIMULATOR) */}
-        <div className={`flex-1 md:w-96 lg:w-[420px] shrink-0 border-l border-slate-200/50 dark:border-slate-850/50 bg-white/20 dark:bg-slate-950/20 backdrop-blur-md flex flex-col h-full overflow-hidden transition-all duration-300 z-10 ${
-          isMobile && showMobilePanel === 'build' ? 'hidden md:flex' : 'flex'
+        {/* 3. RIGHT SIDEBAR (PREVIEW & PLAYGROUND SIMULATOR) — màn vừa: ngăn kéo phủ lên, bấm nền để đóng */}
+        {isCompact && showMobilePanel === 'preview' && (
+          <div className="absolute inset-0 z-20 bg-slate-950/30" onClick={() => setShowMobilePanel('build')} aria-hidden />
+        )}
+        <div className={`flex-1 shrink-0 border-l border-slate-200/50 dark:border-slate-850/50 flex flex-col h-full overflow-hidden ${
+          isCompact
+            ? `absolute inset-y-0 right-0 z-30 w-[420px] max-w-[85%] bg-panel shadow-xl ${showMobilePanel === 'preview' ? 'flex' : 'hidden'}`
+            : `md:w-96 lg:w-[420px] bg-white/20 dark:bg-slate-950/20 z-10 ${isMobile && showMobilePanel === 'build' ? 'hidden md:flex' : 'flex'}`
         }`}>
           {/* Header Panel Tabs */}
           <div className="p-4 border-b border-slate-200/50 dark:border-slate-850/50 bg-slate-50/50 dark:bg-slate-900/10 flex justify-between items-center shrink-0 flex-wrap gap-2">
@@ -930,7 +949,7 @@ export default function BuilderTab({
                   </button>
                )}
 
-               {isMobile && (
+               {(isMobile || isCompact) && (
                  <button 
                    onClick={() => setShowMobilePanel('build')}
                    className="flex items-center p-2 px-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 text-xs font-bold cursor-pointer active:scale-95"

@@ -64,13 +64,15 @@ export const EmptyStateGenerator: React.FC<EmptyStateGeneratorProps> = ({
             </p>
           </div>
 
-          <div className="w-full max-w-lg flex flex-col sm:flex-row items-stretch gap-2">
+          {/* Container query: xếp dọc khi CỘT hẹp (không phụ thuộc bề rộng màn hình) để ô nhập không bị cắt chữ */}
+          <div className="@container w-full max-w-lg">
+          <div className="w-full flex flex-col @md:flex-row items-stretch gap-2">
             <div className="relative flex-1 flex items-center bg-slate-50/50 dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-xl focus-within:ring-2 focus-within:ring-emerald-600/30 focus-within:border-emerald-600 transition-colors">
               <Search className="absolute left-3 w-4 h-4 text-slate-400 dark:text-slate-550 pointer-events-none" />
               <GhostTextInput
                 type="text"
                 ghostMode="prose"
-                placeholder="Bạn muốn tạo prompt để giải quyết bài toán gì?..."
+                placeholder="Bạn cần prompt cho việc gì?"
                 value={value}
                 onValueChange={onValueChange}
                 onKeyDown={handleKeyDown}
@@ -85,6 +87,7 @@ export const EmptyStateGenerator: React.FC<EmptyStateGeneratorProps> = ({
             >
               Tạo prompt
             </button>
+          </div>
           </div>
 
           {error && (

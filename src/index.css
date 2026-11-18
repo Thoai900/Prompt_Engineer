@@ -127,6 +127,13 @@ html.dark {
   .pb-safe {
       padding-bottom: env(safe-area-inset-bottom);
   }
+  /* Thanh cuộn ngang ẩn (tab con trên mobile vẫn vuốt được) */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 html, body, #root {
