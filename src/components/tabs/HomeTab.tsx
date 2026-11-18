@@ -212,8 +212,8 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
           <img
             src={theme === 'dark' ? '/screenshots/app-dark.webp' : '/screenshots/app-light.webp'}
             alt="Giao diện PromptBuilder: Prompt Graph nối các khối Vai trò, Định dạng, Giọng điệu, Ràng buộc vào Prompt gốc"
-            width={1920}
-            height={1140}
+            width={2160}
+            height={1284}
             className="hidden sm:block w-full h-auto rounded-xl border border-line shadow-sm"
           />
         </div>
