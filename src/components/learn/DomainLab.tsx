@@ -1,6 +1,5 @@
 import { toast } from '../common/Toaster';
 import React, { useState, useEffect, useRef } from 'react';
-import { GEMINI_FLASH } from '../../config/models';
 import { 
   ArrowLeft, Atom, Lightbulb, Briefcase, Gamepad2, Settings, Send, 
   Trash2, Award, CheckCircle2, AlertTriangle, Sparkles, RefreshCw, 
