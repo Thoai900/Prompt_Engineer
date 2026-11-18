@@ -95,7 +95,7 @@ export default function StepCheck({ draft, assembledText, onPatch }: StepCheckPr
       <button
         onClick={handleLint}
         disabled={isLinting || !assembledText.trim()}
-        className="flex cursor-pointer items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600 px-5 py-3 text-sm font-bold text-white shadow-md shadow-violet-500/20 transition-all hover:shadow-lg hover:shadow-violet-500/30 disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex cursor-pointer items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-5 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-40"
       >
         {isLinting ? <Loader2 size={16} className="animate-spin" /> : <Stethoscope size={16} />}
         {isLinting ? 'Đang phân tích…' : hasRun ? 'Chấm điểm lại' : 'Chấm điểm prompt'}
@@ -113,16 +113,16 @@ export default function StepCheck({ draft, assembledText, onPatch }: StepCheckPr
 
       {issues.length > 0 && (
         <div className="space-y-3">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-faint">
+          <div className="text-xs font-bold text-faint">
             {issues.length} vấn đề tìm thấy
           </div>
           {issues.map((issue, i) => (
             <div key={i} className="rounded-2xl border border-line bg-panel/80 p-4">
               <div className="flex flex-wrap items-center gap-2">
-                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${SEVERITY_STYLES[issue.severity]}`}>
+                <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${SEVERITY_STYLES[issue.severity]}`}>
                   {SEVERITY_LABELS[issue.severity]}
                 </span>
-                <span className="text-[11px] font-semibold text-faint">{issue.category}</span>
+                <span className="text-xs font-semibold text-faint">{issue.category}</span>
               </div>
               <p className="mt-2 text-sm leading-relaxed text-ink">{issue.message}</p>
               {issue.suggestion && (

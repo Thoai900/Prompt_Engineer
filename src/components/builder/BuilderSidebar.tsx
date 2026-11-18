@@ -124,7 +124,7 @@ export const BuilderSidebar: React.FC<BuilderSidebarProps> = ({
               title={`Thêm ${block.title}`}
             >
               {BLOCK_ICONS[block.type] || <Plus size={16} />}
-              <span className="absolute left-full ml-3 px-2 py-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-[10px] font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none shadow-xl">
+              <span className="absolute left-full ml-3 px-2 py-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none shadow-xl">
                 {block.title}
               </span>
             </button>
@@ -138,7 +138,7 @@ export const BuilderSidebar: React.FC<BuilderSidebarProps> = ({
             title="Tạo Khối Mới"
           >
             <Plus size={16} />
-            <span className="absolute left-full ml-3 px-2 py-1 bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-[10px] font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none shadow-xl">
+            <span className="absolute left-full ml-3 px-2 py-1 bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none shadow-xl">
               Khối tùy chỉnh
             </span>
           </button>
@@ -148,7 +148,7 @@ export const BuilderSidebar: React.FC<BuilderSidebarProps> = ({
         <div className="flex-1 flex flex-col h-full overflow-hidden pt-2 pb-14 lg:pb-0 select-none">
           <div className="p-4 border-b border-slate-200/50 dark:border-slate-850/50 flex flex-col gap-4 shrink bg-white/40 dark:bg-slate-900/10 overflow-y-auto custom-scrollbar max-h-[60%]">
             <div>
-               <h3 className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-550 tracking-wider mb-2">Cài đặt bộ</h3>
+               <h3 className="text-xs font-bold text-slate-400 dark:text-slate-550 mb-2">Cài đặt bộ</h3>
                <div className="relative mb-2">
                  <select 
                    value={globalTheme}
@@ -171,13 +171,13 @@ export const BuilderSidebar: React.FC<BuilderSidebarProps> = ({
                  <button
                    onClick={handleQuickAddSet}
                    disabled={globalTheme === 'empty'}
-                   className="w-full px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 rounded-lg flex justify-center items-center h-10 shadow-md shadow-violet-900/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer active:scale-95"
+                   className="w-full px-2 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg flex justify-center items-center h-10 shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer active:scale-95"
                  >
                    + TẠO BỘ
                  </button>
                  <button
                    onClick={clearAllBlocks}
-                   className="w-full px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 hover:border-slate-350 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 rounded-lg flex justify-center items-center h-10 shadow-sm transition-all cursor-pointer active:scale-95"
+                   className="w-full px-2 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 hover:border-slate-350 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 rounded-lg flex justify-center items-center h-10 shadow-sm transition-all cursor-pointer active:scale-95"
                  >
                    XÓA TẤT CẢ
                  </button>
@@ -203,7 +203,7 @@ export const BuilderSidebar: React.FC<BuilderSidebarProps> = ({
             <div className="flex flex-col">
               <button 
                 onClick={() => setShowComponents(!showComponents)}
-                className="flex items-center justify-between text-[10px] uppercase font-bold text-slate-450 dark:text-slate-500 tracking-wider hover:text-slate-700 dark:hover:text-slate-300 py-1 transition-colors text-left cursor-pointer"
+                className="flex items-center justify-between text-xs font-bold text-slate-450 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 py-1 transition-colors text-left cursor-pointer"
               >
                 <span>📦 Khối xây dựng prompt</span>
                 <ChevronDown size={12} className={`transition-transform duration-200 ${showComponents ? 'rotate-0' : '-rotate-90'}`} />
@@ -232,7 +232,7 @@ export const BuilderSidebar: React.FC<BuilderSidebarProps> = ({
                               <div className="flex justify-between items-center min-h-[28px]">
                                 <div className="flex flex-col min-w-0 flex-1 pr-2">
                                   <p className="text-xs font-semibold truncate text-slate-800 dark:text-slate-100">{block.title}</p>
-                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2 leading-relaxed">{block.description}</p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2 leading-relaxed">{block.description}</p>
                                 </div>
                                 <button 
                                   onClick={(e) => {
@@ -256,7 +256,7 @@ export const BuilderSidebar: React.FC<BuilderSidebarProps> = ({
                       className="w-full mt-3 p-3 border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-violet-500/50 rounded-xl text-slate-500 dark:text-slate-400 bg-white/40 dark:bg-slate-900/20 hover:bg-white/60 dark:hover:bg-slate-900/40 transition-all flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-[0.98]"
                     >
                       <Plus size={18} className="text-violet-500 dark:text-violet-400" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider">Tạo Khối Mới</span>
+                      <span className="text-xs font-bold">Tạo Khối Mới</span>
                     </button>
                   </div>
                 )}
@@ -267,7 +267,7 @@ export const BuilderSidebar: React.FC<BuilderSidebarProps> = ({
             <div className="flex flex-col">
               <button 
                 onClick={() => setShowFrameworks(!showFrameworks)}
-                className="flex items-center justify-between text-[10px] uppercase font-bold text-slate-450 dark:text-slate-550 tracking-wider hover:text-slate-700 dark:hover:text-slate-300 py-1 transition-colors text-left cursor-pointer"
+                className="flex items-center justify-between text-xs font-bold text-slate-450 dark:text-slate-550 hover:text-slate-700 dark:hover:text-slate-300 py-1 transition-colors text-left cursor-pointer"
               >
                 <span>🎨 Cấu trúc Khung mẫu (Framework)</span>
                 <ChevronDown size={12} className={`transition-transform duration-200 ${showFrameworks ? 'rotate-0' : '-rotate-90'}`} />
@@ -289,7 +289,7 @@ export const BuilderSidebar: React.FC<BuilderSidebarProps> = ({
                     </button>
                   ))}
                   {filteredFrameworks.length === 0 && (
-                    <p className="text-[10px] text-slate-500 italic p-1">Không tìm thấy khung mẫu nào phù hợp.</p>
+                    <p className="text-xs text-slate-500 italic p-1">Không tìm thấy khung mẫu nào phù hợp.</p>
                   )}
                 </div>
               )}
@@ -299,7 +299,7 @@ export const BuilderSidebar: React.FC<BuilderSidebarProps> = ({
             <div className="flex flex-col">
               <button 
                 onClick={() => setShowRulesLibrary(!showRulesLibrary)}
-                className="flex items-center justify-between text-[10px] uppercase font-bold text-slate-450 dark:text-slate-550 tracking-wider hover:text-slate-700 dark:hover:text-slate-300 py-1 transition-colors text-left cursor-pointer"
+                className="flex items-center justify-between text-xs font-bold text-slate-450 dark:text-slate-550 hover:text-slate-700 dark:hover:text-slate-300 py-1 transition-colors text-left cursor-pointer"
               >
                 <span>📜 Thư viện Hệ thống & Quy chuẩn</span>
                 <ChevronDown size={12} className={`transition-transform duration-200 ${showRulesLibrary ? 'rotate-0' : '-rotate-90'}`} />
@@ -311,19 +311,19 @@ export const BuilderSidebar: React.FC<BuilderSidebarProps> = ({
                   <div className="flex gap-1 border-b border-slate-200 dark:border-slate-850 pb-1.5">
                     <button 
                       onClick={() => { setShowRulesInSidebar(true); setShowSkillsInSidebar(false); }}
-                      className={`text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded-md cursor-pointer ${showRulesInSidebar && !showSkillsInSidebar ? 'bg-violet-550/15 text-violet-400' : 'text-slate-500 hover:text-slate-300'}`}
+                      className={`text-xs font-bold px-2 py-1 rounded-md cursor-pointer ${showRulesInSidebar && !showSkillsInSidebar ? 'bg-violet-550/15 text-violet-400' : 'text-slate-500 hover:text-slate-300'}`}
                     >
                       Quy chuẩn
                     </button>
                     <button 
                       onClick={() => { setShowRulesInSidebar(false); setShowSkillsInSidebar(true); }}
-                      className={`text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded-md cursor-pointer ${showSkillsInSidebar && !showRulesInSidebar ? 'bg-violet-550/15 text-violet-400' : 'text-slate-500 hover:text-slate-300'}`}
+                      className={`text-xs font-bold px-2 py-1 rounded-md cursor-pointer ${showSkillsInSidebar && !showRulesInSidebar ? 'bg-violet-550/15 text-violet-400' : 'text-slate-500 hover:text-slate-300'}`}
                     >
                       Kỹ năng
                     </button>
                     <button 
                       onClick={() => { setShowRulesInSidebar(true); setShowSkillsInSidebar(true); }}
-                      className={`text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded-md cursor-pointer ${showRulesInSidebar && showSkillsInSidebar ? 'bg-slate-800 text-slate-300' : 'text-slate-500 hover:text-slate-300'}`}
+                      className={`text-xs font-bold px-2 py-1 rounded-md cursor-pointer ${showRulesInSidebar && showSkillsInSidebar ? 'bg-slate-800 text-slate-300' : 'text-slate-500 hover:text-slate-300'}`}
                     >
                       Tất cả
                     </button>
@@ -331,7 +331,7 @@ export const BuilderSidebar: React.FC<BuilderSidebarProps> = ({
 
                   {showRulesInSidebar && (
                     <div className="space-y-1.5">
-                      <span className="text-[8px] font-bold uppercase tracking-widest text-slate-550 dark:text-slate-600 block px-1">Quy chuẩn AI (System Rules)</span>
+                      <span className="text-xs font-bold text-slate-550 dark:text-slate-600 block px-1">Quy chuẩn AI (System Rules)</span>
                       {filteredRules.map(rule => (
                         <button
                           key={rule.id}
@@ -342,7 +342,7 @@ export const BuilderSidebar: React.FC<BuilderSidebarProps> = ({
                             <ScrollText size={13} className="text-emerald-500 shrink-0" />
                             <div className="flex flex-col min-w-0">
                               <span className="truncate text-slate-800 dark:text-slate-200">{rule.title}</span>
-                              <span className="text-[9px] text-slate-500 truncate">{rule.description}</span>
+                              <span className="text-xs text-slate-500 truncate">{rule.description}</span>
                             </div>
                           </div>
                           <Plus size={11} className="text-slate-400 group-hover:text-violet-500 shrink-0 ml-1.5" />
@@ -353,7 +353,7 @@ export const BuilderSidebar: React.FC<BuilderSidebarProps> = ({
 
                   {showSkillsInSidebar && (
                     <div className="space-y-1.5">
-                      <span className="text-[8px] font-bold uppercase tracking-widest text-slate-550 dark:text-slate-600 block px-1">Kỹ năng AI (Skills Instructions)</span>
+                      <span className="text-xs font-bold text-slate-550 dark:text-slate-600 block px-1">Kỹ năng AI (Skills Instructions)</span>
                       {filteredSkills.map(skill => (
                         <button
                           key={skill.id}
@@ -364,7 +364,7 @@ export const BuilderSidebar: React.FC<BuilderSidebarProps> = ({
                             <GraduationCap size={13} className="text-violet-500 shrink-0" />
                             <div className="flex flex-col min-w-0">
                               <span className="truncate text-slate-800 dark:text-slate-200">{skill.title}</span>
-                              <span className="text-[9px] text-slate-500 truncate">{skill.description}</span>
+                              <span className="text-xs text-slate-500 truncate">{skill.description}</span>
                             </div>
                           </div>
                           <Plus size={11} className="text-slate-400 group-hover:text-violet-500 shrink-0 ml-1.5" />

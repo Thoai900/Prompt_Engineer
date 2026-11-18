@@ -80,7 +80,7 @@ export const StepNarrator: React.FC<StepNarratorProps> = ({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -6 }}
                   transition={{ duration: 0.2 }}
-                  className={`text-[11px] font-bold ${accent.text} truncate`}
+                  className={`text-xs font-bold ${accent.text} truncate`}
                 >
                   {label}
                 </motion.div>
@@ -131,7 +131,7 @@ export const StepNarrator: React.FC<StepNarratorProps> = ({
               </motion.span>
             </AnimatePresence>
             {hint && (
-              <span className="text-[11px] font-medium text-muted">{hint}</span>
+              <span className="text-xs font-medium text-muted">{hint}</span>
             )}
 
             {/* Progress bar */}

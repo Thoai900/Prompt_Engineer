@@ -73,7 +73,7 @@ export const QuickPromptModal: React.FC<QuickPromptModalProps> = ({
           <>
             <div className="space-y-5">
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-550 dark:text-slate-400 mb-2 block">
+                <label className="text-xs font-bold text-slate-550 dark:text-slate-400 mb-2 block">
                   Chủ đề / Yêu cầu
                 </label>
                 <textarea 
@@ -86,7 +86,7 @@ export const QuickPromptModal: React.FC<QuickPromptModalProps> = ({
               </div>
               
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-550 dark:text-slate-400 mb-2 block">
+                <label className="text-xs font-bold text-slate-550 dark:text-slate-400 mb-2 block">
                   Gợi ý nhanh
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -114,7 +114,7 @@ export const QuickPromptModal: React.FC<QuickPromptModalProps> = ({
               <button 
                 onClick={onConfirmGenerate}
                 disabled={!quickPromptTopic.trim() || isGeneratingQuickPrompt}
-                className="px-5 py-2.5 text-sm font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-lg transition-all shadow-md shadow-violet-900/10 flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-95"
+                className="px-5 py-2.5 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all shadow-md flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-95"
               >
                 {isGeneratingQuickPrompt ? (
                   <>

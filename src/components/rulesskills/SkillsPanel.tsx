@@ -570,11 +570,11 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
   // Bộ chọn model AI (dùng chung state với tab Rules qua props).
   const renderModelSelect = () => (
     <div className="flex items-center bg-slate-100 dark:bg-slate-950 p-1 rounded-lg border border-slate-200/50 dark:border-slate-850">
-      <span className="text-[10px] font-bold text-slate-400 px-1">AI Model:</span>
+      <span className="text-xs font-bold text-slate-400 px-1">AI Model:</span>
       <select
         value={selectedModel}
         onChange={(e) => onSelectModel(e.target.value)}
-        className="bg-transparent text-[10px] font-bold text-slate-600 dark:text-slate-300 focus:outline-none cursor-pointer"
+        className="bg-transparent text-xs font-bold text-slate-600 dark:text-slate-300 focus:outline-none cursor-pointer"
       >
         {GEMINI_MODEL_OPTIONS.map(m => (
           <option key={m.value} value={m.value}>{m.label}</option>
@@ -597,7 +597,7 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
         {/* Left column: Sidebar selector */}
         <div className="lg:col-span-3 flex flex-col bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 p-4 shadow-sm h-fit max-h-[500px] lg:max-h-none overflow-y-auto">
           <div className="flex justify-between items-center mb-3">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Kỹ năng AI</h3>
+            <h3 className="text-xs font-bold text-slate-400">Kỹ năng AI</h3>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setWizardOpen(true)}
@@ -636,12 +636,12 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                       {s.title}
                     </span>
                     {s.isPreset && (
-                      <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900/30">
+                      <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900/30">
                         Preset
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 truncate w-full">
+                  <span className="text-xs text-slate-400 dark:text-slate-500 truncate w-full">
                     {s.description || 'Không có mô tả'}
                   </span>
                 </button>
@@ -655,7 +655,7 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
               {/* Skill Basic Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Tên Kỹ năng (Skill Name)</label>
+                  <label className="text-xs font-bold text-slate-400 block mb-1">Tên Kỹ năng (Skill Name)</label>
                   <input
                     type="text"
                     disabled={isSkillPreset}
@@ -666,7 +666,7 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Mô tả mục tiêu</label>
+                  <label className="text-xs font-bold text-slate-400 block mb-1">Mô tả mục tiêu</label>
                   <input
                     type="text"
                     disabled={isSkillPreset}
@@ -679,7 +679,7 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
               </div>
 
               {skillKind === 'document' && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/50 dark:bg-indigo-950/20 text-[11px] text-indigo-700 dark:text-indigo-300">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/50 dark:bg-indigo-950/20 text-xs text-indigo-700 dark:text-indigo-300">
                   <span className="font-bold">📥 Skill dạng tài liệu (nhập từ GitHub)</span>
                   {(() => { const s = skills.find(x => x.id === selectedSkillId); return s?.source?.htmlUrl ? (
                     <a href={s.source.htmlUrl} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1 font-semibold hover:underline">
@@ -725,16 +725,16 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                   {/* Variables list */}
                   <div className="space-y-2 max-h-[140px] overflow-y-auto mb-4 custom-scrollbar">
                     {skillInputs.length === 0 ? (
-                      <p className="text-[10px] text-slate-400 italic">Chưa khai báo biến số nào cho kỹ năng này.</p>
+                      <p className="text-xs text-slate-400 italic">Chưa khai báo biến số nào cho kỹ năng này.</p>
                     ) : (
                       skillInputs.map(v => (
                         <div key={v.name} className="flex items-center justify-between p-2 bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-850 rounded-lg shadow-2xs">
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
-                              {v.name} <span className="text-[9px] font-medium text-slate-400">({v.type}{v.required && ', required'})</span>
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                              {v.name} <span className="text-xs font-medium text-slate-400">({v.type}{v.required && ', required'})</span>
                             </span>
                             {v.description && (
-                              <span className="text-[9px] text-slate-400 max-w-[200px] truncate">{v.description}</span>
+                              <span className="text-xs text-slate-400 max-w-[200px] truncate">{v.description}</span>
                             )}
                           </div>
                           {!isSkillPreset && (
@@ -760,12 +760,12 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                           placeholder="Tên biến (Ví dụ: grade)"
                           value={newVarName}
                           onChange={(e) => setNewVarName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                          className="px-2.5 py-1.5 text-[10px] border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 focus:outline-none focus:border-indigo-500"
+                          className="px-2.5 py-1.5 text-xs border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 focus:outline-none focus:border-indigo-500"
                         />
                         <select
                           value={newVarType}
                           onChange={(e) => setNewVarType(e.target.value as any)}
-                          className="px-2 py-1.5 text-[10px] border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 focus:outline-none focus:border-indigo-500"
+                          className="px-2 py-1.5 text-xs border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 focus:outline-none focus:border-indigo-500"
                         >
                           <option value="text">Text (Dòng ngắn)</option>
                           <option value="long-text">Long Text (Văn bản dài)</option>
@@ -780,7 +780,7 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                           placeholder="Mô tả biến..."
                           value={newVarDesc}
                           onChange={(e) => setNewVarDesc(e.target.value)}
-                          className="flex-1 px-2.5 py-1.5 text-[10px] border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 focus:outline-none focus:border-indigo-500"
+                          className="flex-1 px-2.5 py-1.5 text-xs border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 focus:outline-none focus:border-indigo-500"
                         />
                         
                         {newVarType === 'dropdown' && (
@@ -789,13 +789,13 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                             placeholder="Options: A, B, C..."
                             value={newVarOptions}
                             onChange={(e) => setNewVarOptions(e.target.value)}
-                            className="w-1/3 px-2.5 py-1.5 text-[10px] border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 focus:outline-none focus:border-indigo-500"
+                            className="w-1/3 px-2.5 py-1.5 text-xs border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 focus:outline-none focus:border-indigo-500"
                           />
                         )}
                         
                         <button
                           onClick={handleAddVariable}
-                          className="px-3 bg-indigo-600 hover:bg-indigo-755 text-white rounded-lg text-[10px] font-bold shadow-xs cursor-pointer flex items-center gap-1"
+                          className="px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1"
                         >
                           <Plus size={10} />
                           <span>Thêm</span>
@@ -817,18 +817,18 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                   {/* Steps list */}
                   <div className="space-y-2 max-h-[140px] overflow-y-auto mb-4 custom-scrollbar pr-1">
                     {skillSteps.length === 0 ? (
-                      <p className="text-[10px] text-slate-400 italic">Chưa định nghĩa bước xử lý nào.</p>
+                      <p className="text-xs text-slate-400 italic">Chưa định nghĩa bước xử lý nào.</p>
                     ) : (
                       skillSteps.map((s, idx) => (
                         <div key={s.id} className="flex items-center justify-between p-2 bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-850 rounded-lg shadow-2xs">
                           <div className="flex-1 flex gap-2 items-start">
-                            <span className="w-4 h-4 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-650 dark:text-indigo-400 flex items-center justify-center font-bold text-[9px] mt-0.5">
+                            <span className="w-4 h-4 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-650 dark:text-indigo-400 flex items-center justify-center font-bold text-xs mt-0.5">
                               {s.order}
                             </span>
                             <div className="flex flex-col gap-0.5">
-                              <span className="text-[10px] font-bold text-slate-700 dark:text-slate-250">{s.title}</span>
+                              <span className="text-xs font-bold text-slate-700 dark:text-slate-250">{s.title}</span>
                               {s.description && (
-                                <span className="text-[9px] text-slate-400 leading-normal">{s.description}</span>
+                                <span className="text-xs text-slate-400 leading-normal">{s.description}</span>
                               )}
                             </div>
                           </div>
@@ -872,7 +872,7 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                         placeholder="Tiêu đề bước (Ví dụ: Đánh giá nỗ lực của học sinh)"
                         value={newStepTitle}
                         onChange={(e) => setNewStepTitle(e.target.value)}
-                        className="w-full px-2.5 py-1.5 text-[10px] border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 focus:outline-none focus:border-indigo-500"
+                        className="w-full px-2.5 py-1.5 text-xs border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 focus:outline-none focus:border-indigo-500"
                       />
                       <div className="flex gap-2">
                         <input
@@ -880,11 +880,11 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                           placeholder="Mô tả chi tiết bước..."
                           value={newStepDesc}
                           onChange={(e) => setNewStepDesc(e.target.value)}
-                          className="flex-1 px-2.5 py-1.5 text-[10px] border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 focus:outline-none focus:border-indigo-500"
+                          className="flex-1 px-2.5 py-1.5 text-xs border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 focus:outline-none focus:border-indigo-500"
                         />
                         <button
                           onClick={handleAddStep}
-                          className="px-3 bg-indigo-650 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-bold shadow-xs cursor-pointer flex items-center gap-1"
+                          className="px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1"
                         >
                           <Plus size={10} />
                           <span>Thêm</span>
@@ -900,7 +900,7 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
               {/* Instructions Markdown Editor */}
               <div className="flex flex-col bg-slate-50/50 dark:bg-slate-950/50 rounded-xl border border-slate-200 dark:border-slate-800 mt-2 overflow-hidden">
                 <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-100/50 dark:bg-slate-900/50">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                  <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
                     <Edit3 size={11} /> 3. Chỉ dẫn chi tiết Kỹ năng (Markdown Instructions)
                   </span>
                   
@@ -909,7 +909,7 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                     <button
                       onClick={handleAiAutoInstructions}
                       disabled={isCompilingSkill || isSkillPreset || skillKind === 'document'}
-                      className="text-[9px] font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 px-2 py-1 rounded-md shadow-2xs flex items-center gap-1 disabled:opacity-50 cursor-pointer"
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 px-2 py-1 rounded-md shadow-2xs flex items-center gap-1 disabled:opacity-50 cursor-pointer"
                     >
                       {isCompilingSkill ? <RefreshCw size={10} className="animate-spin" /> : <Sparkles size={10} />}
                       <span>Sinh hướng dẫn tự động bằng AI</span>
@@ -928,14 +928,14 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
               {/* Skill Spec Compiler Preview */}
               <div className="flex flex-col bg-white dark:bg-slate-950 rounded-xl border border-indigo-100 dark:border-indigo-950/30 overflow-hidden mt-1">
                 <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-850 flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/30">
-                  <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
                     <CheckCircle2 size={12} /> Biên dịch kỹ năng AI chuẩn hoá (Standard AI Skill Specification)
                   </span>
                   
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleCompileSkill}
-                      className="px-2.5 py-1 bg-white hover:bg-slate-50 border border-slate-200 rounded-md text-[10px] font-semibold text-slate-600 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-350 cursor-pointer"
+                      className="px-2.5 py-1 bg-white hover:bg-slate-50 border border-slate-200 rounded-md text-xs font-semibold text-slate-600 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-350 cursor-pointer"
                     >
                       Biên dịch Markdown
                     </button>
@@ -943,14 +943,14 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                       <>
                         <button
                           onClick={handleCopyCompiledSkill}
-                          className="px-2.5 py-1 bg-white hover:bg-slate-50 border border-slate-200 rounded-md text-[10px] font-semibold text-slate-600 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-350 flex items-center gap-1 cursor-pointer"
+                          className="px-2.5 py-1 bg-white hover:bg-slate-50 border border-slate-200 rounded-md text-xs font-semibold text-slate-600 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-350 flex items-center gap-1 cursor-pointer"
                         >
                           {copiedSkill ? <Check size={11} className="text-green-600" /> : <Copy size={11} />}
                           <span>{copiedSkill ? 'Đã sao chép' : 'Copy'}</span>
                         </button>
                         <button
                           onClick={handlePushSkillToPromptBuilder}
-                          className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md text-[10px] font-semibold text-indigo-700 dark:bg-indigo-950/30 dark:border-indigo-900/50 dark:text-indigo-400 flex items-center gap-1 cursor-pointer"
+                          className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md text-xs font-semibold text-indigo-700 dark:bg-indigo-950/30 dark:border-indigo-900/50 dark:text-indigo-400 flex items-center gap-1 cursor-pointer"
                         >
                           <Play size={10} />
                           <span>Đẩy vào Builder</span>
@@ -989,7 +989,7 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                     <button
                       onClick={handleSaveSkill}
                       disabled={isSavingSkill}
-                      className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+                      className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
                     >
                       {isSavingSkill && <RefreshCw size={13} className="animate-spin" />}
                       <span>{isSavingSkill ? 'Đang lưu...' : 'Lưu kỹ năng'}</span>
@@ -1016,17 +1016,17 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                       <span>📝 Điền biến đầu vào</span>
                     </h4>
                     {skillInputs.length === 0 ? (
-                      <p className="text-[11px] text-slate-400 italic">Kỹ năng này không khai báo biến nào — có thể chạy trực tiếp.</p>
+                      <p className="text-xs text-slate-400 italic">Kỹ năng này không khai báo biến nào — có thể chạy trực tiếp.</p>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {skillInputs.map(v => {
                           const isMissing = missingVars.includes(v.name);
                           // The global `input,textarea,select { border-color: !important }` rule (index.css) overrides
                           // any border class, so signal the error with a ring (box-shadow, untouched by that rule) instead.
-                          const baseCls = `w-full text-[11px] px-2.5 py-1.5 border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 focus:outline-none focus:border-indigo-500 ${isMissing ? 'ring-2 ring-[#fb7185]' : ''}`;
+                          const baseCls = `w-full text-xs px-2.5 py-1.5 border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900 focus:outline-none focus:border-indigo-500 ${isMissing ? 'ring-2 ring-[#fb7185]' : ''}`;
                           return (
                             <div key={v.name} className={v.type === 'long-text' ? 'md:col-span-2' : ''}>
-                              <label className={`text-[10px] font-bold block mb-1 ${isMissing ? 'text-rose-600' : 'text-slate-500 dark:text-slate-400'}`}>
+                              <label className={`text-xs font-bold block mb-1 ${isMissing ? 'text-rose-600' : 'text-slate-500 dark:text-slate-400'}`}>
                                 {v.name}
                                 {v.required && v.type !== 'boolean' && <span className="text-rose-500 ml-0.5">*</span>}
                                 {v.description && <span className="font-normal text-slate-400 ml-1.5">— {v.description}</span>}
@@ -1057,7 +1057,7 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                                     onChange={(e) => handleRunValueChange(v.name, e.target.checked)}
                                     className="w-4 h-4 accent-indigo-600 cursor-pointer"
                                   />
-                                  <span className="text-[11px] text-slate-600 dark:text-slate-300">{runValues[v.name] ? 'Có' : 'Không'}</span>
+                                  <span className="text-xs text-slate-600 dark:text-slate-300">{runValues[v.name] ? 'Có' : 'Không'}</span>
                                 </label>
                               ) : (
                                 <input
@@ -1080,14 +1080,14 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                       <div className="flex items-center gap-2">
                         <button
                           onClick={handleRenderPrompt}
-                          className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-600 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-350 flex items-center gap-1.5 cursor-pointer"
+                          className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-350 flex items-center gap-1.5 cursor-pointer"
                         >
                           <Eye size={12} /> Render prompt
                         </button>
                         <button
                           onClick={handleRunSkill}
                           disabled={isRunning}
-                          className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                          className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer disabled:opacity-50"
                         >
                           {isRunning ? <RefreshCw size={12} className="animate-spin" /> : <Play size={12} />}
                           <span>{isRunning ? 'Đang chạy...' : 'Chạy với AI'}</span>
@@ -1100,11 +1100,11 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                   {renderedPrompt && (
                     <div className="flex flex-col bg-slate-50/50 dark:bg-slate-950/50 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                       <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-900/50">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                        <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
                           <Eye size={11} /> Prompt sau khi render
                         </span>
                       </div>
-                      <div className="p-4 max-h-[160px] overflow-y-auto custom-scrollbar text-[11px] font-mono whitespace-pre-wrap text-slate-700 dark:text-slate-300">
+                      <div className="p-4 max-h-[160px] overflow-y-auto custom-scrollbar text-xs font-mono whitespace-pre-wrap text-slate-700 dark:text-slate-300">
                         {renderedPrompt}
                       </div>
                     </div>
@@ -1114,21 +1114,21 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                   {(runOutput || isRunning) && (
                     <div className="flex flex-col bg-white dark:bg-slate-950 rounded-xl border border-indigo-100 dark:border-indigo-950/30 overflow-hidden">
                       <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-850 flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/30">
-                        <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
                           <CheckCircle2 size={12} /> Kết quả thực thi
                         </span>
                         {runOutput && (
                           <div className="flex items-center gap-2">
                             <button
                               onClick={handleCopyRunOutput}
-                              className="px-2.5 py-1 bg-white hover:bg-slate-50 border border-slate-200 rounded-md text-[10px] font-semibold text-slate-600 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-350 flex items-center gap-1 cursor-pointer"
+                              className="px-2.5 py-1 bg-white hover:bg-slate-50 border border-slate-200 rounded-md text-xs font-semibold text-slate-600 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-350 flex items-center gap-1 cursor-pointer"
                             >
                               {copiedRun ? <Check size={11} className="text-green-600" /> : <Copy size={11} />}
                               <span>{copiedRun ? 'Đã sao chép' : 'Copy'}</span>
                             </button>
                             <button
                               onClick={handlePushRunToBuilder}
-                              className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md text-[10px] font-semibold text-indigo-700 dark:bg-indigo-950/30 dark:border-indigo-900/50 dark:text-indigo-400 flex items-center gap-1 cursor-pointer"
+                              className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md text-xs font-semibold text-indigo-700 dark:bg-indigo-950/30 dark:border-indigo-900/50 dark:text-indigo-400 flex items-center gap-1 cursor-pointer"
                             >
                               <Play size={10} /> Đẩy vào Builder
                             </button>
@@ -1149,10 +1149,10 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                   {runHistory.length > 0 && (
                     <div className="flex flex-col bg-slate-50/30 dark:bg-slate-950/10 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                       <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-850 flex items-center justify-between bg-slate-100/30 dark:bg-slate-900/30">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">🕘 Lịch sử chạy ({runHistory.length})</span>
+                        <span className="text-xs font-bold text-slate-400">🕘 Lịch sử chạy ({runHistory.length})</span>
                         <button
                           onClick={handleClearRunHistory}
-                          className="text-[10px] font-semibold text-rose-500 hover:text-rose-600 cursor-pointer"
+                          className="text-xs font-semibold text-rose-500 hover:text-rose-600 cursor-pointer"
                         >
                           Xóa lịch sử
                         </button>
@@ -1165,10 +1165,10 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
                             className="w-full text-left px-4 py-2 hover:bg-slate-100/50 dark:hover:bg-slate-900/40 transition-colors cursor-pointer flex items-center justify-between gap-2"
                             title="Khôi phục lần chạy này"
                           >
-                            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate flex-1">
+                            <span className="text-xs text-slate-500 dark:text-slate-400 truncate flex-1">
                               {rec.output.slice(0, 80) || '(trống)'}
                             </span>
-                            <span className="text-[9px] text-slate-400 shrink-0">
+                            <span className="text-xs text-slate-400 shrink-0">
                               {new Date(rec.createdAt).toLocaleString('vi-VN')}
                             </span>
                           </button>

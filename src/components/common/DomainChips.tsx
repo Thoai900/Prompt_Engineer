@@ -13,7 +13,7 @@ export default function DomainChips<T extends { domain?: string }>({ items, valu
   if (domains.length <= 1) return null;
 
   const chip = (active: boolean) =>
-    `px-2 py-0.5 text-[9px] font-bold rounded-full border cursor-pointer transition-colors ${
+    `px-2 py-0.5 text-xs font-bold rounded-full border cursor-pointer transition-colors ${
       active
         ? 'bg-indigo-100 border-indigo-300 text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-900/50 dark:text-indigo-300'
         : 'bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-700 dark:bg-slate-900 dark:border-slate-800'

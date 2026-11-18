@@ -72,7 +72,7 @@ export const WorkspaceSwitcher: React.FC = () => {
 
   return (
     <div className="w-full" ref={rootRef}>
-      <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Workspace</h3>
+      <h3 className="mb-2 text-xs font-bold text-slate-400 dark:text-slate-500">Workspace</h3>
       <div className="relative">
         <button
           onClick={() => setOpen((v) => !v)}

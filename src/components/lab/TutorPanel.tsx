@@ -59,7 +59,7 @@ export default function TutorPanel({ libraryTemplates = [] }: TutorPanelProps) {
           <p className="mb-3 text-xs text-faint">Thư viện của bạn chưa có prompt nào — hãy dán prompt bên dưới để phân tích, hoặc lưu vài prompt ở Builder trước.</p>
         )}
 
-        <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Hoặc dán prompt để phân tích <span className="font-normal normal-case text-faint">(cách nhau bằng dòng trống)</span></label>
+        <label className="mb-1.5 block text-xs font-bold text-muted">Hoặc dán prompt để phân tích <span className="font-normal normal-case text-faint">(cách nhau bằng dòng trống)</span></label>
         <textarea
           value={pasted}
           onChange={(e) => setPasted(e.target.value)}
@@ -92,12 +92,12 @@ export default function TutorPanel({ libraryTemplates = [] }: TutorPanelProps) {
                     <div key={i}>
                       <div className="mb-1 flex items-center justify-between gap-2">
                         <span className="text-sm font-semibold text-ink">{s.skill}</span>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${st.badge}`}>{s.level}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${st.badge}`}>{s.level}</span>
                       </div>
                       <div className="mb-1 h-1.5 w-full overflow-hidden rounded-full bg-surface">
                         <div className={`h-full rounded-full ${st.bar}`} style={{ width: `${st.pct}%` }} />
                       </div>
-                      {s.evidence && <p className="text-[11px] italic text-faint">{s.evidence}</p>}
+                      {s.evidence && <p className="text-xs italic text-faint">{s.evidence}</p>}
                     </div>
                   );
                 })}

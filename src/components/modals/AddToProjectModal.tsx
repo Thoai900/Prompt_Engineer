@@ -255,7 +255,7 @@ export default function AddToProjectModal({
               </div>
 
               {activeProject && (
-                <p className="text-[10px] text-slate-400 leading-relaxed">
+                <p className="text-xs text-slate-400 leading-relaxed">
                   Prompt sẽ trở thành một <b>node thuộc tính</b> cắm sẵn vào Prompt Gốc của dự án.
                   Bạn có thể đổi cổng, rút dây hoặc tắt node trên canvas sau khi thêm.
                 </p>
@@ -273,7 +273,7 @@ export default function AddToProjectModal({
           </button>
           <button 
             onClick={handleConfirm}
-            className="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl cursor-pointer font-bold shadow-md shadow-cyan-900/10 flex items-center gap-1 active:scale-95 transition-all"
+            className="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl cursor-pointer font-bold shadow-md flex items-center gap-1 active:scale-95 transition-all"
           >
             Xác nhận
             <ArrowRight size={14} />

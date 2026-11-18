@@ -94,7 +94,7 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
         ) : (
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
         )}
-        <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color }}>
+        <span className="text-xs font-extrabold" style={{ color }}>
           {isRoot ? 'Prompt Gốc (Compiler)'
             : preset ? `Modifier · ${preset.title}`
             : isFewShot ? 'Few-Shot · Ví dụ mẫu'
@@ -105,7 +105,7 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
         {!isRoot && (
           <button
             onClick={() => onUpdateNode(node.id, { enabled: !node.enabled })}
-            className={`ml-auto flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg cursor-pointer transition-colors ${
+            className={`ml-auto flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg cursor-pointer transition-colors ${
               node.enabled
                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                 : 'bg-slate-500/10 text-muted'
@@ -119,7 +119,7 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
 
       {/* Tiêu đề */}
       <div>
-        <label className="text-[10px] font-extrabold uppercase tracking-wider text-faint block mb-1.5">Tiêu đề</label>
+        <label className="text-xs font-extrabold text-faint block mb-1.5">Tiêu đề</label>
         <input
           value={node.title}
           onChange={(e) => onUpdateNode(node.id, { title: e.target.value })}
@@ -130,7 +130,7 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
       {/* Loại cổng (node thuộc tính; preset có cổng khuyến nghị riêng; nhóm không dây) */}
       {!isRoot && !preset && !isGroup && (
         <div>
-          <label className="text-[10px] font-extrabold uppercase tracking-wider text-faint block mb-1.5">
+          <label className="text-xs font-extrabold text-faint block mb-1.5">
             Loại thuộc tính (cổng tương ứng trên Prompt Gốc)
           </label>
           <div className="flex flex-wrap gap-1.5">
@@ -138,7 +138,7 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
               <button
                 key={slot}
                 onClick={() => onUpdateNode(node.id, { attrType: slot as AttrSlot })}
-                className={`text-[10px] font-bold px-2.5 py-1.5 rounded-lg border cursor-pointer transition-all ${
+                className={`text-xs font-bold px-2.5 py-1.5 rounded-lg border cursor-pointer transition-all ${
                   node.attrType === slot ? 'text-white shadow-sm' : 'text-muted border-line/70 hover:border-line'
                 }`}
                 style={node.attrType === slot ? { background: SLOT_COLORS[slot], borderColor: SLOT_COLORS[slot] } : undefined}
@@ -156,7 +156,7 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
           <div className="flex flex-col gap-3">
             {preset.params.map((param) => (
               <div key={param.key}>
-                <label className="text-[10px] font-extrabold uppercase tracking-wider text-faint block mb-1.5 flex justify-between">
+                <label className="text-xs font-extrabold text-faint block mb-1.5 flex justify-between">
                   <span>{param.label}</span>
                   {param.type === 'slider' && (
                     <span style={{ color }}>{(node.presetParams || {})[param.key] ?? param.defaultValue}/{param.max}</span>
@@ -188,10 +188,10 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
             ))}
           </div>
           <div>
-            <label className="text-[10px] font-extrabold uppercase tracking-wider text-faint block mb-1.5">
+            <label className="text-xs font-extrabold text-faint block mb-1.5">
               Text sẽ chèn vào prompt (tự sinh)
             </label>
-            <pre className="w-full border border-line/60 rounded-xl px-3 py-2.5 text-[11px] leading-relaxed text-muted whitespace-pre-wrap break-words bg-black/[0.02] dark:bg-white/[0.02]">
+            <pre className="w-full border border-line/60 rounded-xl px-3 py-2.5 text-xs leading-relaxed text-muted whitespace-pre-wrap break-words bg-black/[0.02] dark:bg-white/[0.02]">
               {renderNodeText(node)}
             </pre>
           </div>
@@ -206,12 +206,12 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
       ) : isFewShot ? (
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <label className="text-[10px] font-extrabold uppercase tracking-wider text-faint flex items-center gap-1">
+            <label className="text-xs font-extrabold text-faint flex items-center gap-1">
               <ListOrdered size={11} /> Cặp ví dụ ({(node.examples || []).length})
             </label>
             <button
               onClick={() => onUpdateNode(node.id, { examples: [...(node.examples || []), { input: '', output: '' }] })}
-              className="text-[10px] font-bold text-violet-500 hover:text-violet-400 flex items-center gap-0.5 cursor-pointer"
+              className="text-xs font-bold text-violet-500 hover:text-violet-400 flex items-center gap-0.5 cursor-pointer"
             >
               <Plus size={11} /> Thêm cặp
             </button>
@@ -219,7 +219,7 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
           {(node.examples || []).map((ex, idx) => (
             <div key={idx} className="border border-line/60 rounded-xl p-2.5 flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <span className="text-[9px] font-extrabold uppercase tracking-wider" style={{ color }}>Ví dụ {idx + 1}</span>
+                <span className="text-xs font-extrabold" style={{ color }}>Ví dụ {idx + 1}</span>
                 <button
                   onClick={() => onUpdateNode(node.id, { examples: (node.examples || []).filter((_, i) => i !== idx) })}
                   className="p-1 text-faint hover:text-rose-500 cursor-pointer transition-colors"
@@ -228,66 +228,66 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
                 </button>
               </div>
               <div>
-                <label className="text-[9px] font-bold text-faint block mb-1">Đầu vào</label>
+                <label className="text-xs font-bold text-faint block mb-1">Đầu vào</label>
                 <textarea
                   value={ex.input}
                   onChange={(e) => updateExample(idx, { input: e.target.value })}
                   rows={2}
                   placeholder="Ví dụ đầu vào người dùng sẽ đưa..."
-                  className="w-full bg-transparent border border-line/60 rounded-lg px-2 py-1.5 text-[11px] text-ink resize-y focus:outline-none focus:border-violet-500 transition-colors"
+                  className="w-full bg-transparent border border-line/60 rounded-lg px-2 py-1.5 text-xs text-ink resize-y focus:outline-none focus:border-violet-500 transition-colors"
                 />
               </div>
               <div>
-                <label className="text-[9px] font-bold text-faint block mb-1">Đầu ra mong muốn</label>
+                <label className="text-xs font-bold text-faint block mb-1">Đầu ra mong muốn</label>
                 <textarea
                   value={ex.output}
                   onChange={(e) => updateExample(idx, { output: e.target.value })}
                   rows={3}
                   placeholder="Kết quả chuẩn AI cần học theo..."
-                  className="w-full bg-transparent border border-line/60 rounded-lg px-2 py-1.5 text-[11px] text-ink resize-y focus:outline-none focus:border-violet-500 transition-colors"
+                  className="w-full bg-transparent border border-line/60 rounded-lg px-2 py-1.5 text-xs text-ink resize-y focus:outline-none focus:border-violet-500 transition-colors"
                 />
               </div>
             </div>
           ))}
-          <p className="text-[9px] text-faint leading-relaxed">
+          <p className="text-xs text-faint leading-relaxed">
             Các cặp sẽ được đóng khung chuẩn few-shot khi compile. Cặp trống cả hai vế sẽ tự bị bỏ qua.
           </p>
         </div>
       ) : isWeb ? (
         <div className="flex flex-col gap-3">
           <div>
-            <label className="text-[10px] font-extrabold uppercase tracking-wider text-faint block mb-1.5">URL nguồn</label>
+            <label className="text-xs font-extrabold text-faint block mb-1.5">URL nguồn</label>
             <div className="flex items-center gap-1.5">
               <input
                 value={node.url || ''}
                 onChange={(e) => onUpdateNode(node.id, { url: e.target.value })}
                 placeholder="https://vi.wikipedia.org/wiki/..."
-                className="flex-1 min-w-0 bg-transparent border border-line/70 rounded-xl px-3 py-2 text-[11px] font-mono text-ink focus:outline-none focus:border-sky-500 transition-colors"
+                className="flex-1 min-w-0 bg-transparent border border-line/70 rounded-xl px-3 py-2 text-xs font-mono text-ink focus:outline-none focus:border-sky-500 transition-colors"
               />
               <button
                 onClick={handleFetchUrl}
                 disabled={isFetching}
-                className="shrink-0 flex items-center gap-1 px-3 py-2 rounded-xl text-[11px] font-bold text-white cursor-pointer transition-all active:scale-95 disabled:opacity-60"
+                className="shrink-0 flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold text-white cursor-pointer transition-all active:scale-95 disabled:opacity-60"
                 style={{ background: color }}
               >
                 {isFetching ? <Loader2 size={12} className="animate-spin" /> : <DownloadCloud size={12} />}
                 {node.content ? 'Tải lại' : 'Cào'}
               </button>
             </div>
-            <p className="text-[9px] text-faint mt-1.5">
+            <p className="text-xs text-faint mt-1.5">
               Cần đăng nhập. Dữ liệu được <b>cache vào node</b> (compile dùng bản cache — bấm Tải lại khi trang đổi).
               {node.fetchedAt && <> Cào lần cuối: {new Date(node.fetchedAt).toLocaleString()}.</>}
             </p>
           </div>
           <div className="flex-1 flex flex-col min-h-[160px]">
-            <label className="text-[10px] font-extrabold uppercase tracking-wider text-faint block mb-1.5">
+            <label className="text-xs font-extrabold text-faint block mb-1.5">
               Nội dung đã cào ({(node.content || '').length.toLocaleString()} ký tự — sửa/cắt bớt được)
             </label>
             <textarea
               value={node.content}
               onChange={(e) => onUpdateNode(node.id, { content: e.target.value })}
               placeholder="Chưa có dữ liệu — nhập URL rồi bấm Cào."
-              className="flex-1 w-full min-h-[160px] bg-transparent border border-line/70 rounded-xl px-3 py-2.5 text-[11px] leading-relaxed text-ink resize-y focus:outline-none focus:border-sky-500 transition-colors font-mono"
+              className="flex-1 w-full min-h-[160px] bg-transparent border border-line/70 rounded-xl px-3 py-2.5 text-xs leading-relaxed text-ink resize-y focus:outline-none focus:border-sky-500 transition-colors font-mono"
             />
           </div>
         </div>
@@ -300,7 +300,7 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
           >
             <PackageOpen size={12} /> Tách nhóm
           </button>
-          <div className="text-[10px] font-extrabold uppercase tracking-wider text-faint">
+          <div className="text-xs font-extrabold text-faint">
             Thành viên ({(node.members || []).length}) — mỗi node vào đúng cổng của nó
           </div>
           {(node.members || []).map((m, idx) => {
@@ -310,13 +310,13 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
               <div key={m.id || idx} className="border border-line/60 rounded-xl p-2.5 flex flex-col gap-1.5">
                 <div className="flex items-center gap-1.5">
                   <span className="h-2 w-2 rounded-full shrink-0" style={{ background: mColor }} />
-                  <span className="text-[9px] font-extrabold uppercase tracking-wider shrink-0" style={{ color: mColor }}>
+                  <span className="text-xs font-extrabold shrink-0" style={{ color: mColor }}>
                     {SLOT_LABELS[m.attrType]}
                   </span>
                   <input
                     value={m.title}
                     onChange={(e) => updateMember(idx, { title: e.target.value })}
-                    className="flex-1 min-w-0 bg-transparent border border-line/60 rounded-lg px-2 py-1 text-[11px] font-bold text-ink focus:outline-none focus:border-violet-500"
+                    className="flex-1 min-w-0 bg-transparent border border-line/60 rounded-lg px-2 py-1 text-xs font-bold text-ink focus:outline-none focus:border-violet-500"
                   />
                 </div>
                 {isPlainMember ? (
@@ -324,12 +324,12 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
                     value={m.content}
                     onChange={(e) => updateMember(idx, { content: e.target.value })}
                     rows={3}
-                    className="w-full bg-transparent border border-line/60 rounded-lg px-2 py-1.5 text-[11px] leading-relaxed text-ink resize-y focus:outline-none focus:border-violet-500 transition-colors font-mono"
+                    className="w-full bg-transparent border border-line/60 rounded-lg px-2 py-1.5 text-xs leading-relaxed text-ink resize-y focus:outline-none focus:border-violet-500 transition-colors font-mono"
                   />
                 ) : (
                   <>
-                    <pre className="text-[10px] text-muted whitespace-pre-wrap break-words max-h-28 overflow-y-auto custom-scrollbar border border-line/50 rounded-lg px-2 py-1.5 bg-black/[0.02] dark:bg-white/[0.02]">{renderNodeText(m) || '(trống)'}</pre>
-                    <p className="text-[8px] text-faint italic">Node {m.nodeType} — tách nhóm để chỉnh control của nó.</p>
+                    <pre className="text-xs text-muted whitespace-pre-wrap break-words max-h-28 overflow-y-auto custom-scrollbar border border-line/50 rounded-lg px-2 py-1.5 bg-black/[0.02] dark:bg-white/[0.02]">{renderNodeText(m) || '(trống)'}</pre>
+                    <p className="text-xs text-faint italic">Node {m.nodeType} — tách nhóm để chỉnh control của nó.</p>
                   </>
                 )}
               </div>
@@ -338,7 +338,7 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
         </div>
       ) : (
         <div className="flex-1 flex flex-col min-h-[180px]">
-          <label className="text-[10px] font-extrabold uppercase tracking-wider text-faint block mb-1.5">
+          <label className="text-xs font-extrabold text-faint block mb-1.5">
             {isRoot ? 'Nhiệm vụ lõi (tuỳ chọn — có thể thay bằng Task Node cắm vào cổng Nhiệm vụ)' : 'Nội dung đóng góp vào prompt'}
           </label>
           <textarea
@@ -349,7 +349,7 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
               : 'Văn bản của thuộc tính này. Có thể dùng biến {{ten_bien}}.'}
             className="flex-1 w-full min-h-[180px] bg-transparent border border-line/70 rounded-xl px-3 py-2.5 text-xs leading-relaxed text-ink resize-y focus:outline-none focus:border-violet-500 transition-colors font-mono"
           />
-          <p className="text-[9px] text-faint mt-1.5">Biến dạng <code>{'{{ten_bien}}'}</code> sẽ hiện trong form Chạy thử.</p>
+          <p className="text-xs text-faint mt-1.5">Biến dạng <code>{'{{ten_bien}}'}</code> sẽ hiện trong form Chạy thử.</p>
         </div>
       )}
 
@@ -357,14 +357,14 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
       {(isRoot || isPlainText) && (
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-[10px] font-extrabold uppercase tracking-wider text-faint flex items-center gap-1">
+            <label className="text-xs font-extrabold text-faint flex items-center gap-1">
               <Variable size={10} /> Biến khai báo ({(node.variables || []).length})
             </label>
             <button
               onClick={() => onUpdateNode(node.id, {
                 variables: [...(node.variables || []), { name: `bien_${(node.variables || []).length + 1}`, type: 'text', description: '', required: true, defaultValue: '' }],
               })}
-              className="text-[10px] font-bold text-violet-500 hover:text-violet-400 flex items-center gap-0.5 cursor-pointer"
+              className="text-xs font-bold text-violet-500 hover:text-violet-400 flex items-center gap-0.5 cursor-pointer"
             >
               <Plus size={11} /> Thêm biến
             </button>
@@ -376,7 +376,7 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
                   <input
                     value={v.name}
                     onChange={(e) => updateVariable(idx, { name: e.target.value.replace(/[^a-zA-Z0-9_]/g, '_') })}
-                    className="flex-1 min-w-0 bg-transparent border border-line/60 rounded-lg px-2 py-1 text-[11px] font-mono font-bold text-ink focus:outline-none focus:border-violet-500"
+                    className="flex-1 min-w-0 bg-transparent border border-line/60 rounded-lg px-2 py-1 text-xs font-mono font-bold text-ink focus:outline-none focus:border-violet-500"
                   />
                   <button
                     onClick={() => onUpdateNode(node.id, { variables: (node.variables || []).filter((_, i) => i !== idx) })}
@@ -389,7 +389,7 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
                   value={v.defaultValue || ''}
                   onChange={(e) => updateVariable(idx, { defaultValue: e.target.value })}
                   placeholder="Giá trị mặc định"
-                  className="w-full bg-transparent border border-line/60 rounded-lg px-2 py-1 text-[11px] text-muted focus:outline-none focus:border-violet-500"
+                  className="w-full bg-transparent border border-line/60 rounded-lg px-2 py-1 text-xs text-muted focus:outline-none focus:border-violet-500"
                 />
               </div>
             ))}

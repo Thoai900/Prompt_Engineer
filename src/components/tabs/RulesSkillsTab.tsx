@@ -344,11 +344,11 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
   // Bộ chọn model AI dùng chung cho mọi tác vụ AI trong tab.
   const renderModelSelect = () => (
     <div className="flex items-center bg-slate-100 dark:bg-slate-950 p-1 rounded-lg border border-slate-200/50 dark:border-slate-850">
-      <span className="text-[10px] font-bold text-slate-400 px-1">AI Model:</span>
+      <span className="text-xs font-bold text-slate-400 px-1">AI Model:</span>
       <select
         value={selectedModel}
         onChange={(e) => setSelectedModel(e.target.value)}
-        className="bg-transparent text-[10px] font-bold text-slate-600 dark:text-slate-300 focus:outline-none cursor-pointer"
+        className="bg-transparent text-xs font-bold text-slate-600 dark:text-slate-300 focus:outline-none cursor-pointer"
       >
         {GEMINI_MODEL_OPTIONS.map(m => (
           <option key={m.value} value={m.value}>{m.label}</option>
@@ -398,7 +398,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
           {activeSubTab === 'rules' && (
             <button
               onClick={() => setWizardOpen(true)}
-              className="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
               title="Tạo quy tắc bằng AI từ 1 câu mô tả"
             >
               <Sparkles size={14} />
@@ -452,7 +452,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
         {/* Left column: Sidebar selector */}
         <div className="lg:col-span-3 flex flex-col bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 p-4 shadow-sm h-fit max-h-[500px] lg:max-h-none overflow-y-auto">
           <div className="flex justify-between items-center mb-3">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <h3 className="text-xs font-bold text-slate-400">
               Quy tắc & Cẩm nang
             </h3>
             <button
@@ -477,12 +477,12 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
                       {r.title}
                     </span>
                     {r.isPreset && (
-                      <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-900/30">
+                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-900/30">
                         Preset
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 truncate w-full">
+                  <span className="text-xs text-slate-400 dark:text-slate-500 truncate w-full">
                     {r.description || 'Không có mô tả'}
                   </span>
                 </button>
@@ -500,7 +500,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
               {/* Rule Metadata Form */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Tiêu đề</label>
+                  <label className="text-xs font-bold text-slate-400 block mb-1">Tiêu đề</label>
                   <input
                     type="text"
                     disabled={isRulePreset}
@@ -511,7 +511,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Mô tả ngắn</label>
+                  <label className="text-xs font-bold text-slate-400 block mb-1">Mô tả ngắn</label>
                   <input
                     type="text"
                     disabled={isRulePreset}
@@ -522,7 +522,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Loại quy tắc</label>
+                  <label className="text-xs font-bold text-slate-400 block mb-1">Loại quy tắc</label>
                   <select
                     disabled={isRulePreset}
                     value={ruleType}
@@ -534,7 +534,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Thẻ phân loại (Tags - Phân cách bằng dấu phẩy)</label>
+                  <label className="text-xs font-bold text-slate-400 block mb-1">Thẻ phân loại (Tags - Phân cách bằng dấu phẩy)</label>
                   <input
                     type="text"
                     disabled={isRulePreset}
@@ -567,13 +567,13 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
                     <div className="absolute left-0 mt-1 hidden group-focus-within:block group-hover:block bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-20 py-1 min-w-[150px]">
                       <button
                         onClick={() => handleExportRuleFile('.cursorrules', 'cursorrules')}
-                        className="w-full text-left px-3.5 py-2 text-[11px] hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer"
+                        className="w-full text-left px-3.5 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer"
                       >
                         Tải .cursorrules
                       </button>
                       <button
                         onClick={() => handleExportRuleFile(`${ruleTitle.toLowerCase().replace(/[^a-z0-9]/g, '_')}_rules.md`, 'markdown')}
-                        className="w-full text-left px-3.5 py-2 text-[11px] hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer"
+                        className="w-full text-left px-3.5 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer"
                       >
                         Tải rules.md
                       </button>
@@ -581,7 +581,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
                         <button
                           key={f}
                           onClick={() => exportRuleAs(f)}
-                          className="w-full text-left px-3.5 py-2 text-[11px] hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer"
+                          className="w-full text-left px-3.5 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer"
                         >
                           Tải {f === 'skill' ? 'SKILL.md' : f === 'agents' ? 'AGENTS.md' : 'CLAUDE.md'}
                         </button>
@@ -605,7 +605,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
                   <button
                     onClick={handleAiOptimizeRule}
                     disabled={isOptimizingRule || !ruleContent.trim()}
-                    className="px-3 py-1.5 bg-indigo-650 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer disabled:opacity-50"
                   >
                     {isOptimizingRule ? <RefreshCw size={13} className="animate-spin" /> : <Sparkles size={13} />}
                     <span>Tối ưu bằng AI</span>
@@ -618,11 +618,11 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
                 {/* Markdown Editor */}
                 <div className="flex flex-col bg-slate-50/50 dark:bg-slate-950/50 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden min-h-[250px] md:min-h-[400px]">
                   <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-100/50 dark:bg-slate-900/50">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                    <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
                       <Edit3 size={11} /> Soạn thảo Quy tắc
                     </span>
                     {isRulePreset && (
-                      <span className="text-[10px] text-amber-500 font-semibold italic">Không thể sửa Preset</span>
+                      <span className="text-xs text-amber-500 font-semibold italic">Không thể sửa Preset</span>
                     )}
                   </div>
                   <textarea
@@ -637,7 +637,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
                 {/* Live Preview */}
                 <div className="flex flex-col bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden min-h-[250px] md:min-h-[400px]">
                   <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center bg-slate-50/50 dark:bg-slate-950/50">
-                    <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest flex items-center gap-1">
+                    <span className="text-xs font-bold text-emerald-500 flex items-center gap-1">
                       <Eye size={11} /> Live Preview Markdown
                     </span>
                   </div>
@@ -707,20 +707,20 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
             <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 p-6 overflow-y-auto">
               {/* Before */}
               <div className="flex flex-col bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-900 px-4 py-2 border-b border-slate-200 dark:border-slate-800 uppercase tracking-widest flex items-center gap-1.5">
+                <span className="text-xs font-bold text-slate-400 bg-slate-100 dark:bg-slate-900 px-4 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center gap-1.5">
                   <AlertTriangle size={11} className="text-amber-500" /> Quy định hiện tại (Gốc)
                 </span>
-                <div className="flex-1 p-4 font-mono text-[11px] leading-relaxed whitespace-pre-wrap overflow-y-auto select-all max-h-[400px] text-slate-700 dark:text-slate-300">
+                <div className="flex-1 p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap overflow-y-auto select-all max-h-[400px] text-slate-700 dark:text-slate-300">
                   {ruleContent}
                 </div>
               </div>
 
               {/* After */}
               <div className="flex flex-col bg-indigo-50/20 dark:bg-indigo-950/10 rounded-xl border border-indigo-200 dark:border-indigo-900/60 overflow-hidden">
-                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30 px-4 py-2 border-b border-indigo-100 dark:border-indigo-900/40 uppercase tracking-widest flex items-center gap-1.5">
+                <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30 px-4 py-2 border-b border-indigo-100 dark:border-indigo-900/40 flex items-center gap-1.5">
                   <CheckCircle2 size={11} className="text-green-500" /> Bản đề xuất tối ưu từ AI
                 </span>
-                <div className="flex-1 p-4 font-mono text-[11px] leading-relaxed whitespace-pre-wrap overflow-y-auto select-all max-h-[400px] text-slate-750 dark:text-slate-200">
+                <div className="flex-1 p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap overflow-y-auto select-all max-h-[400px] text-slate-750 dark:text-slate-200">
                   {optimizedText}
                 </div>
               </div>
@@ -736,7 +736,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
               </button>
               <button
                 onClick={handleApplyOptimization}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer"
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer"
               >
                 Áp dụng thay đổi
               </button>

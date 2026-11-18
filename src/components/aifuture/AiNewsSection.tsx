@@ -121,7 +121,7 @@ export default function AiNewsSection() {
               className={`px-4 py-2 rounded-xl text-xs font-bold text-white transition-all flex items-center justify-center gap-2 shadow-md ${
                 newsLoading
                   ? 'bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-white/5 cursor-not-allowed text-slate-400 dark:text-slate-500'
-                  : 'bg-emerald-600 hover:bg-emerald-500 cursor-pointer shadow-emerald-950/20'
+                  : 'bg-emerald-600 hover:bg-emerald-500 cursor-pointer'
               }`}
             >
               <RefreshCw size={14} className={newsLoading ? 'animate-pulse text-emerald-500' : ''} />
@@ -195,7 +195,7 @@ export default function AiNewsSection() {
           {newsLoading ? (
             <div className="flex flex-col items-center justify-center py-16 space-y-6">
               {/* Futuristic logs printing loader */}
-              <div className="w-full max-w-lg bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/5 rounded-2xl p-5 font-mono text-[11px] text-emerald-650 dark:text-emerald-400/80 space-y-2 shadow-inner">
+              <div className="w-full max-w-lg bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/5 rounded-2xl p-5 font-mono text-xs text-emerald-650 dark:text-emerald-400/80 space-y-2 shadow-inner">
                 <div className="flex items-center gap-2 border-b border-slate-200 dark:border-white/5 pb-2 text-slate-400 dark:text-slate-500 mb-2">
                   <Activity size={12} className="animate-pulse" />
                   <span>AI AGENT LIVE PARSING SHELL</span>
@@ -229,21 +229,21 @@ export default function AiNewsSection() {
                   <motion.div
                     key={news.id}
                     layoutId={news.id}
-                    className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/15 rounded-2xl p-5 flex flex-col justify-between transition-all group hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-950/5 relative overflow-hidden"
+                    className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/15 rounded-2xl p-5 flex flex-col justify-between transition-all group hover:-translate-y-1 hover:shadow-lg relative overflow-hidden"
                   >
                     {isHigh && (
-                      <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-red-500 to-amber-500"></div>
+                      <div className="absolute top-0 left-0 w-full h-0.5 bg-red-500"></div>
                     )}
 
                     <div className="space-y-3">
                       {/* Top tags */}
                       <div className="flex justify-between items-center">
-                        <span className={`text-[10px] uppercase px-2 py-0.5 font-bold rounded-lg border ${categoryColor}`}>
+                        <span className={`text-xs px-2 py-0.5 font-bold rounded-lg border ${categoryColor}`}>
                           {categoryLabel}
                         </span>
 
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400">{news.date}</span>
+                          <span className="text-xs text-slate-500 dark:text-slate-400">{news.date}</span>
                           <span className={`w-1.5 h-1.5 rounded-full ${isHigh ? 'bg-red-500 animate-pulse' : 'bg-slate-405 dark:bg-slate-500'}`}></span>
                         </div>
                       </div>
@@ -261,7 +261,7 @@ export default function AiNewsSection() {
 
                     {/* Card Footer action */}
                     <div className="border-t border-slate-150 dark:border-white/5 pt-4 mt-4 flex items-center justify-between">
-                      <span className="text-[10px] text-slate-500 font-medium">Nguồn: {news.source}</span>
+                      <span className="text-xs text-slate-500 font-medium">Nguồn: {news.source}</span>
 
                       <div className="flex items-center gap-2">
                         <button
@@ -273,7 +273,7 @@ export default function AiNewsSection() {
                         </button>
                         <button
                           onClick={() => setActiveNewsDetail(news)}
-                          className="px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-600/10 hover:bg-indigo-650 dark:hover:bg-indigo-600 text-indigo-600 dark:text-indigo-300 hover:text-white dark:hover:text-white rounded-lg text-[10px] font-bold transition-all flex items-center gap-1"
+                          className="px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-600/10 hover:bg-indigo-650 dark:hover:bg-indigo-600 text-indigo-600 dark:text-indigo-300 hover:text-white dark:hover:text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1"
                         >
                           Xem phân tích <ChevronRight size={10} />
                         </button>
@@ -322,7 +322,7 @@ export default function AiNewsSection() {
 
               {/* Category & Date */}
               <div className="flex items-center gap-2.5 mb-4">
-                <span className="text-[10px] uppercase px-2 py-0.5 font-bold rounded-lg border bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20">
+                <span className="text-xs px-2 py-0.5 font-bold rounded-lg border bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/20">
                   {activeNewsDetail.category}
                 </span>
                 <span className="text-xs text-slate-500 dark:text-slate-400">{activeNewsDetail.date}</span>
@@ -337,7 +337,7 @@ export default function AiNewsSection() {
               {/* Core Content */}
               <div className="space-y-6 text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-sans">
                 <div className="p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 space-y-1">
-                  <h4 className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400 uppercase">Tóm tắt nội dung</h4>
+                  <h4 className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400">Tóm tắt nội dung</h4>
                   <p>{activeNewsDetail.summary}</p>
                 </div>
 
@@ -378,7 +378,7 @@ export default function AiNewsSection() {
                 </button>
                 <button
                   onClick={() => setActiveNewsDetail(null)}
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold text-white transition-all"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-xs font-bold text-white transition-all"
                 >
                   Đóng phân tích
                 </button>

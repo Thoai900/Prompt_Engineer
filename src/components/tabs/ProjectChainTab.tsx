@@ -239,11 +239,11 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
         <div className="p-4 border-b border-line/60 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Layers size={18} className="text-violet-500" />
-            <span className="font-bold text-xs uppercase tracking-wider text-muted">Danh Sách Dự Án</span>
+            <span className="font-bold text-xs text-muted">Danh Sách Dự Án</span>
           </div>
           <button
             onClick={() => setIsNewProjectModalOpen(true)}
-            className="p-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-lg shadow-violet-900/10"
+            className="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-lg"
             title="Tạo dự án mới"
           >
             <Plus size={14} />
@@ -259,7 +259,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
                 onClick={() => setActiveProject(proj)}
                 className={`p-3.5 rounded-2xl border text-left cursor-pointer transition-all duration-200 group relative
                   ${isActive
-                    ? 'bg-white dark:bg-slate-900 border-violet-500/40 shadow-md shadow-violet-900/5'
+                    ? 'bg-white dark:bg-slate-900 border-violet-500/40 shadow-md'
                     : 'bg-white dark:bg-slate-900/30 border-line/70 hover:border-line'}`}
               >
                 <div className="flex justify-between items-start gap-2">
@@ -274,10 +274,10 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
                     <Trash2 size={12} />
                   </button>
                 </div>
-                <p className="text-[10px] text-muted mt-1.5 line-clamp-2 leading-relaxed">
+                <p className="text-xs text-muted mt-1.5 line-clamp-2 leading-relaxed">
                   {proj.description || 'Không có mô tả.'}
                 </p>
-                <div className="mt-2 text-[9px] font-bold text-faint">
+                <div className="mt-2 text-xs font-bold text-faint">
                   {(proj.graphNodes || []).length} node · {(proj.edges || []).length} dây nối
                 </div>
                 {isActive && (
@@ -292,14 +292,14 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
         </div>
 
         {/* Trạng thái đồng bộ */}
-        <div className="p-3 border-t border-line/60 flex justify-between items-center text-[10px] text-muted">
+        <div className="p-3 border-t border-line/60 flex justify-between items-center text-xs text-muted">
           <div className="flex items-center gap-1.5">
             <span className={`w-1.5 h-1.5 rounded-full ${
               syncStatus === 'synced' ? 'bg-emerald-500' :
               syncStatus === 'saving' ? 'bg-amber-500 animate-pulse' :
               syncStatus === 'error' ? 'bg-rose-500' : 'bg-slate-500'
             }`} />
-            <span className="font-medium uppercase tracking-wider text-[8px]">
+            <span className="font-medium text-xs">
               {syncStatus === 'synced' ? 'Đã đồng bộ Cloud' :
                syncStatus === 'saving' ? 'Đang sao lưu...' :
                syncStatus === 'error' ? 'Lỗi Firestore' : 'Chế độ ngoại tuyến'}
@@ -325,11 +325,11 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="text-sm font-bold text-ink truncate">{activeProject.name}</h2>
-                  <span className="text-[9px] bg-violet-500/10 text-violet-500 px-2 py-0.5 rounded-full border border-violet-500/20 font-bold uppercase tracking-wider">
+                  <span className="text-xs bg-violet-500/10 text-violet-500 px-2 py-0.5 rounded-full border border-violet-500/20 font-bold">
                     Prompt Graph v3
                   </span>
                 </div>
-                <p className="text-[11px] text-muted mt-0.5 truncate">
+                <p className="text-xs text-muted mt-0.5 truncate">
                   {activeProject.description || 'Cắm các node thuộc tính vào Prompt Gốc — xem prompt lắp ráp realtime ở tab "Prompt".'}
                 </p>
               </div>
@@ -359,7 +359,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
             <div className="px-5 py-4 border-b border-line/60 flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <Layers size={16} className="text-violet-500" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-ink">Tạo dự án Prompt Graph mới</h3>
+                <h3 className="text-xs font-bold text-ink">Tạo dự án Prompt Graph mới</h3>
               </div>
               <button
                 onClick={() => setIsNewProjectModalOpen(false)}
@@ -371,7 +371,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
 
             <div className="p-5 flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-muted uppercase tracking-wide">Tên dự án <span className="text-rose-500">*</span></label>
+                <label className="text-xs font-bold text-muted">Tên dự án <span className="text-rose-500">*</span></label>
                 <input
                   autoFocus
                   type="text"
@@ -384,7 +384,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-muted uppercase tracking-wide">Mô tả dự án</label>
+                <label className="text-xs font-bold text-muted">Mô tả dự án</label>
                 <textarea
                   value={newProjectDesc}
                   onChange={(e) => setNewProjectDesc(e.target.value)}
@@ -394,7 +394,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-muted uppercase tracking-wide">
+                <label className="text-xs font-bold text-muted">
                   Dán prompt có sẵn <span className="text-faint normal-case font-semibold">(tuỳ chọn — từ Builder, ChatGPT, web...)</span>
                 </label>
                 <textarea
@@ -418,7 +418,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
                 type="button"
                 onClick={handleCreateProject}
                 disabled={!newProjectName.trim()}
-                className="py-2 px-4 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md transition-colors cursor-pointer"
+                className="py-2 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md transition-colors cursor-pointer"
               >
                 Tạo dự án
               </button>

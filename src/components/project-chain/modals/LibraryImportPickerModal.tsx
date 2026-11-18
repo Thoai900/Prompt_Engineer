@@ -76,11 +76,11 @@ export const LibraryImportPickerModal: React.FC<LibraryImportPickerModalProps> =
                       <span className="font-bold text-slate-900 group-hover:text-cyan-600 dark:text-slate-100 dark:group-hover:text-cyan-400 transition-colors">
                         {tpl.title}
                       </span>
-                      <span className="text-[9px] uppercase font-bold text-slate-400 bg-slate-105 dark:bg-slate-800 dark:text-slate-500 px-1 rounded">
+                      <span className="text-xs font-bold text-slate-400 bg-slate-105 dark:bg-slate-800 dark:text-slate-500 px-1 rounded">
                         {tpl.category || 'Mẫu'}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-455 dark:text-slate-450 line-clamp-2 leading-relaxed">
+                    <p className="text-xs text-slate-455 dark:text-slate-450 line-clamp-2 leading-relaxed">
                       {tpl.description}
                     </p>
                   </div>

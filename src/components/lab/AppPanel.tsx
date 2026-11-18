@@ -102,7 +102,7 @@ export default function AppPanel() {
           <div className="rounded-2xl border border-line bg-panel p-5">
             {sharedApp ? (
               <div className="mb-3 flex items-center gap-2 text-sm">
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">App chia sẻ</span>
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">App chia sẻ</span>
                 <span className="font-bold text-ink">{activeProject.name}</span>
               </div>
             ) : (
@@ -133,7 +133,7 @@ export default function AppPanel() {
                 {inputs.map((f) => (
                   <div key={f.name}>
                     <label className="mb-1 block text-xs font-bold text-ink">{f.name}{f.required && <span className="text-rose-500"> *</span>}</label>
-                    {f.description && <p className="mb-1 text-[11px] text-faint">{f.description}</p>}
+                    {f.description && <p className="mb-1 text-xs text-faint">{f.description}</p>}
                     <input
                       value={values[f.name] ?? ''}
                       onChange={(e) => setValues((prev) => ({ ...prev, [f.name]: e.target.value }))}
@@ -166,9 +166,9 @@ export default function AppPanel() {
                 return (
                   <div key={s.nodeId} className={`rounded-2xl border bg-panel p-4 ${isFinal ? 'border-emerald-400 ring-1 ring-emerald-400/40' : 'border-line'}`}>
                     <div className="mb-2 flex items-center gap-2">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white">{i + 1}</span>
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-xs font-bold text-white">{i + 1}</span>
                       <span className="text-sm font-bold text-ink">{s.title}</span>
-                      {isFinal && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">Kết quả cuối</span>}
+                      {isFinal && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">Kết quả cuối</span>}
                     </div>
                     <pre className="max-h-72 overflow-y-auto whitespace-pre-wrap break-words rounded-lg bg-surface p-3 font-mono text-xs leading-relaxed text-ink">{s.output}</pre>
                   </div>

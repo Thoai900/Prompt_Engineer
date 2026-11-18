@@ -45,19 +45,19 @@ export default function CatalogPreviewPanel({
           <h3 className="font-bold text-sm text-slate-800 dark:text-white truncate flex items-center gap-1.5">
             <span>{entry.icon || '📦'}</span>{entry.title}
           </h3>
-          <p className="text-[10px] text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-400 mt-0.5">
             {entry.repo}{entry.license ? ` · ${entry.license}` : ''}{entry.author ? ` · @${entry.author}` : ''}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {entry.htmlUrl && (
             <a href={entry.htmlUrl} target="_blank" rel="noopener noreferrer"
-              className="px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-[11px] font-semibold text-slate-600 dark:text-slate-350 flex items-center gap-1 hover:bg-slate-50 dark:hover:bg-slate-800">
+              className="px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-350 flex items-center gap-1 hover:bg-slate-50 dark:hover:bg-slate-800">
               <ExternalLink size={12} /> GitHub
             </a>
           )}
           <button onClick={onImport} disabled={loading || importing || !content}
-            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
+            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
             {importing ? <RefreshCw size={12} className="animate-spin" /> : <Download size={12} />}
             <span>Nhập vào thư viện</span>
           </button>
@@ -66,7 +66,7 @@ export default function CatalogPreviewPanel({
 
       {/* Chọn đích khi nhập (file không phải skill → có thể làm nền Rule / LLM Config) */}
       {onImportAs && entry.category !== 'skill' && (
-        <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 text-[11px]">
+        <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 text-xs">
           <span className="text-slate-400">Nhập làm nền:</span>
           <button onClick={() => onImportAs('rule')} disabled={importing || !content}
             className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 cursor-pointer">
@@ -95,27 +95,27 @@ export default function CatalogPreviewPanel({
             {/* Cài nhanh cho agent (skill) */}
             {installCommands && installCommands.length > 0 && (
               <div className="mb-4 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-                <div className="px-3 py-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                <div className="px-3 py-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex items-center gap-1.5 text-xs font-bold text-slate-500">
                   <Terminal size={12} /> Cài nhanh cho agent
                 </div>
                 <div className="divide-y divide-slate-100 dark:divide-slate-800">
                   {installCommands.map((c) => (
                     <div key={c.agent} className="px-3 py-2">
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                           {c.agent}
-                          {c.kind === 'native' && <span className="ml-1 text-[9px] text-amber-600 dark:text-amber-400">native</span>}
+                          {c.kind === 'native' && <span className="ml-1 text-xs text-amber-600 dark:text-amber-400">native</span>}
                         </span>
                         <button onClick={() => copy(c.agent, c.command)}
-                          className="text-[10px] font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1 cursor-pointer">
+                          className="text-xs font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1 cursor-pointer">
                           {copied === c.agent ? <Check size={11} className="text-green-600" /> : <Copy size={11} />}
                           {copied === c.agent ? 'Đã chép' : 'Chép'}
                         </button>
                       </div>
-                      <code className="block text-[10px] font-mono bg-slate-100 dark:bg-slate-950 rounded px-2 py-1 overflow-x-auto whitespace-pre text-slate-700 dark:text-slate-300">
+                      <code className="block text-xs font-mono bg-slate-100 dark:bg-slate-950 rounded px-2 py-1 overflow-x-auto whitespace-pre text-slate-700 dark:text-slate-300">
                         {c.command}
                       </code>
-                      {c.note && <p className="text-[9px] text-slate-400 mt-1">{c.note}</p>}
+                      {c.note && <p className="text-xs text-slate-400 mt-1">{c.note}</p>}
                     </div>
                   ))}
                 </div>
@@ -123,7 +123,7 @@ export default function CatalogPreviewPanel({
             )}
 
             {entry.format === 'skill-md' && (
-              <p className="mb-3 text-[10px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/60 rounded-lg px-3 py-2">
+              <p className="mb-3 text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/60 rounded-lg px-3 py-2">
                 Chỉ nhập nội dung <strong>SKILL.md</strong>; tài nguyên phụ (scripts/, references/) không được nhập — xem trên GitHub nếu cần.
               </p>
             )}

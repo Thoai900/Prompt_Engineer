@@ -19,7 +19,7 @@ interface LivePreviewProps {
 function CountChip({ label, value }: { label: string; value: number }) {
   if (value <= 0) return null;
   return (
-    <span className="rounded-full border border-line bg-surface px-2 py-0.5 text-[10px] font-semibold text-muted">
+    <span className="rounded-full border border-line bg-surface px-2 py-0.5 text-xs font-semibold text-muted">
       {value} {label}
     </span>
   );
@@ -30,14 +30,14 @@ export default function LivePreview({ text, blockCount, ruleCount, skillCount, p
     <aside className="flex max-h-[calc(100vh-7rem)] flex-col overflow-hidden rounded-2xl border border-line bg-panel/70 backdrop-blur-sm">
       <div className="border-b border-line/70 px-4 py-3">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-faint">
+          <div className="flex items-center gap-2 text-xs font-bold text-faint">
             <FileText size={12} className="text-violet-500" />
             Prompt đang thành hình
           </div>
           {quality && (
             <span
               title={quality.parts.map((p) => `${p.label}: ${p.value === null ? 'chưa đo' : p.value}`).join(' · ')}
-              className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+              className={`rounded-full px-2 py-0.5 text-xs font-bold ${
                 quality.score >= 80
                   ? 'bg-emerald-500/10 text-emerald-500'
                   : quality.score >= 60
@@ -54,7 +54,7 @@ export default function LivePreview({ text, blockCount, ruleCount, skillCount, p
           <CountChip label="quy tắc" value={ruleCount} />
           <CountChip label="kỹ năng" value={skillCount} />
           {personaName && (
-            <span className="rounded-full border border-violet-200/60 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-500 dark:border-violet-800/60">
+            <span className="rounded-full border border-violet-200/60 bg-violet-500/10 px-2 py-0.5 text-xs font-semibold text-violet-500 dark:border-violet-800/60">
               {personaName}
             </span>
           )}
@@ -62,9 +62,9 @@ export default function LivePreview({ text, blockCount, ruleCount, skillCount, p
       </div>
       <div className="custom-scrollbar flex-1 overflow-y-auto px-4 py-3">
         {text ? (
-          <pre className="whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-muted">
+          <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-muted">
             {text}
-            <span className="ml-0.5 inline-block h-3 w-1.5 translate-y-0.5 animate-pulse rounded-sm bg-gradient-to-b from-violet-500 to-cyan-500" />
+            <span className="ml-0.5 inline-block h-3 w-1.5 translate-y-0.5 animate-pulse rounded-sm bg-emerald-600" />
           </pre>
         ) : (
           <p className="text-xs leading-relaxed text-faint">
@@ -74,7 +74,7 @@ export default function LivePreview({ text, blockCount, ruleCount, skillCount, p
         )}
       </div>
       {text && (
-        <div className="border-t border-line/70 px-4 py-2 text-[10px] font-semibold text-faint">
+        <div className="border-t border-line/70 px-4 py-2 text-xs font-semibold text-faint">
           {text.length.toLocaleString('vi-VN')} ký tự
         </div>
       )}

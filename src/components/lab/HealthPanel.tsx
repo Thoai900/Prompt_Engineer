@@ -156,11 +156,11 @@ export default function HealthPanel() {
               />
               <span>
                 Tự động chạy hằng ngày (server)
-                {!user && <span className="ml-1 text-[10px] text-amber-500">— cần đăng nhập &amp; bấm Lưu để suite lên cloud</span>}
+                {!user && <span className="ml-1 text-xs text-amber-500">— cần đăng nhập &amp; bấm Lưu để suite lên cloud</span>}
               </span>
             </label>
 
-            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Prompt được kiểm thử</label>
+            <label className="mb-1.5 block text-xs font-bold text-muted">Prompt được kiểm thử</label>
             <textarea
               value={active.prompt}
               onChange={(e) => patchActive({ prompt: e.target.value })}
@@ -170,7 +170,7 @@ export default function HealthPanel() {
             />
 
             <div className="mb-2 flex items-center justify-between">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted">Bộ test ({active.testCases.length})</label>
+              <label className="text-xs font-bold text-muted">Bộ test ({active.testCases.length})</label>
               <button onClick={addTest} className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"><Plus size={13} /> Thêm test</button>
             </div>
             <div className="space-y-3">
@@ -180,11 +180,11 @@ export default function HealthPanel() {
                 return (
                   <div key={t.id} className="rounded-xl border border-line bg-surface p-3">
                     <div className="mb-2 flex items-center justify-between">
-                      <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-faint">
+                      <span className="flex items-center gap-2 text-xs font-bold text-faint">
                         Test {i + 1}
                         {latestRes && <span className={`text-sm font-black ${scoreColor(latestRes.score)}`}>{latestRes.score}</span>}
                         {typeof delta === 'number' && delta !== 0 && (
-                          <span className={`flex items-center gap-0.5 text-[10px] ${delta > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          <span className={`flex items-center gap-0.5 text-xs ${delta > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                             {delta > 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}{delta > 0 ? '+' : ''}{delta}
                           </span>
                         )}
@@ -226,7 +226,7 @@ export default function HealthPanel() {
             <div className="rounded-2xl border border-line bg-panel p-5">
               <div className="mb-4 flex flex-wrap items-center gap-5">
                 <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-faint">điểm sức khoẻ</div>
+                  <div className="text-xs font-semibold text-faint">điểm sức khoẻ</div>
                   <div className={`text-3xl font-black ${scoreColor(latest.avgScore)}`}>{latest.avgScore}</div>
                 </div>
                 {cmp.avgDelta !== null && (
@@ -241,7 +241,7 @@ export default function HealthPanel() {
                 {cmp.modelChanged && <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">Đổi model</span>}
               </div>
 
-              <div className="text-xs font-bold uppercase tracking-wider text-muted">Lịch sử ({active.runs.length})</div>
+              <div className="text-xs font-bold text-muted">Lịch sử ({active.runs.length})</div>
               <div className="mt-2 space-y-1.5">
                 {active.runs.map((r, i) => (
                   <div key={i} className="flex items-center justify-between rounded-lg bg-surface px-3 py-1.5 text-xs">

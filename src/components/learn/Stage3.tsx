@@ -133,7 +133,7 @@ export default function Stage3({ onNext, onBack }: { onNext: () => void, onBack?
            <button 
              onClick={handleRunTest} 
              disabled={isTesting || boardBlocks.length === 0}
-             className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-2 px-6 rounded-lg transition-all flex items-center gap-2 shadow-md"
+             className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-2 px-6 rounded-lg transition-all flex items-center gap-2 shadow-md"
            >
              {isTesting ? "Đang chạy..." : <><Play size={16} /> Bắt đầu đánh giá</>}
            </button>
@@ -145,7 +145,7 @@ export default function Stage3({ onNext, onBack }: { onNext: () => void, onBack?
            <DragDropContext onDragEnd={onDragEnd}>
               {/* Available Blocks */}
               <div className="w-full md:w-1/3 flex flex-col h-full bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                 <div className="p-4 bg-slate-50 border-b border-slate-200 font-bold text-slate-700 text-sm uppercase tracking-wider flex items-center justify-between">
+                 <div className="p-4 bg-slate-50 border-b border-slate-200 font-bold text-slate-700 text-sm flex items-center justify-between">
                    <span>Khối chức năng</span>
                    <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-xs">{availableBlocks.length} khối</span>
                  </div>
@@ -162,7 +162,7 @@ export default function Stage3({ onNext, onBack }: { onNext: () => void, onBack?
                                 {...provided.dragHandleProps}
                                 className="bg-white border-2 border-slate-200 p-4 rounded-xl shadow-sm cursor-grab active:cursor-grabbing hover:border-indigo-400 hover:shadow-md transition-all group"
                               >
-                                <div className="font-bold text-indigo-700 mb-2 text-xs uppercase inline-block bg-indigo-50 px-2 py-1 rounded group-hover:bg-indigo-100 transition-colors">&lt;{block.type}&gt;</div>
+                                <div className="font-bold text-indigo-700 mb-2 text-xs inline-block bg-indigo-50 px-2 py-1 rounded group-hover:bg-indigo-100 transition-colors">&lt;{block.type}&gt;</div>
                                 <div className="text-sm text-slate-600 font-mono">{block.content}</div>
                               </div>
                             )}
@@ -176,7 +176,7 @@ export default function Stage3({ onNext, onBack }: { onNext: () => void, onBack?
 
               {/* Canvas / Builder */}
               <div className="w-full md:w-2/3 flex flex-col h-full bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-                 <div className="p-4 bg-slate-800/80 border-b border-slate-700/50 font-bold text-slate-300 text-sm uppercase tracking-wider flex items-center gap-2">
+                 <div className="p-4 bg-slate-800/80 border-b border-slate-700/50 font-bold text-slate-300 text-sm flex items-center gap-2">
                    <Wand2 size={16} className="text-indigo-400" /> Bản thiết kế Prompt (Canvas)
                  </div>
                  <Droppable droppableId="board">
@@ -206,7 +206,7 @@ export default function Stage3({ onNext, onBack }: { onNext: () => void, onBack?
                                 className="bg-slate-800 border border-slate-600 p-5 rounded-xl shadow-lg relative overflow-hidden group"
                               >
                                 <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
-                                <div className="font-bold text-emerald-400 mb-3 text-xs uppercase tracking-wider flex items-center gap-2">
+                                <div className="font-bold text-emerald-400 mb-3 text-xs flex items-center gap-2">
                                   <span>&lt;{block.type}&gt;</span>
                                 </div>
                                 <div className="text-sm text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">{block.content}</div>
@@ -238,7 +238,7 @@ export default function Stage3({ onNext, onBack }: { onNext: () => void, onBack?
               <div className="bg-white border-2 flex flex-col border-rose-100 rounded-3xl overflow-hidden shadow-sm">
                 <div className="bg-rose-50/50 p-5 border-b border-rose-100 flex items-center justify-between">
                   <span className="flex items-center gap-2 font-bold text-rose-800 text-lg"><Columns size={20}/> Prompt Mặc Định (Chưa tối ưu)</span>
-                  <span className="bg-white border border-rose-200 text-rose-600 text-xs px-3 py-1 font-bold rounded-full uppercase tracking-wide">Thất bại</span>
+                  <span className="bg-white border border-rose-200 text-rose-600 text-xs px-3 py-1 font-bold rounded-full">Thất bại</span>
                 </div>
                 <div className="p-6 flex-1 flex flex-col">
                    <div className="bg-slate-50 p-4 rounded-xl text-slate-700 text-sm mb-6 border border-slate-100"><strong>User:</strong> Giải giúp bài tập hụt khối lượng Vật lý này nhé.</div>
@@ -262,7 +262,7 @@ export default function Stage3({ onNext, onBack }: { onNext: () => void, onBack?
                 </div>
                 <div className="bg-emerald-500 p-5 flex items-center justify-between text-white relative z-10">
                   <span className="flex items-center gap-2 font-bold text-lg"><Sparkles size={20}/> Thiết kế của bạn</span>
-                  <span className="bg-emerald-600 text-white text-xs px-3 py-1 font-bold rounded-full uppercase tracking-wide shadow-inner">Thành công!</span>
+                  <span className="bg-emerald-600 text-white text-xs px-3 py-1 font-bold rounded-full shadow-inner">Thành công!</span>
                 </div>
                 <div className="p-6 flex-1 flex flex-col relative z-10">
                    <div className="bg-slate-50 p-4 rounded-xl text-slate-700 text-sm mb-6 border border-slate-100"><strong>User:</strong> Giải giúp bài tập hụt khối lượng Vật lý này nhé.</div>

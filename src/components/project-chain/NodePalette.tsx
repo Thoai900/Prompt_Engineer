@@ -31,7 +31,7 @@ export function NodePalette({
   const [open, setOpen] = useState(false);
 
   const GroupLabel = ({ children }: { children: React.ReactNode }) => (
-    <div className="px-2.5 pt-2 pb-1 text-[9px] font-extrabold uppercase tracking-widest text-faint">
+    <div className="px-2.5 pt-2 pb-1 text-xs font-extrabold text-faint">
       {children}
     </div>
   );
@@ -42,7 +42,7 @@ export function NodePalette({
         <button
           onClick={() => setOpen((v) => !v)}
           disabled={disabled}
-          className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold shadow-lg shadow-violet-900/20 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+          className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-lg cursor-pointer transition-all active:scale-95 disabled:opacity-50"
         >
           <Plus size={14} />
           Thêm node
@@ -61,7 +61,7 @@ export function NodePalette({
               >
                 <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: SLOT_COLORS[slot] }} />
                 <span className="text-xs font-bold text-ink">{SLOT_LABELS[slot]}{slot === 'task' ? ' (Task)' : ''}</span>
-                <span className="ml-auto text-[9px] text-faint font-semibold">tự cắm dây</span>
+                <span className="ml-auto text-xs text-faint font-semibold">tự cắm dây</span>
               </button>
             ))}
 
@@ -76,7 +76,7 @@ export function NodePalette({
                 <span className="text-sm leading-none mt-0.5 shrink-0">{preset.icon}</span>
                 <span className="min-w-0">
                   <span className="block text-xs font-bold text-ink">{preset.title}</span>
-                  <span className="block text-[9px] text-faint leading-snug">{preset.description}</span>
+                  <span className="block text-xs text-faint leading-snug">{preset.description}</span>
                 </span>
               </button>
             ))}
@@ -90,7 +90,7 @@ export function NodePalette({
               <ListOrdered size={13} className="shrink-0" style={{ color: SLOT_COLORS.example }} />
               <span className="min-w-0">
                 <span className="block text-xs font-bold text-ink">Ví dụ mẫu (Few-Shot)</span>
-                <span className="block text-[9px] text-faint leading-snug">Cặp Đầu vào → Đầu ra để AI học theo</span>
+                <span className="block text-xs text-faint leading-snug">Cặp Đầu vào → Đầu ra để AI học theo</span>
               </span>
             </button>
             <button
@@ -100,7 +100,7 @@ export function NodePalette({
               <Globe size={13} className="shrink-0" style={{ color: SLOT_COLORS.context }} />
               <span className="min-w-0">
                 <span className="block text-xs font-bold text-ink">Dữ liệu từ URL (Web)</span>
-                <span className="block text-[9px] text-faint leading-snug">Cào nội dung trang web làm Ngữ cảnh</span>
+                <span className="block text-xs text-faint leading-snug">Cào nội dung trang web làm Ngữ cảnh</span>
               </span>
             </button>
             <button
@@ -118,7 +118,7 @@ export function NodePalette({
                 <button
                   key={slot}
                   onClick={() => { onAddNode(slot); setOpen(false); }}
-                  className="text-[10px] font-bold px-2 py-1 rounded-lg border cursor-pointer transition-colors hover:text-ink"
+                  className="text-xs font-bold px-2 py-1 rounded-lg border cursor-pointer transition-colors hover:text-ink"
                   style={{ borderColor: `${SLOT_COLORS[slot]}55`, color: SLOT_COLORS[slot] }}
                 >
                   {SLOT_LABELS[slot]}

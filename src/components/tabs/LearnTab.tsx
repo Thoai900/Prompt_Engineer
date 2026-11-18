@@ -143,7 +143,7 @@ export default function LearnTab({ libraryTemplates = [] }: LearnTabProps) {
     <div className="flex-1 overflow-y-auto bg-surface p-4 md:p-8 space-y-10">
       {/* Header & Gamification Bar */}
       <div className="flex flex-col gap-6">
-        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-3xl p-6 md:p-8 text-white shadow-lg relative overflow-hidden">
+        <div className="bg-emerald-600 hover:bg-emerald-700 rounded-3xl p-6 md:p-8 text-white shadow-lg relative overflow-hidden">
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <h2 className="text-2xl md:text-3xl font-bold mb-2 flex items-center gap-3"><Sparkles className="animate-pulse" /> Học Viện Prompt Engineering</h2>
@@ -154,7 +154,7 @@ export default function LearnTab({ libraryTemplates = [] }: LearnTabProps) {
             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 shrink-0 w-full md:w-72">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-xs font-bold text-indigo-200">CẤP ĐỘ {level}</span>
-                <span className="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded-full">{rankName(level)}</span>
+                <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full">{rankName(level)}</span>
               </div>
               <div className="flex items-baseline gap-1 mb-2">
                 <span className="text-2xl font-black">{loaded ? progress.xp : '…'}</span>
@@ -163,11 +163,11 @@ export default function LearnTab({ libraryTemplates = [] }: LearnTabProps) {
               {/* Progress bar */}
               <div className="w-full bg-white/20 h-2 rounded-full overflow-hidden mb-1.5">
                 <div
-                  className="h-full bg-gradient-to-r from-amber-400 to-orange-400 rounded-full transition-all duration-500"
+                  className="h-full bg-amber-400 rounded-full transition-all duration-500"
                   style={{ width: `${(currentLevelXP / XP_PER_LEVEL) * 100}%` }}
                 />
               </div>
-              <div className="flex justify-between text-[10px] text-indigo-200 font-medium">
+              <div className="flex justify-between text-xs text-indigo-200 font-medium">
                 <span>{currentLevelXP} XP</span>
                 <span>Cần {XP_PER_LEVEL - currentLevelXP} XP để thăng cấp</span>
               </div>
@@ -203,7 +203,7 @@ export default function LearnTab({ libraryTemplates = [] }: LearnTabProps) {
                     <h4 className={`text-xs font-bold ${isUnlocked ? 'text-ink' : 'text-faint'}`}>{badge.name}</h4>
                     {isUnlocked && <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />}
                   </div>
-                  <p className="text-[10px] text-muted mt-0.5 leading-normal">{badge.desc}</p>
+                  <p className="text-xs text-muted mt-0.5 leading-normal">{badge.desc}</p>
                 </div>
               </div>
             );
@@ -297,7 +297,7 @@ export default function LearnTab({ libraryTemplates = [] }: LearnTabProps) {
              <Users className="text-emerald-600" />
              <h3 className="text-lg font-bold text-ink">Cộng đồng & Xếp hạng</h3>
            </div>
-           <span className="text-[10px] font-bold bg-surface text-muted px-2 py-0.5 rounded border border-line">Sắp ra mắt</span>
+           <span className="text-xs font-bold bg-surface text-muted px-2 py-0.5 rounded border border-line">Sắp ra mắt</span>
         </div>
         <div className="bg-panel border border-line p-8 rounded-3xl shadow-sm text-center">
            <Trophy className="w-12 h-12 text-faint mx-auto mb-4" />
@@ -348,7 +348,7 @@ function CourseCard({ title, desc, icon, color, onClick, isCompleted = false }: 
         {icon}
       </div>
       <h4 className="font-bold text-ink mb-1 text-sm">{title}</h4>
-      <p className="text-[11px] text-muted leading-normal">{desc}</p>
+      <p className="text-xs text-muted leading-normal">{desc}</p>
     </div>
   );
 }
@@ -371,7 +371,7 @@ function DomainCard({ title, desc, emoji, onClick, isCompleted = false }: Domain
        )}
        <div className="text-2xl mb-2">{emoji}</div>
        <h4 className="font-bold text-ink text-xs">{title}</h4>
-       <p className="text-[10px] text-muted mt-1 leading-normal">{desc}</p>
+       <p className="text-xs text-muted mt-1 leading-normal">{desc}</p>
     </div>
   );
 }
@@ -417,7 +417,7 @@ function ChallengeCard({ title, tag, desc, icon, accent, onClick, isCompleted = 
         </div>
         <div>
            <h4 className="font-bold text-ink text-base">{title}</h4>
-           <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${styles.tag}`}>{tag}</span>
+           <span className={`text-xs font-bold px-2 py-0.5 rounded ${styles.tag}`}>{tag}</span>
         </div>
       </div>
       <p className="text-xs text-muted leading-relaxed">{desc}</p>

@@ -151,7 +151,7 @@ export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBui
     return (
       <div className="flex h-full w-full items-center justify-center overflow-y-auto p-6">
         <div className="w-full max-w-md text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-500 text-xl font-bold text-white shadow-lg shadow-violet-500/25">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-600 text-xl font-bold text-white shadow-lg">
             P
           </div>
           <h1 className="mt-5 text-2xl font-bold tracking-tight text-ink">Prompt Studio</h1>
@@ -163,10 +163,10 @@ export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBui
           <div className="mt-6 flex items-center justify-center gap-1.5">
             {STUDIO_STEPS.map((s, i) => (
               <React.Fragment key={s.key}>
-                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-line bg-panel text-[10px] font-bold text-faint" title={s.title}>
+                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-line bg-panel text-xs font-bold text-faint" title={s.title}>
                   {i + 1}
                 </span>
-                {i < STUDIO_STEPS.length - 1 && <span className="h-px w-4 bg-gradient-to-r from-violet-500/50 to-cyan-500/50" />}
+                {i < STUDIO_STEPS.length - 1 && <span className="h-px w-4 bg-line" />}
               </React.Fragment>
             ))}
           </div>
@@ -197,7 +197,7 @@ export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBui
       <div className="sticky top-0 z-20 border-b border-line/60 bg-glass/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 lg:px-8">
           <div className="min-w-0">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-cyan-500">
+            <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
               Prompt Studio
             </div>
             <div className="truncate text-sm font-bold tracking-tight text-ink">
@@ -210,8 +210,8 @@ export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBui
               <button
                 onClick={() => switchUiMode('rail')}
                 title="Thanh bước cổ điển"
-                className={`flex cursor-pointer items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-semibold transition-colors ${
-                  uiMode === 'rail' ? 'bg-gradient-to-r from-violet-600 to-cyan-600 text-white shadow-sm' : 'text-muted hover:text-ink'
+                className={`flex cursor-pointer items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
+                  uiMode === 'rail' ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm' : 'text-muted hover:text-ink'
                 }`}
               >
                 <ListOrdered size={12} /> Các bước
@@ -219,8 +219,8 @@ export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBui
               <button
                 onClick={() => switchUiMode('copilot')}
                 title="Copilot điều phối"
-                className={`flex cursor-pointer items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-semibold transition-colors ${
-                  uiMode === 'copilot' ? 'bg-gradient-to-r from-violet-600 to-cyan-600 text-white shadow-sm' : 'text-muted hover:text-ink'
+                className={`flex cursor-pointer items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
+                  uiMode === 'copilot' ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm' : 'text-muted hover:text-ink'
                 }`}
               >
                 <Bot size={12} /> Copilot

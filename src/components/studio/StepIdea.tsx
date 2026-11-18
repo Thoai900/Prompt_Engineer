@@ -32,7 +32,7 @@ export default function StepIdea({ draft, personas, onPatch, onNext }: StepIdeaP
       />
 
       <div>
-        <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-faint">Thể loại (tuỳ chọn)</div>
+        <div className="mb-2 text-xs font-bold text-faint">Thể loại (tuỳ chọn)</div>
         <div className="flex flex-wrap gap-2">
           {STUDIO_CATEGORIES.map((cat) => {
             const selected = draft.category === cat;
@@ -54,7 +54,7 @@ export default function StepIdea({ draft, personas, onPatch, onNext }: StepIdeaP
       </div>
 
       <div>
-        <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-faint">
+        <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-faint">
           <Drama size={12} className="text-violet-500" /> Persona (tuỳ chọn)
         </div>
         <select
@@ -67,13 +67,13 @@ export default function StepIdea({ draft, personas, onPatch, onNext }: StepIdeaP
             <option key={p.id} value={p.id}>{p.name}</option>
           ))}
         </select>
-        <p className="mt-1.5 text-[11px] text-faint">Persona sẽ đứng đầu prompt cuối như danh tính của AI thực thi.</p>
+        <p className="mt-1.5 text-xs text-faint">Persona sẽ đứng đầu prompt cuối như danh tính của AI thực thi.</p>
       </div>
 
       <button
         onClick={onNext}
         disabled={!draft.idea.trim()}
-        className="flex cursor-pointer items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600 px-5 py-3 text-sm font-bold text-white shadow-md shadow-violet-500/20 transition-all hover:shadow-lg hover:shadow-violet-500/30 disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex cursor-pointer items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-5 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-40"
       >
         Tiếp tục — dựng bản nháp <ArrowRight size={16} />
       </button>

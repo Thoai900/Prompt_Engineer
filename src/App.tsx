@@ -4,7 +4,7 @@
  */
 
 import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { Brain, Briefcase, Drama, FlaskConical, GraduationCap, Home, Library, LogIn, LogOut, Loader2, Moon, Sparkles, Sun, Zap, Menu, X, ScrollText, Wand2, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Brain, Briefcase, Drama, FlaskConical, GraduationCap, Home, Library, LogIn, LogOut, Loader2, Moon, Sun, Zap, Menu, X, ScrollText, PenTool, PencilLine, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, getDocFromServer, limit, onSnapshot, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
@@ -25,8 +25,6 @@ const RulesSkillsTab = lazy(() => import('./components/tabs/RulesSkillsTab'));
 const ProjectChainTab = lazy(() => import('./components/tabs/ProjectChainTab'));
 const LabTab = lazy(() => import('./components/tabs/LabTab'));
 const StudioTab = lazy(() => import('./components/tabs/StudioTab'));
-import AuroraBackground from './components/common/AuroraBackground';
-import GrainOverlay from './components/common/GrainOverlay';
 import { Toaster, toast } from './components/common/Toaster';
 import { ConfirmDialogHost } from './components/common/ConfirmDialog';
 import CommandPalette from './components/common/CommandPalette';
@@ -123,18 +121,21 @@ export default function App() {
     [customTemplates, user?.uid],
   );
 
+  // Điều hướng một màu: icon xám trung tính, chỉ mục đang chọn mang màu nhấn duy nhất (emerald).
+  const NAV_ACTIVE = 'bg-emerald-600/10 text-emerald-800 dark:text-emerald-300 border-emerald-600/20';
+  const NAV_ICON = 'text-faint';
   const navigationItems = useMemo(() => [
-    { tab: 'studio' as TabType, label: 'Studio', icon: <Wand2 size={18} />, active: 'bg-fuchsia-50 dark:bg-fuchsia-950/40 text-fuchsia-700 dark:text-fuchsia-300 border-fuchsia-100 dark:border-fuchsia-900/50', iconColor: 'text-fuchsia-500' },
-    { tab: 'home' as TabType, label: 'Home', icon: <Home size={18} />, active: 'bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-800', iconColor: 'text-slate-400' },
-    { tab: 'builder' as TabType, label: 'Prompt Builder', icon: <Briefcase size={18} />, active: 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-100 dark:border-indigo-900/50', iconColor: 'text-indigo-500' },
-    { tab: 'projectchain' as TabType, label: 'Project Chain', icon: <Workflow size={18} />, active: 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border-cyan-100 dark:border-cyan-900/50', iconColor: 'text-cyan-500' },
-    { tab: 'rulesskills' as TabType, label: 'Rules & Skills', icon: <ScrollText size={18} />, active: 'bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border-violet-100 dark:border-violet-900/50', iconColor: 'text-violet-500' },
-    { tab: 'utilitybelt' as TabType, label: 'LLM Config', icon: <Zap size={18} />, active: 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 border-orange-100 dark:border-orange-900/50', iconColor: 'text-orange-500' },
-    { tab: 'library' as TabType, label: 'Library', icon: <Library size={18} />, active: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-900/50', iconColor: 'text-emerald-500' },
-    { tab: 'enhancer' as TabType, label: 'AI Enhancer', icon: <Sparkles size={18} />, active: 'bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border-teal-100 dark:border-teal-900/50', iconColor: 'text-teal-500' },
-    { tab: 'learn' as TabType, label: 'Learn', icon: <GraduationCap size={18} />, active: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-900/50', iconColor: 'text-blue-500' },
-    { tab: 'lab' as TabType, label: 'Lab', icon: <FlaskConical size={18} />, active: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-900/50', iconColor: 'text-emerald-500' },
-    { tab: 'aifuture' as TabType, label: 'AI Future', icon: <Brain size={18} />, active: 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-100 dark:border-purple-900/50', iconColor: 'text-purple-500' },
+    { tab: 'studio' as TabType, label: 'Studio', icon: <PenTool size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
+    { tab: 'home' as TabType, label: 'Home', icon: <Home size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
+    { tab: 'builder' as TabType, label: 'Prompt Builder', icon: <Briefcase size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
+    { tab: 'projectchain' as TabType, label: 'Project Chain', icon: <Workflow size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
+    { tab: 'rulesskills' as TabType, label: 'Rules & Skills', icon: <ScrollText size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
+    { tab: 'utilitybelt' as TabType, label: 'LLM Config', icon: <Zap size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
+    { tab: 'library' as TabType, label: 'Library', icon: <Library size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
+    { tab: 'enhancer' as TabType, label: 'AI Enhancer', icon: <PencilLine size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
+    { tab: 'learn' as TabType, label: 'Learn', icon: <GraduationCap size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
+    { tab: 'lab' as TabType, label: 'Lab', icon: <FlaskConical size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
+    { tab: 'aifuture' as TabType, label: 'AI Future', icon: <Brain size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
   ], []);
 
   useEffect(() => {
@@ -370,7 +371,6 @@ export default function App() {
 
   return (
     <div className="flex h-full w-full flex-1 flex-col overflow-hidden bg-surface font-sans text-ink md:flex-row">
-      <GrainOverlay />
       <Toaster />
       <ConfirmDialogHost />
       <CommandPalette
@@ -383,12 +383,10 @@ export default function App() {
       />
       {/* Header tĩnh trên Mobile — ẩn ở trang chủ để landing page chiếm trọn màn hình */}
       {activeTab !== 'home' && (
-      <header className="z-50 flex w-full items-center justify-between border-b border-line/50 bg-glass/70 p-3.5 backdrop-blur-md md:hidden shrink-0">
+      <header className="z-50 flex w-full items-center justify-between border-b border-line bg-panel p-3 md:hidden shrink-0">
         <div className="flex cursor-pointer items-center space-x-2.5" onClick={() => setActiveTab('home')}>
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500 text-lg font-bold text-white shadow-sm">
-            <span className="text-sm">P</span>
-          </div>
-          <h1 className="text-base font-bold tracking-tight text-ink">Prompt<span className="text-emerald-500">Builder</span></h1>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-sm font-bold text-white">P</div>
+          <h1 className="text-base font-semibold tracking-tight text-ink">PromptBuilder</h1>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -396,7 +394,7 @@ export default function App() {
             className="touch-manipulation rounded-xl p-2 text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-900 cursor-pointer"
             title={theme === 'light' ? 'Dark mode' : 'Light mode'}
           >
-            {theme === 'light' ? <Moon size={18} className="text-violet-500" /> : <Sun size={18} className="text-amber-500" />}
+            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
           </button>
           <button
             onClick={() => setIsMobileMenuOpen(true)}
@@ -419,7 +417,7 @@ export default function App() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileMenuOpen(false)}
-              className="fixed inset-0 z-[70] bg-slate-950/40 backdrop-blur-xs md:hidden"
+              className="fixed inset-0 z-[70] bg-slate-950/40 md:hidden"
             />
             {/* Khung menu trượt */}
             <motion.div
@@ -427,15 +425,13 @@ export default function App() {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="fixed bottom-0 left-0 top-0 z-[80] flex w-72 flex-col bg-panel/95 p-5 shadow-2xl backdrop-blur-lg border-r border-line/50 md:hidden"
+              className="fixed bottom-0 left-0 top-0 z-[80] flex w-72 flex-col bg-panel p-5 shadow-xl border-r border-line md:hidden"
             >
               {/* Header Drawer */}
               <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
                 <div className="flex cursor-pointer items-center space-x-2.5" onClick={() => { setActiveTab('home'); setIsMobileMenuOpen(false); }}>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500 text-lg font-bold text-white shadow-sm">
-                    <span className="text-sm">P</span>
-                  </div>
-                  <h1 className="text-base font-bold tracking-tight text-ink">Prompt<span className="text-emerald-500">Builder</span></h1>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-sm font-bold text-white">P</div>
+                  <h1 className="text-base font-semibold tracking-tight text-ink">PromptBuilder</h1>
                 </div>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
@@ -453,8 +449,8 @@ export default function App() {
                   onClick={() => { setIsPersonaModalOpen(true); setIsMobileMenuOpen(false); }}
                   className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900"
                 >
-                  <span className="flex items-center gap-2"><Drama size={14} className="text-violet-500" /> Persona</span>
-                  <span className="truncate text-[11px] text-slate-400">{activePersona?.name || 'Không dùng'}</span>
+                  <span className="flex items-center gap-2"><Drama size={14} className="text-faint" /> Persona</span>
+                  <span className="truncate text-xs text-slate-400">{activePersona?.name || 'Không dùng'}</span>
                 </button>
               </div>
 
@@ -469,11 +465,11 @@ export default function App() {
                     }}
                     className={`flex w-full items-center space-x-3.5 rounded-xl border border-transparent px-3.5 py-3 text-sm font-semibold transition-all cursor-pointer ${
                       activeTab === item.tab
-                        ? `${item.active} font-bold shadow-sm`
+                        ? item.active
                         : 'text-muted hover:bg-hover'
                     }`}
                   >
-                    <span className={activeTab === item.tab ? 'scale-110' : item.iconColor}>{item.icon}</span>
+                    <span className={activeTab === item.tab ? '' : item.iconColor}>{item.icon}</span>
                     <span>{item.label}</span>
                   </button>
                 ))}
@@ -501,7 +497,7 @@ export default function App() {
                     Sign in to sync
                   </button>
                 )}
-                <p className="mt-4 px-1 text-[10px] font-semibold text-slate-400 dark:text-slate-500">V2.4 INTERNATIONAL STD</p>
+                <p className="mt-4 px-1 text-xs font-semibold text-slate-400 dark:text-slate-500">V2.4 INTERNATIONAL STD</p>
               </div>
             </motion.div>
           </>
@@ -510,20 +506,16 @@ export default function App() {
 
        {/* Sidebar trên Desktop — ẩn ở trang chủ để người dùng tập trung vào landing page */}
       {activeTab !== 'home' && (
-      <nav className={`hidden md:flex md:flex-col md:items-stretch md:justify-start md:border-r md:p-4 z-[60] border-line/50 bg-glass/70 backdrop-blur-md transition-all duration-300 ease-in-out shrink-0 ${
+      <nav className={`hidden md:flex md:flex-col md:items-stretch md:justify-start md:border-r md:p-4 z-[60] border-line bg-panel transition-all duration-300 ease-in-out shrink-0 ${
         isSidebarCollapsed ? 'md:w-20' : 'md:w-64'
       }`}>
         <div className={`flex md:mb-6 md:px-2 shrink-0 ${
           isSidebarCollapsed ? 'flex-col items-center justify-center gap-2.5' : 'flex-row items-center justify-between'
         }`}>
           <div className="flex cursor-pointer items-center space-x-3 overflow-hidden" onClick={() => setActiveTab('home')}>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-lg font-bold text-white shadow-sm">
-              <span className="text-sm">P</span>
-            </div>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-sm font-bold text-white">P</div>
             {!isSidebarCollapsed && (
-              <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white md:text-xl">
-                Prompt<span className="text-emerald-500">Builder</span>
-              </h1>
+              <h1 className="text-base font-semibold tracking-tight text-ink">PromptBuilder</h1>
             )}
           </div>
           <button
@@ -545,8 +537,8 @@ export default function App() {
                   className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-850"
                   title="Quản lý Persona"
                 >
-                  <span className="flex items-center gap-2"><Drama size={14} className="text-violet-500" /> Persona</span>
-                  <span className="max-w-[90px] truncate text-[11px] text-slate-400">{activePersona?.name || 'Không dùng'}</span>
+                  <span className="flex items-center gap-2"><Drama size={14} className="text-faint" /> Persona</span>
+                  <span className="max-w-[90px] truncate text-xs text-slate-400">{activePersona?.name || 'Không dùng'}</span>
                 </button>
               </>
             ) : (
@@ -565,7 +557,7 @@ export default function App() {
                 <button
                   onClick={() => setIsPersonaModalOpen(true)}
                   title={`Persona: ${activePersona?.name || 'Không dùng'}`}
-                  className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-950/40 text-violet-500 border border-violet-100 dark:border-violet-900/50 cursor-pointer hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors"
+                  className="flex h-8 w-8 items-center justify-center rounded-xl bg-hover text-muted border border-line cursor-pointer hover:text-ink transition-colors"
                 >
                   <Drama size={15} />
                 </button>
@@ -596,11 +588,11 @@ export default function App() {
             }`}
           >
             <div className="flex items-center gap-2">
-              {theme === 'light' ? <Moon size={15} className="text-violet-500" /> : <Sun size={15} className="text-amber-500" />}
+              {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
               {!isSidebarCollapsed && <span>{theme === 'light' ? 'Dark mode' : 'Light mode'}</span>}
             </div>
             {!isSidebarCollapsed && (
-              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-450 dark:bg-slate-800">
+              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-450 dark:bg-slate-800">
                 {theme === 'light' ? 'Off' : 'On'}
               </span>
             )}
@@ -632,14 +624,12 @@ export default function App() {
               {!isSidebarCollapsed && <span>Sign in to sync</span>}
             </button>
           )}
-          {!isSidebarCollapsed && <p className="mt-4 px-1 text-[10px] font-semibold text-slate-400 dark:text-slate-550">V2.4 INTERNATIONAL STD</p>}
+          {!isSidebarCollapsed && <p className="mt-4 px-1 text-xs font-semibold text-slate-400 dark:text-slate-550">V2.4 INTERNATIONAL STD</p>}
         </div>
       </nav>
       )}
 
       <main className="relative flex h-full w-full flex-1 flex-col overflow-hidden bg-surface">
-        <AuroraBackground />
-
         <Suspense fallback={<TabLoader />}>
           <TabPanel isActive={activeTab === 'home'} mounted={visitedTabs.has('home')}>
             <HomeTab
@@ -748,22 +738,15 @@ function NavItem({
     <button
       onClick={onClick}
       title={isCollapsed ? label : undefined}
-      className={`relative flex w-full items-center rounded-xl border border-transparent py-2.5 text-xs font-semibold transition-colors duration-200 ${
+      className={`relative flex w-full items-center rounded-lg border border-transparent py-2.5 text-sm font-medium transition-colors duration-200 ${
         isCollapsed ? 'justify-center px-0' : 'space-x-3 px-3'
       } ${
         isActive
-          ? `${activeColorClass} font-bold`
+          ? `${activeColorClass} font-semibold`
           : 'cursor-pointer text-muted hover:bg-hover hover:text-ink'
       }`}
     >
-      {isActive && (
-        <motion.div
-          layoutId="navPill"
-          className={`absolute inset-0 -z-10 rounded-xl border shadow-sm ${activeColorClass}`}
-          transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-        />
-      )}
-      <span className={`transition-transform duration-200 shrink-0 ${isActive ? 'scale-110' : iconColorClass}`}>
+      <span className={`shrink-0 ${isActive ? '' : iconColorClass}`}>
         {icon}
       </span>
       <span className={`transition-all duration-300 overflow-hidden whitespace-nowrap text-left ${

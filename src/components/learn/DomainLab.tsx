@@ -410,7 +410,7 @@ export default function DomainLab({ domainId, onBack, onEarnXP }: DomainLabProps
           <div className="flex flex-1 flex-col overflow-y-auto p-4 space-y-5">
             {/* Presets Card */}
             <div className="rounded-2xl border border-slate-250/60 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
-              <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <h3 className="mb-3 flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400">
                 <Sparkles size={14} className="text-amber-500" /> Chọn Cấu hình Prompt Mẫu
               </h3>
               <div className="flex flex-col gap-2">
@@ -422,7 +422,7 @@ export default function DomainLab({ domainId, onBack, onEarnXP }: DomainLabProps
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{preset.name}</span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                      <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
                         preset.isGood 
                           ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-450' 
                           : 'bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-450'
@@ -430,7 +430,7 @@ export default function DomainLab({ domainId, onBack, onEarnXP }: DomainLabProps
                         {preset.isGood ? 'Chuẩn' : 'Bị lỗi'}
                       </span>
                     </div>
-                    <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 leading-normal">{preset.description}</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 leading-normal">{preset.description}</p>
                   </button>
                 ))}
               </div>
@@ -439,10 +439,10 @@ export default function DomainLab({ domainId, onBack, onEarnXP }: DomainLabProps
             {/* Editor Input Area */}
             <div className="flex flex-1 flex-col space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                   <Terminal size={14} className="text-indigo-500" /> Hệ thống Chỉ thị (System Prompt)
                 </label>
-                <span className="text-[10px] text-slate-400">Tự soạn thảo để tùy chỉnh</span>
+                <span className="text-xs text-slate-400">Tự soạn thảo để tùy chỉnh</span>
               </div>
               <textarea
                 value={systemPrompt}
@@ -475,7 +475,7 @@ export default function DomainLab({ domainId, onBack, onEarnXP }: DomainLabProps
               </span>
               <button 
                 onClick={handleClearChat}
-                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-450 hover:bg-slate-50 hover:text-slate-800 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-350 cursor-pointer"
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-slate-450 hover:bg-slate-50 hover:text-slate-800 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-350 cursor-pointer"
                 title="Xóa cuộc hội thoại"
               >
                 <Trash2 size={13} /> Reset Chat
@@ -496,13 +496,13 @@ export default function DomainLab({ domainId, onBack, onEarnXP }: DomainLabProps
                       <div className="mb-2 max-w-[85%] rounded-xl border border-slate-200 bg-slate-50/70 p-3 shadow-xs dark:border-slate-800 dark:bg-slate-900/50">
                         <button 
                           onClick={() => toggleThinking(idx)}
-                          className="flex w-full items-center justify-between text-[11px] font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-300"
+                          className="flex w-full items-center justify-between text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-300"
                         >
                           <span className="flex items-center gap-1.5">🧠 Luồng tư duy ngầm (Thinking)</span>
                           {showThinking ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                         </button>
                         {showThinking && (
-                          <div className="mt-2 border-t border-slate-200/50 pt-2 font-mono text-[10.5px] leading-relaxed text-slate-600 dark:border-slate-850 dark:text-slate-400 whitespace-pre-wrap">
+                          <div className="mt-2 border-t border-slate-200/50 pt-2 font-mono text-xs leading-relaxed text-slate-600 dark:border-slate-850 dark:text-slate-400 whitespace-pre-wrap">
                             {thinking}
                           </div>
                         )}
@@ -599,7 +599,7 @@ export default function DomainLab({ domainId, onBack, onEarnXP }: DomainLabProps
                 <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3">
                   <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-900 flex items-center justify-center text-slate-400 text-xl font-bold">🎯</div>
                   <h4 className="text-xs font-bold text-slate-700 dark:text-slate-350">Chưa bắt đầu kiểm định</h4>
-                  <p className="text-[11px] text-slate-500 max-w-xs leading-normal">
+                  <p className="text-xs text-slate-500 max-w-xs leading-normal">
                     Hãy trò chuyện thử với AI ít nhất 1-2 câu để tích lũy ngữ cảnh, sau đó nhấn <strong>"Nộp bài & Chấm điểm"</strong> để AI Evaluator phân tích.
                   </p>
                 </div>
@@ -614,7 +614,7 @@ export default function DomainLab({ domainId, onBack, onEarnXP }: DomainLabProps
                   </div>
                   <div className="text-center space-y-1">
                     <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">AI Evaluator đang làm việc...</h4>
-                    <p className="text-[10px] text-slate-500">Phân tích cấu trúc System Instructions và hành vi phản hồi trong chat...</p>
+                    <p className="text-xs text-slate-500">Phân tích cấu trúc System Instructions và hành vi phản hồi trong chat...</p>
                   </div>
                 </div>
               )}
@@ -632,24 +632,24 @@ export default function DomainLab({ domainId, onBack, onEarnXP }: DomainLabProps
                           : 'border-rose-100 dark:border-rose-950 text-rose-600 bg-rose-50/50 dark:bg-rose-950/20'
                     }`}>
                       <span className="text-2xl font-black">{evaluation.score}</span>
-                      <span className="text-[10px] uppercase font-bold tracking-wider opacity-70">Điểm</span>
+                      <span className="text-xs font-bold opacity-70">Điểm</span>
                     </div>
 
                     <div className="flex-1 space-y-1.5 text-center sm:text-left">
                       <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
                         <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm">Kết quả kiểm định</h4>
                         {evaluation.score >= 80 ? (
-                          <span className="bg-emerald-50 text-emerald-600 text-[10px] px-2 py-0.5 rounded-full font-bold border border-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-450 dark:border-emerald-900">Hoàn Thành Xuất Sắc</span>
+                          <span className="bg-emerald-50 text-emerald-600 text-xs px-2 py-0.5 rounded-full font-bold border border-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-450 dark:border-emerald-900">Hoàn Thành Xuất Sắc</span>
                         ) : (
-                          <span className="bg-rose-50 text-rose-600 text-[10px] px-2 py-0.5 rounded-full font-bold border border-rose-100 dark:bg-rose-950/50 dark:text-rose-455 dark:border-rose-900">Cần Cải Thiện</span>
+                          <span className="bg-rose-50 text-rose-600 text-xs px-2 py-0.5 rounded-full font-bold border border-rose-100 dark:bg-rose-950/50 dark:text-rose-455 dark:border-rose-900">Cần Cải Thiện</span>
                         )}
                       </div>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">{evaluation.generalFeedback}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{evaluation.generalFeedback}</p>
                       
                       {evaluation.score >= 80 && (
                         <div className="flex items-center justify-center sm:justify-start gap-1.5 mt-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/50 px-2.5 py-1 rounded-xl w-fit">
                           <Star size={12} className="text-amber-500 fill-amber-500" />
-                          <span className="text-[10.5px] font-bold text-amber-700 dark:text-amber-300">Đã mở khóa Huy hiệu "{config.badgeName}" (+{evaluation.xpEarned} XP)</span>
+                          <span className="text-xs font-bold text-amber-700 dark:text-amber-300">Đã mở khóa Huy hiệu "{config.badgeName}" (+{evaluation.xpEarned} XP)</span>
                         </div>
                       )}
                     </div>
@@ -674,7 +674,7 @@ export default function DomainLab({ domainId, onBack, onEarnXP }: DomainLabProps
                             style={{ width: `${crit.score}%` }}
                           />
                         </div>
-                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-normal">{crit.feedback}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 leading-normal">{crit.feedback}</p>
                       </div>
                     ))}
                   </div>

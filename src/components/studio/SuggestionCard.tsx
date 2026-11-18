@@ -32,14 +32,14 @@ export default function SuggestionCard({
       exit={{ opacity: 0, scale: 0.97 }}
       className="flex gap-3 rounded-2xl border border-line bg-panel/80 p-4 backdrop-blur-sm"
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/15 to-cyan-500/15 text-violet-500">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600/10 text-emerald-700 dark:text-emerald-400">
         {icon}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-faint">{eyebrow}</div>
+        <div className="text-xs font-bold text-faint">{eyebrow}</div>
         <div className="mt-0.5 text-sm font-bold tracking-tight text-ink">{title}</div>
         {description && <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted">{description}</p>}
-        {reason && <p className="mt-1.5 text-[11px] text-violet-500/90">Vì sao: {reason}</p>}
+        {reason && <p className="mt-1.5 text-xs text-violet-500/90">Vì sao: {reason}</p>}
         <div className="mt-3 flex items-center gap-2">
           <button
             onClick={onApply}

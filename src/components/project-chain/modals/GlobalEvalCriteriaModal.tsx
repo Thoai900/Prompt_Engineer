@@ -54,7 +54,7 @@ export const GlobalEvalCriteriaModal: React.FC<GlobalEvalCriteriaModalProps> = (
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-3 my-4 pr-1 min-h-[200px]">
-              <p className="text-[11px] text-slate-400 dark:text-slate-550 leading-normal">
+              <p className="text-xs text-slate-400 dark:text-slate-550 leading-normal">
                 Các quy chuẩn này sẽ tự động được gửi kèm khi chạy thử nháp (Draft) với AI để đối chiếu và kiểm tra tính đúng đắn của prompt.
               </p>
 
@@ -94,7 +94,7 @@ export const GlobalEvalCriteriaModal: React.FC<GlobalEvalCriteriaModalProps> = (
               />
               <button
                 onClick={() => handleAddCriteria(newCriteriaText)}
-                className="rounded-xl bg-purple-600 px-4 py-2 text-xs font-bold text-white hover:bg-purple-550 transition-all cursor-pointer shadow-sm active:scale-95 text-[11px]"
+                className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
               >
                 Thêm
               </button>

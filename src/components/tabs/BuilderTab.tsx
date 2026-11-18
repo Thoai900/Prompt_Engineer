@@ -2,7 +2,7 @@ import { toast } from '../common/Toaster';
 import React, { useState, useEffect, useRef } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { 
-  Plus, Trash2, Copy, Check, X, Layers, Save, Sparkles, Wand2, 
+  Plus, Trash2, Copy, Check, X, Layers, Save, PencilLine, Braces, 
   ChevronDown, ChevronRight, AlignLeft, Minimize2, Briefcase, 
   Menu, User, Pin, Send, Clock, Undo, Redo, Shield, AlertCircle, Brain,
   Download, FileText, FileJson, Printer, ScrollText, Workflow,
@@ -805,10 +805,10 @@ export default function BuilderTab({
           <div className="p-4 border-b border-slate-200/50 dark:border-slate-850/50 bg-white/50 dark:bg-slate-900/10 flex justify-between items-center shrink-0 flex-wrap gap-3">
             <div className="flex items-center gap-2">
                <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                 <Wrench size={16} className="text-violet-550" />
+                 <Wrench size={16} className="text-muted" />
                  <span>Workshop Thiết Kế</span>
                </h2>
-               <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-800">
+               <span className="text-xs font-bold text-slate-450 dark:text-slate-500 bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-800">
                  {blocks.length} blocks
                </span>
             </div>
@@ -816,11 +816,11 @@ export default function BuilderTab({
             <div className="flex items-center gap-2">
                <button 
                  onClick={() => setIsQuickPromptModalOpen(true)}
-                 className="touch-manipulation flex items-center justify-center p-2 rounded-xl bg-violet-600 hover:bg-violet-500 border border-violet-500/10 text-white text-xs font-bold gap-1 cursor-pointer active:scale-95 shadow-md shadow-violet-900/10 h-9"
+                 className="touch-manipulation flex items-center justify-center p-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 border border-transparent text-white text-xs font-bold gap-1 cursor-pointer active:scale-95 shadow-md h-9"
                  title="Bơm nội dung nhanh"
                >
-                 <Wand2 size={13} />
-                 <span className="hidden sm:inline">Hoàn thiện AI</span>
+                 <PencilLine size={14} />
+                 <span className="hidden sm:inline">Tạo nhanh</span>
                </button>
                
 
@@ -899,7 +899,7 @@ export default function BuilderTab({
             <div className="flex gap-1.5 p-0.5 bg-slate-100 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-850">
               <button 
                 onClick={() => setRightPanelTab('preview')}
-                className={`text-[10px] font-bold uppercase tracking-wider px-3.5 py-2.5 rounded-lg cursor-pointer transition-all ${
+                className={`text-xs font-bold px-3.5 py-2.5 rounded-lg cursor-pointer transition-all ${
                   rightPanelTab === 'preview' ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-850 dark:hover:text-slate-200'
                 }`}
               >
@@ -907,7 +907,7 @@ export default function BuilderTab({
               </button>
               <button 
                 onClick={() => setRightPanelTab('playground')}
-                className={`text-[10px] font-bold uppercase tracking-wider px-3.5 py-2.5 rounded-lg cursor-pointer transition-all ${
+                className={`text-xs font-bold px-3.5 py-2.5 rounded-lg cursor-pointer transition-all ${
                   rightPanelTab === 'playground' ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-850 dark:hover:text-slate-200'
                 }`}
               >
@@ -950,29 +950,29 @@ export default function BuilderTab({
                 {score < 100 && blocks.length > 0 && (
                   <div className="bg-slate-900 border border-violet-500/20 rounded-2xl overflow-hidden shadow-lg shrink-0 flex flex-col animate-fade-in">
                      <div className="bg-violet-950/15 px-3 py-2 border-b border-slate-800 flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-violet-300 font-bold uppercase tracking-wider text-[10px]">
+                        <div className="flex items-center gap-1.5 text-violet-300 font-bold text-xs">
                            <span className="relative flex h-2 w-2">
                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
                              <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500"></span>
                            </span>
                            <span>🩺 AI Prompt Doctor</span>
                         </div>
-                        <span className="text-[9px] font-bold text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded border border-violet-500/20">Suggestions</span>
+                        <span className="text-xs font-bold text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded border border-violet-500/20">Suggestions</span>
                      </div>
                      
                      <div className="p-3 max-h-56 overflow-y-auto custom-scrollbar flex flex-col gap-2.5 bg-slate-900/30">
                        {getDoctorSuggestions().map((s) => (
                          <div key={s.type} className="flex flex-col gap-1.5 p-2 bg-slate-950/40 border border-slate-850 rounded-xl hover:border-violet-500/10 transition-all">
                            <div className="flex justify-between items-start">
-                             <span className="text-[11px] font-bold text-slate-200">{s.title}</span>
-                             <span className="text-[8px] font-bold text-slate-500 uppercase bg-slate-800 px-1 rounded">{s.type}</span>
+                             <span className="text-xs font-bold text-slate-200">{s.title}</span>
+                             <span className="text-xs font-bold text-slate-500 bg-slate-800 px-1 rounded">{s.type}</span>
                            </div>
-                           <p className="text-[10px] text-slate-400 leading-relaxed">{s.desc}</p>
+                           <p className="text-xs text-slate-400 leading-relaxed">{s.desc}</p>
                            <button
                              onClick={() => handleDoctorFix(s.type)}
-                             className="mt-1 py-1 px-2.5 bg-violet-950/40 hover:bg-violet-900/50 border border-violet-500/30 hover:border-violet-500/50 text-[10px] font-bold text-violet-300 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-[0.98]"
+                             className="mt-1 py-1 px-2.5 bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-600/30 text-xs font-semibold text-emerald-700 dark:text-emerald-300 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
                            >
-                             <Sparkles size={10} className="text-violet-400" />
+                             <Wrench size={12} />
                              {s.fixLabel}
                            </button>
                          </div>
@@ -984,13 +984,13 @@ export default function BuilderTab({
                 {/* Variables Panel (Only if variables are found in template) */}
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-md shrink-0 flex flex-col">
                    <div className="bg-slate-950 px-3 py-2 border-b border-slate-800 flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-violet-400">
-                         <Wand2 size={13} />
-                         <span className="text-[10px] font-bold uppercase tracking-wider">Bộ Biến Số Prompt</span>
+                      <div className="flex items-center gap-1.5 text-muted">
+                         <Braces size={13} />
+                         <span className="text-xs font-bold">Bộ Biến Số Prompt</span>
                       </div>
                       <button 
                          onClick={() => setIsProfileModalOpen(true)}
-                         className="text-[9px] bg-slate-800 border border-slate-700 text-slate-300 px-2 py-0.5 rounded-md hover:bg-slate-700 hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
+                         className="text-xs bg-slate-800 border border-slate-700 text-slate-300 px-2 py-0.5 rounded-md hover:bg-slate-700 hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
                       >
                          <User size={10} />
                          Hồ sơ
@@ -1002,7 +1002,7 @@ export default function BuilderTab({
                        <div className="p-3 bg-slate-900/30 max-h-48 overflow-y-auto custom-scrollbar flex flex-col gap-3">
                          {allVariables.map(v => (
                             <div key={v.name} className="flex flex-col gap-1">
-                              <label className="text-[11px] font-bold text-slate-350">{v.name}</label>
+                              <label className="text-xs font-bold text-slate-350">{v.name}</label>
                               {v.options ? (
                                 <select
                                   className="w-full text-xs px-2.5 py-1.5 border border-slate-800 bg-slate-950 rounded-lg text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-500 font-semibold cursor-pointer"
@@ -1029,35 +1029,35 @@ export default function BuilderTab({
                            onClick={handleAutoFill}
                            disabled={isAutoFilling}
                            title={!userProfile.trim() ? 'Mẹo: thêm Hồ sơ để AI điền chính xác hơn' : undefined}
-                           className="flex-1 py-1.5 px-3 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-850 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer disabled:text-slate-600 flex items-center justify-center gap-1 active:scale-95 shadow-md shadow-violet-900/10"
+                           className="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-850 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer disabled:text-slate-600 flex items-center justify-center gap-1 active:scale-95 shadow-md"
                          >
                             {isAutoFilling ? (
                               <StepNarrator flowKey="variable-fill" isActive={isAutoFilling} placement="compact" />
                             ) : (
-                              <><Sparkles size={11} /> Điền nhanh AI</>
+                              <>Điền nhanh bằng AI</>
                             )}
                          </button>
                          <button 
                            onClick={() => setVariableValues({})}
-                           className="py-1.5 px-3 border border-slate-800 bg-slate-950 text-slate-400 hover:text-white rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer active:scale-95"
+                           className="py-1.5 px-3 border border-slate-800 bg-slate-950 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-colors cursor-pointer active:scale-95"
                          >
                             Xóa hết
                          </button>
                        </div>
                      </>
                    ) : (
-                     <div className="p-4 bg-slate-900/20 text-center text-[10px] text-slate-500 font-medium">
+                     <div className="p-4 bg-slate-900/20 text-center text-xs text-slate-500 font-medium">
                        Không phát hiện biến động dạng {"{{tên_biến}}"} nào trong prompt.
                      </div>
                    )}
                 </div>
 
                 {/* Main preview box */}
-                <div className="flex-1 bg-slate-900 border border-slate-800 rounded-2xl p-4 font-mono text-[11px] leading-relaxed text-slate-300 overflow-y-auto custom-scrollbar relative flex flex-col select-text min-h-[220px]">
+                <div className="flex-1 bg-slate-900 border border-slate-800 rounded-2xl p-4 font-mono text-xs leading-relaxed text-slate-300 overflow-y-auto custom-scrollbar relative flex flex-col select-text min-h-[220px]">
                   <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10 shrink-0">
                     <button
                       onClick={() => handleCopy(false, 'combined')}
-                      className="px-2 py-1 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-100 rounded-lg text-[9px] font-bold transition-all flex items-center gap-1 shadow-md cursor-pointer active:scale-95"
+                      className="px-2 py-1 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-slate-100 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow-md cursor-pointer active:scale-95"
                     >
                       {copied ? <Check size={10} className="text-green-500" /> : <Copy size={10} />}
                       {copied ? 'Đã sao chép' : 'Sao chép'}
@@ -1078,7 +1078,7 @@ export default function BuilderTab({
               <div className="p-4 border-t border-slate-200/50 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-900/10 shrink-0 flex flex-col gap-3">
                  <div className="flex justify-between items-center">
                     <div className="flex flex-col text-left">
-                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-455">Chất lượng prompt</span>
+                       <span className="text-xs font-bold text-slate-500 dark:text-slate-455">Chất lượng prompt</span>
                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 mt-0.5">{msg}</span>
                     </div>
                     <div className="flex flex-col items-end">
@@ -1102,7 +1102,7 @@ export default function BuilderTab({
                  <div className="flex gap-2 relative">
                     <button
                        onClick={() => setIsModalOpen(true)}
-                       className="flex-1 touch-manipulation py-2.5 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-violet-900/10 active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 h-10"
+                       className="flex-1 touch-manipulation py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 h-10"
                     >
                        <Save size={14} />
                        Lưu Template

@@ -155,7 +155,7 @@ export default function CommandPalette({ items, onNavigate, theme, onToggleTheme
                 placeholder="Tìm tab, template, chain, rule, skill…"
                 className="w-full bg-transparent text-sm text-ink placeholder:text-slate-400 focus:outline-none"
               />
-              <kbd className="hidden shrink-0 rounded-md border border-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 dark:border-slate-700 sm:block">ESC</kbd>
+              <kbd className="hidden shrink-0 rounded-md border border-slate-200 px-1.5 py-0.5 text-xs font-semibold text-slate-400 dark:border-slate-700 sm:block">ESC</kbd>
             </div>
 
             <ul className="max-h-[50vh] overflow-y-auto p-2">
@@ -177,7 +177,7 @@ export default function CommandPalette({ items, onNavigate, theme, onToggleTheme
                       <span className="shrink-0 opacity-80">{action.icon}</span>
                       <span className="flex-1 truncate font-medium">{action.label}</span>
                       {action.kind === 'entry' && (
-                        <span className="shrink-0 rounded-md border border-slate-200 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-slate-400 dark:border-slate-700">
+                        <span className="shrink-0 rounded-md border border-slate-200 px-1.5 py-0.5 text-xs font-bold text-slate-400 dark:border-slate-700">
                           {KIND_LABELS[action.entry.kind]}
                         </span>
                       )}

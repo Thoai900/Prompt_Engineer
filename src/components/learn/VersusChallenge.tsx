@@ -103,7 +103,7 @@ export default function VersusChallenge({ onBack, onComplete }: { onBack: () => 
                  {round.promptA}
                </div>
                <div className="p-5 h-48 overflow-y-auto bg-slate-50">
-                 <span className="text-xs font-bold text-slate-400 uppercase mb-2 block">AI Phản hồi:</span>
+                 <span className="text-xs font-bold text-slate-400 mb-2 block">AI Phản hồi:</span>
                  <p className="text-slate-700 text-sm italic">{round.resultA}</p>
                </div>
              </div>
@@ -124,7 +124,7 @@ export default function VersusChallenge({ onBack, onComplete }: { onBack: () => 
                  {round.promptB}
                </div>
                <div className="p-5 h-48 overflow-y-auto bg-slate-50">
-                 <span className="text-xs font-bold text-slate-400 uppercase mb-2 block">AI Phản hồi:</span>
+                 <span className="text-xs font-bold text-slate-400 mb-2 block">AI Phản hồi:</span>
                  <p className="text-slate-700 text-sm italic">{round.resultB}</p>
                </div>
              </div>

@@ -72,7 +72,7 @@ function InteractiveTag({ tagName, content, explanation }: { tagName: string, co
 
        <div className={`absolute left-full top-1/2 -translate-y-1/2 ml-4 w-72 bg-slate-900 border border-slate-700 text-white p-4 rounded-xl shadow-xl z-20 transition-all duration-200 ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none'}`}>
           <div className="absolute left-[-6px] top-1/2 -translate-y-1/2 w-4 h-4 bg-slate-900 border-b border-l border-slate-700 transform rotate-45"></div>
-          <div className="font-bold text-indigo-300 text-xs uppercase mb-2 tracking-wider">Mục đích thẻ <span className="lowercase">&lt;{tagName}&gt;</span></div>
+          <div className="font-bold text-indigo-300 text-xs mb-2">Mục đích thẻ <span className="lowercase">&lt;{tagName}&gt;</span></div>
           <div className="text-sm font-sans text-slate-200 leading-relaxed">{explanation}</div>
        </div>
     </div>

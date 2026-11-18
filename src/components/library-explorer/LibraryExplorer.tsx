@@ -155,7 +155,7 @@ export default function LibraryExplorer({ open, onClose, user, defaultCategory, 
 
   const modeBtn = (m: 'curated' | 'search', label: React.ReactNode) => (
     <button onClick={() => switchMode(m)}
-      className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+      className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
         mode === m ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700'
       }`}>
       {label}
@@ -188,7 +188,7 @@ export default function LibraryExplorer({ open, onClose, user, defaultCategory, 
               <div className="flex bg-slate-100 dark:bg-slate-950 p-0.5 rounded-xl border border-slate-200/50 dark:border-slate-800">
                 {chips.map((c) => (
                   <button key={c} onClick={() => setCategory(c)}
-                    className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                       category === c ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                     }`}>
                     {c === 'all' ? 'Tất cả' : CAT_LABEL[c]}
@@ -211,7 +211,7 @@ export default function LibraryExplorer({ open, onClose, user, defaultCategory, 
                   className="flex-1 bg-transparent text-xs focus:outline-none text-slate-700 dark:text-slate-200" />
               </div>
               <button onClick={runSearch} disabled={searching || !repoQuery.trim()}
-                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
                 {searching ? <RefreshCw size={12} className="animate-spin" /> : <Search size={12} />} Tìm
               </button>
             </div>
@@ -233,7 +233,7 @@ export default function LibraryExplorer({ open, onClose, user, defaultCategory, 
               searching ? (
                 <p className="text-xs text-slate-400 italic p-3 flex items-center gap-2"><RefreshCw size={12} className="animate-spin" /> Đang tìm repo…</p>
               ) : searchError ? (
-                <div className="text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-lg p-3">{searchError}</div>
+                <div className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-lg p-3">{searchError}</div>
               ) : repos.length === 0 ? (
                 <p className="text-xs text-slate-400 italic p-3">Nhập từ khoá rồi bấm Tìm để tìm repo trên GitHub.</p>
               ) : (
@@ -244,13 +244,13 @@ export default function LibraryExplorer({ open, onClose, user, defaultCategory, 
             ) : (
               <>
                 <button onClick={() => { setActiveRepo(null); setRepoFiles([]); setSelected(null); setContent(''); }}
-                  className="w-full text-left text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 px-1 py-1 hover:underline cursor-pointer">
+                  className="w-full text-left text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 px-1 py-1 hover:underline cursor-pointer">
                   <ChevronLeft size={13} /> {activeRepo.fullName}
                 </button>
                 {filesLoading ? (
                   <p className="text-xs text-slate-400 italic p-3 flex items-center gap-2"><RefreshCw size={12} className="animate-spin" /> Đang liệt kê file…</p>
                 ) : filesError ? (
-                  <div className="text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-lg p-3">{filesError}</div>
+                  <div className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-lg p-3">{filesError}</div>
                 ) : repoFiles.length === 0 ? (
                   <p className="text-xs text-slate-400 italic p-3">Repo này không có file skill/rule/config nhận diện được.</p>
                 ) : (

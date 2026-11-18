@@ -148,7 +148,7 @@ export default function BakeoffPanel() {
       <p className="mb-4 text-sm text-muted">Chạy cùng một prompt trên nhiều model — đo chất lượng × chi phí × tốc độ để chọn model đáng tiền nhất.</p>
 
       <div className="mb-6 rounded-2xl border border-line bg-panel p-5">
-        <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Prompt / chỉ dẫn hệ thống</label>
+        <label className="mb-1.5 block text-xs font-bold text-muted">Prompt / chỉ dẫn hệ thống</label>
         <textarea
           value={promptText}
           onChange={(e) => setPromptText(e.target.value)}
@@ -157,7 +157,7 @@ export default function BakeoffPanel() {
           className="mb-4 w-full resize-y rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
         />
 
-        <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Đầu vào thử (tuỳ chọn)</label>
+        <label className="mb-1.5 block text-xs font-bold text-muted">Đầu vào thử (tuỳ chọn)</label>
         <textarea
           value={userInput}
           onChange={(e) => setUserInput(e.target.value)}
@@ -166,7 +166,7 @@ export default function BakeoffPanel() {
           className="mb-4 w-full resize-y rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
         />
 
-        <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Tiêu chí chấm điểm <span className="font-normal normal-case text-faint">(trống = giám khảo dùng tiêu chí mặc định)</span></label>
+        <label className="mb-1.5 block text-xs font-bold text-muted">Tiêu chí chấm điểm <span className="font-normal normal-case text-faint">(trống = giám khảo dùng tiêu chí mặc định)</span></label>
         <div className="mb-2 flex flex-wrap gap-1.5">
           {criteria.map((c, i) => (
             <span key={i} className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
@@ -186,7 +186,7 @@ export default function BakeoffPanel() {
           <button onClick={addCriterion} className="flex items-center gap-1 rounded-xl border border-line bg-surface px-3 py-2 text-sm font-semibold text-muted hover:bg-hover"><Plus size={14} /> Thêm</button>
         </div>
 
-        <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Model tham gia</label>
+        <label className="mb-1.5 block text-xs font-bold text-muted">Model tham gia</label>
         <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {ALL_MODEL_OPTIONS.map((m) => {
             const disabled = m.requiresUserKey && !hasOpenAiKey;
@@ -205,7 +205,7 @@ export default function BakeoffPanel() {
                   <span className={`flex h-4 w-4 items-center justify-center rounded border ${checked ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-line'}`}>{checked && <BadgeCheck size={11} />}</span>
                   <span className="font-semibold text-ink">{m.label}</span>
                 </span>
-                {disabled && <span className="text-[10px] text-faint">cần OpenAI key</span>}
+                {disabled && <span className="text-xs text-faint">cần OpenAI key</span>}
               </button>
             );
           })}
@@ -232,8 +232,8 @@ export default function BakeoffPanel() {
                 <div className="mb-3 flex items-start justify-between gap-2">
                   <span className="text-sm font-bold text-ink">{m.label}</span>
                   <div className="flex shrink-0 flex-col items-end gap-1">
-                    {isBestValue && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"><Trophy size={10} /> Đáng giá nhất</span>}
-                    {isBestQuality && !isBestValue && <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"><Gauge size={10} /> Chất lượng nhất</span>}
+                    {isBestValue && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"><Trophy size={10} /> Đáng giá nhất</span>}
+                    {isBestQuality && !isBestValue && <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"><Gauge size={10} /> Chất lượng nhất</span>}
                   </div>
                 </div>
 
@@ -251,17 +251,17 @@ export default function BakeoffPanel() {
                     <div className="mb-3 flex items-end gap-4">
                       <div>
                         <div className={`text-3xl font-black leading-none ${scoreColor(r.score ?? 0)}`}>{r.score}</div>
-                        <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-faint">chất lượng</div>
+                        <div className="mt-0.5 text-xs font-semibold text-faint">chất lượng</div>
                       </div>
                       <div className="flex flex-col gap-1 text-xs text-muted">
                         <span className="flex items-center gap-1"><Gauge size={12} /> {fmtLatency(r.latencyMs ?? 0)}</span>
                         <span className="flex items-center gap-1"><Coins size={12} /> {fmtCostPer1k(r.costUSD ?? 0)}</span>
                       </div>
                     </div>
-                    {r.feedback && <p className="mb-2 text-[11px] italic leading-relaxed text-faint">{r.feedback}</p>}
+                    {r.feedback && <p className="mb-2 text-xs italic leading-relaxed text-faint">{r.feedback}</p>}
                     <details className="text-xs">
                       <summary className="cursor-pointer font-semibold text-muted hover:text-ink">Xem đầu ra</summary>
-                      <pre className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-lg bg-surface p-2.5 font-mono text-[11px] leading-relaxed text-ink">{r.text}</pre>
+                      <pre className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-lg bg-surface p-2.5 font-mono text-xs leading-relaxed text-ink">{r.text}</pre>
                     </details>
                   </>
                 )}
@@ -280,7 +280,7 @@ export default function BakeoffPanel() {
             </span>
             <button
               onClick={() => { clearBakeoffHistory(); setHistory([]); toast.success('Đã xoá lịch sử so tài.'); }}
-              className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"
             >
               <Trash2 size={12} /> Xoá lịch sử
             </button>
@@ -293,14 +293,14 @@ export default function BakeoffPanel() {
                 <div key={h.id} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3 py-2">
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-xs font-semibold text-ink">{h.prompt.slice(0, 90) || '(prompt trống)'}</div>
-                    <div className="text-[10px] text-faint">
+                    <div className="text-xs text-faint">
                       {new Date(h.at).toLocaleString('vi-VN')} · {h.results.length} model
                       {top && <> · tốt nhất: <span className={`font-bold ${scoreColor(top.score ?? 0)}`}>{top.model} ({top.score})</span></>}
                     </div>
                   </div>
                   <button
                     onClick={() => downloadCsv(h)}
-                    className="flex shrink-0 items-center gap-1 rounded-lg border border-line bg-panel px-2.5 py-1.5 text-[11px] font-bold text-muted hover:text-ink hover:bg-hover"
+                    className="flex shrink-0 items-center gap-1 rounded-lg border border-line bg-panel px-2.5 py-1.5 text-xs font-bold text-muted hover:text-ink hover:bg-hover"
                     title="Tải kết quả lần chạy này dạng CSV"
                   >
                     <Download size={12} /> CSV

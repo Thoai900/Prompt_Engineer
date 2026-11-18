@@ -111,7 +111,7 @@ export default function Stage2({ onNext, onBack }: { onNext: () => void, onBack?
            </div>
          ) : (
            <div className="w-full max-w-2xl space-y-8">
-              <div className="flex items-center justify-between text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">
+              <div className="flex items-center justify-between text-sm font-bold text-slate-400 mb-2">
                 <span>Câu {currentIdx + 1}/{questions.length}</span>
               </div>
               <div className="bg-white p-8 rounded-2xl border-2 border-slate-200 font-mono text-slate-800 text-lg shadow-sm">

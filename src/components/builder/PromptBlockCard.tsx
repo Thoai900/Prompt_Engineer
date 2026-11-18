@@ -95,7 +95,7 @@ export const PromptBlockCard: React.FC<PromptBlockCardProps> = ({
           className={`bg-slate-900/60 backdrop-blur-sm border-y border-r border-l-[4px] rounded-2xl flex items-start gap-2 lg:gap-3 transition-all duration-300 group relative
             ${style.border}
             ${snapshot.isDragging 
-              ? 'shadow-2xl shadow-violet-500/10 border-r-violet-500 border-y-violet-500 rotate-1 scale-[1.01] bg-slate-900/90 z-50 overflow-hidden' 
+              ? 'shadow-2xl border-r-violet-500 border-y-violet-500 rotate-1 scale-[1.01] bg-slate-900/90 z-50 overflow-hidden' 
               : isGenerating
                 ? 'border-violet-500 border-y-[1.5px] border-r-[1.5px] shadow-[0_0_15px_rgba(139,92,246,0.15)] bg-violet-950/10 z-10 overflow-hidden'
                 : openAiMenuId === block.id
@@ -133,12 +133,12 @@ export const PromptBlockCard: React.FC<PromptBlockCardProps> = ({
                     onBlur={() => setEditingBlockId(null)}
                     onKeyDown={(e) => e.key === 'Enter' && setEditingBlockId(null)}
                     onClick={(e) => e.stopPropagation()}
-                    className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded border border-transparent whitespace-nowrap outline-none focus:ring-1 focus:ring-violet-500 ${style.badge}`}
+                    className={`text-xs font-bold px-2.5 py-0.5 rounded border border-transparent whitespace-nowrap outline-none focus:ring-1 focus:ring-violet-500 ${style.badge}`}
                   />
                 ) : (
                   <span 
                     onDoubleClick={(e) => { e.stopPropagation(); setEditingBlockId(block.id); }}
-                    className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded ring-1 ring-inset border whitespace-nowrap cursor-text ${style.badge}`}
+                    className={`text-xs font-bold px-2.5 py-1 rounded ring-1 ring-inset border whitespace-nowrap cursor-text ${style.badge}`}
                     title="Nháy đúp để đổi tên"
                   >
                     {block.title}
@@ -198,7 +198,7 @@ export const PromptBlockCard: React.FC<PromptBlockCardProps> = ({
                         />
                         <div className="absolute top-full right-0 mt-1 w-60 bg-slate-900 border border-slate-850 shadow-2xl rounded-xl z-55 flex flex-col overflow-hidden text-left animate-in fade-in slide-in-from-top-2 duration-150">
                           <div className="px-3 py-1.5 border-b border-slate-800 bg-slate-950 flex items-center justify-between">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Lịch sử (Tối đa 10)</span>
+                            <span className="text-xs font-bold text-slate-400">Lịch sử (Tối đa 10)</span>
                             <Clock size={10} className="text-violet-400" />
                           </div>
                           <div className="max-h-48 overflow-y-auto custom-scrollbar p-1 flex flex-col gap-0.5">
@@ -211,11 +211,11 @@ export const PromptBlockCard: React.FC<PromptBlockCardProps> = ({
                                 }}
                                 className="w-full text-left p-1.5 hover:bg-slate-850 rounded-lg transition-all flex flex-col gap-0.5 border border-transparent hover:border-violet-500/20 cursor-pointer"
                               >
-                                <div className="flex justify-between items-center text-[9px] w-full">
+                                <div className="flex justify-between items-center text-xs w-full">
                                   <span className="font-bold text-violet-300 truncate max-w-[120px]">{h.label}</span>
                                   <span className="text-slate-500 whitespace-nowrap">{h.timestamp}</span>
                                 </div>
-                                <p className="text-[9px] text-slate-400 truncate line-clamp-1 w-full">{h.content}</p>
+                                <p className="text-xs text-slate-400 truncate line-clamp-1 w-full">{h.content}</p>
                               </button>
                             ))}
                           </div>
@@ -228,7 +228,7 @@ export const PromptBlockCard: React.FC<PromptBlockCardProps> = ({
                 {isGenerating ? (
                   <div className="p-1 px-2 flex items-center gap-1.5 text-violet-650 dark:text-violet-400 bg-violet-550/10 border border-violet-500/20 rounded-lg animate-pulse h-8" title="Đang tạo văn bản...">
                     <Sparkles size={12} className="animate-pulse text-violet-600 dark:text-violet-400" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider hidden lg:inline">Đang viết...</span>
+                    <span className="text-xs font-bold hidden lg:inline">Đang viết...</span>
                   </div>
                 ) : (
                   <>
@@ -252,13 +252,13 @@ export const PromptBlockCard: React.FC<PromptBlockCardProps> = ({
                           <div className="absolute top-full right-0 mt-1 w-72 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-2xl rounded-xl z-50 flex flex-col overflow-hidden text-left animate-in fade-in slide-in-from-top-2 duration-150">
                             {/* Popover Header */}
                             <div className="px-3 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-955 flex items-center justify-between">
-                              <span className="text-[10px] font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider">Trợ lý AI khối</span>
-                              <span className="text-[9px] font-bold text-violet-650 dark:text-violet-400 bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 rounded uppercase">{block.type}</span>
+                              <span className="text-xs font-bold text-slate-550 dark:text-slate-400">Trợ lý AI khối</span>
+                              <span className="text-xs font-bold text-violet-650 dark:text-violet-400 bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 rounded">{block.type}</span>
                             </div>
 
                             {/* Custom Instruction Box */}
                             <div className="px-3 py-2 border-b border-slate-200 dark:border-slate-800 flex flex-col gap-1.5 bg-slate-50/40 dark:bg-slate-900/40">
-                              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-0.5">🎯 Yêu cầu chỉnh sửa riêng</span>
+                              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-0.5">🎯 Yêu cầu chỉnh sửa riêng</span>
                               <div className="flex gap-1.5">
                                 <input
                                   type="text"
@@ -285,7 +285,7 @@ export const PromptBlockCard: React.FC<PromptBlockCardProps> = ({
                                       setCustomInstructions(prev => ({ ...prev, [block.id]: '' }));
                                     }
                                   }}
-                                  className="px-2.5 py-1.5 bg-violet-655 hover:bg-violet-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center transition-colors shadow-sm shrink-0 active:scale-95 cursor-pointer"
+                                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center transition-colors shadow-sm shrink-0 active:scale-95 cursor-pointer"
                                   title="Gửi yêu cầu"
                                 >
                                   <Send size={11} />
@@ -295,7 +295,7 @@ export const PromptBlockCard: React.FC<PromptBlockCardProps> = ({
 
                             {/* Smart Presets */}
                             <div className="p-2 border-b border-slate-200 dark:border-slate-800 flex flex-col gap-1.5 bg-slate-50/50 dark:bg-slate-900">
-                              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-1 mb-0.5">💡 Gợi ý nhanh cho khối</span>
+                              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 px-1 mb-0.5">💡 Gợi ý nhanh cho khối</span>
                               <div className="flex flex-col gap-0.5 max-h-36 overflow-y-auto custom-scrollbar">
                                 {(SMART_PRESETS[block.type] || DEFAULT_SMART_PRESETS).map((preset, idx) => (
                                   <button
@@ -314,32 +314,32 @@ export const PromptBlockCard: React.FC<PromptBlockCardProps> = ({
 
                             {/* Basic AI choices */}
                             <div className="p-2 flex flex-col gap-1.5 bg-slate-50/40 dark:bg-slate-950/40">
-                              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-1 mb-0.5">⚡ Lựa chọn cơ bản</span>
+                              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 px-1 mb-0.5">⚡ Lựa chọn cơ bản</span>
                               <div className="grid grid-cols-2 gap-1">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleAiAssist(block, 'auto'); }}
-                                  className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-violet-650 dark:hover:text-violet-400 rounded-md transition-colors cursor-pointer"
+                                  className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-violet-650 dark:hover:text-violet-400 rounded-md transition-colors cursor-pointer"
                                 >
                                   <Sparkles size={10} className="text-violet-500 dark:text-violet-400 shrink-0" />
                                   <span>Tự động</span>
                                 </button>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleAiAssist(block, 'longer'); }}
-                                  className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-violet-650 dark:hover:text-violet-400 rounded-md transition-colors cursor-pointer"
+                                  className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-violet-650 dark:hover:text-violet-400 rounded-md transition-colors cursor-pointer"
                                 >
                                   <AlignLeft size={10} className="text-emerald-500 dark:text-emerald-400 shrink-0" />
                                   <span>Dài hơn</span>
                                 </button>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleAiAssist(block, 'shorter'); }}
-                                  className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-violet-650 dark:hover:text-violet-400 rounded-md transition-colors cursor-pointer"
+                                  className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-violet-650 dark:hover:text-violet-400 rounded-md transition-colors cursor-pointer"
                                 >
                                   <Minimize2 size={10} className="text-rose-500 dark:text-rose-400 shrink-0" />
                                   <span>Ngắn gọn</span>
                                 </button>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleAiAssist(block, 'professional'); }}
-                                  className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-violet-650 dark:hover:text-violet-400 rounded-md transition-colors cursor-pointer"
+                                  className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-violet-650 dark:hover:text-violet-400 rounded-md transition-colors cursor-pointer"
                                 >
                                   <Briefcase size={10} className="text-blue-500 dark:text-blue-400 shrink-0" />
                                   <span>Chuyên nghiệp</span>
@@ -422,14 +422,14 @@ export const PromptBlockCard: React.FC<PromptBlockCardProps> = ({
                 {/* In-place Variables Inputs inside the block */}
                 {blockVars.length > 0 && (
                   <div className="mt-1 p-3 bg-slate-100/60 dark:bg-slate-955/60 rounded-2xl border border-slate-200 dark:border-slate-850 flex flex-col gap-2 relative text-left">
-                    <div className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <div className="text-xs font-bold text-violet-600 dark:text-violet-400 flex items-center gap-1.5">
                       <Sparkles size={11} className="text-violet-500" />
                       <span>Điền nhanh biến số</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {blockVars.map(v => (
                         <div key={v.name} className="flex flex-col gap-0.5">
-                          <span className="text-[10px] font-bold text-slate-655 dark:text-slate-455">{v.name}</span>
+                          <span className="text-xs font-bold text-slate-655 dark:text-slate-455">{v.name}</span>
                           {v.options ? (
                             <select
                               className="w-full text-xs px-2.5 py-1 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl focus:outline-none focus:ring-1 focus:ring-violet-500 focus:border-violet-500 font-medium text-slate-800 dark:text-slate-200 cursor-pointer"
