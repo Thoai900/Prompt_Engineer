@@ -125,6 +125,28 @@ service cloud.firestore {
         && data.createdAt is timestamp;
     }
 
+    // Giới hạn rộng hơn mức app tự cắt (versions ≤ 50) để không chặn dữ liệu hợp lệ;
+    // field graph có thể vắng/null (project legacy v2).
+    function optList(data, key, max) {
+      return !(key in data.keys()) || data[key] == null || (data[key] is list && data[key].size() <= max);
+    }
+
+    function isValidProject(data) {
+      return data.keys().hasAll(['userId', 'name', 'createdAt', 'updatedAt'])
+        && data.userId is string && data.userId.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && ( !('description' in data.keys()) || (data.description is string && data.description.size() <= 5000) )
+        && ( !('workspaceId' in data.keys()) || (data.workspaceId is string && data.workspaceId.size() <= 128) )
+        && optList(data, 'globalEvalCriteria', 50)
+        && optList(data, 'nodes', 200)
+        && optList(data, 'graphNodes', 300)
+        && optList(data, 'edges', 1000)
+        && optList(data, 'testCases', 100)
+        && optList(data, 'versions', 60)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     function isValidSharedApp(data) {
       return data.keys().hasAll(['userId', 'name', 'nodes', 'createdAt', 'updatedAt'])
         && data.userId is string && data.userId.size() <= 128
@@ -224,12 +246,14 @@ service cloud.firestore {
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create: if isValidId(projectId)
         && isSignedIn()
+        && isValidProject(incoming())
         && incoming().userId == request.auth.uid
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
       allow update: if isValidId(projectId)
         && isSignedIn()
         && existing().userId == request.auth.uid
+        && isValidProject(incoming())
         && incoming().userId == existing().userId
         && incoming().createdAt == existing().createdAt
         && incoming().updatedAt == request.time;

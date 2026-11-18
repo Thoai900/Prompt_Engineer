@@ -2,9 +2,11 @@ import { toast } from '../common/Toaster';
 import React, { useState, useEffect } from 'react';
 import { X, FolderPlus, ArrowRight } from 'lucide-react';
 import { PromptProject, PromptBlock, PromptVariable, TabType } from '../../types';
-import { collection, doc, getDocs, query, where, setDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { addTemplateAsAttributeNode, templateToGraphProject } from '../../utils/graphMigration';
+import { projectFromDoc } from '../../utils/projectDoc';
+import { markProjectsInCloud, saveProjectToCloud } from '../../services/projectStore';
 
 interface AddToProjectModalProps {
   isOpen: boolean;
@@ -55,19 +57,8 @@ export default function AddToProjectModal({
           const q = query(collection(db, 'projects'), where('userId', '==', user.uid));
           const querySnapshot = await getDocs(q);
           const dbProjects: PromptProject[] = [];
-          querySnapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            dbProjects.push({
-              id: docSnap.id,
-              name: data.name,
-              description: data.description || '',
-              globalEvalCriteria: data.globalEvalCriteria || [],
-              nodes: data.nodes || [],
-              createdAt: data.createdAt || new Date().toISOString(),
-              updatedAt: data.updatedAt || new Date().toISOString(),
-              userId: data.userId
-            });
-          });
+          querySnapshot.forEach((docSnap) => dbProjects.push(projectFromDoc(docSnap.id, docSnap.data())));
+          markProjectsInCloud(dbProjects.map((p) => p.id));
 
           // Trộn dự án
           const merged = [...dbProjects];
@@ -140,21 +131,7 @@ export default function AddToProjectModal({
     // 2. Lưu Firestore nếu đăng nhập
     if (user) {
       try {
-        const docRef = doc(db, 'projects', targetProject.id);
-        const payload = {
-          id: targetProject.id,
-          userId: user.uid,
-          name: targetProject.name,
-          description: targetProject.description || '',
-          globalEvalCriteria: targetProject.globalEvalCriteria || [],
-          nodes: targetProject.nodes,
-          schemaVersion: targetProject.schemaVersion || null,
-          graphNodes: targetProject.graphNodes || null,
-          edges: targetProject.edges || null,
-          createdAt: isCreatingNew ? new Date().toISOString() : targetProject.createdAt,
-          updatedAt: new Date().toISOString()
-        };
-        await setDoc(docRef, payload);
+        await saveProjectToCloud(targetProject, user.uid);
       } catch (err) {
         console.error('Firestore save failed:', err);
       }

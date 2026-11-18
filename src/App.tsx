@@ -272,8 +272,10 @@ export default function App() {
       onError,
     ));
     if (user) {
+      // Lấy MỌI template của mình (cả public) — không phụ thuộc việc template public
+      // của mình có lọt vào nhóm limit(100) public ở trên hay không.
       unsubs.push(onSnapshot(
-        query(collection(db, 'templates'), where('userId', '==', user.uid), where('isPublic', '==', false)),
+        query(collection(db, 'templates'), where('userId', '==', user.uid)),
         (snap) => {
           ownMap.clear();
           snap.forEach((d) => ownMap.set(d.id, toTemplate(d.id, d.data())));
