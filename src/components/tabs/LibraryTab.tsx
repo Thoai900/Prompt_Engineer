@@ -66,7 +66,7 @@ function FacetGroup({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="shrink-0 w-24 pt-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">{label}</span>
+      <span className="shrink-0 w-24 pt-1.5 text-xs font-black text-slate-400">{label}</span>
       <div className="flex flex-wrap gap-1.5">
         {options.map((o) => {
           const on = active.includes(o.value);
@@ -75,9 +75,9 @@ function FacetGroup({
               key={o.value}
               onClick={() => onToggle(o.value)}
               aria-pressed={on}
-              className={`px-3 py-1 text-[11px] font-bold rounded-full border transition-all ${
+              className={`px-3 py-1 text-xs font-bold rounded-full border transition-all ${
                 on
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
                   : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'
               }`}
             >
@@ -358,11 +358,11 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], com
               <div>
                 <h3 className="text-sm font-black text-slate-800 tracking-tight flex items-center gap-2">
                   Dùng gần đây
-                  <span className="text-indigo-600 text-[10px] font-bold bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">
+                  <span className="text-indigo-600 text-xs font-bold bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">
                     {recentTemplates.length} mẫu
                   </span>
                 </h3>
-                <p className="text-[11px] text-slate-400 font-medium">Những mẫu bạn vừa mở, xem thử hoặc remix — bấm để mở lại.</p>
+                <p className="text-xs text-slate-400 font-medium">Những mẫu bạn vừa mở, xem thử hoặc remix — bấm để mở lại.</p>
               </div>
             </div>
 
@@ -373,16 +373,16 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], com
                   <button
                     key={t.id}
                     onClick={() => openDetail(t)}
-                    className="group text-left flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 hover:border-indigo-400 hover:shadow-md hover:shadow-indigo-500/5 transition-all"
+                    className="group text-left flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 hover:border-indigo-400 hover:shadow-md transition-all"
                   >
                     <div className="shrink-0 w-9 h-9 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-indigo-500">
                       <Icon className="w-4 h-4" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-[12px] font-bold text-slate-700 line-clamp-1 group-hover:text-indigo-600 transition-colors">{t.title}</div>
-                      <div className="text-[10px] text-slate-400 font-semibold line-clamp-1">{t.category || 'Mẫu'}</div>
+                      <div className="text-xs text-slate-400 font-semibold line-clamp-1">{t.category || 'Mẫu'}</div>
                     </div>
-                    <span className="shrink-0 text-[10px] font-bold text-slate-400 group-hover:text-indigo-500 flex items-center gap-0.5">
+                    <span className="shrink-0 text-xs font-bold text-slate-400 group-hover:text-indigo-500 flex items-center gap-0.5">
                       <Eye className="w-3.5 h-3.5" />Mở lại
                     </span>
                   </button>
@@ -394,7 +394,7 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], com
 
         {/* Nguồn (Đợt 3): Tất cả / Của tôi / Cộng đồng */}
         <div className="flex flex-wrap items-center gap-2 mb-6">
-          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mr-1">Nguồn</span>
+          <span className="text-xs font-black text-slate-400 mr-1">Nguồn</span>
           {([['all', 'Tất cả', sourceCounts.all], ['mine', 'Của tôi', sourceCounts.mine], ['community', 'Cộng đồng', sourceCounts.community]] as const).map(([key, label, count]) => {
             const on = sourceFilter === key;
             return (
@@ -455,7 +455,7 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], com
 
         {/* Bộ sưu tập cá nhân (Đợt 2) — chip lọc + tạo/xoá */}
         <div className="mt-4 flex items-start gap-3">
-          <span className="shrink-0 w-24 pt-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Bộ sưu tập</span>
+          <span className="shrink-0 w-24 pt-1.5 text-xs font-black text-slate-400">Bộ sưu tập</span>
           <div className="flex flex-wrap items-center gap-1.5">
             {collections.map((c) => {
               const on = activeCollectionId === c.id;
@@ -463,12 +463,12 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], com
                 <div
                   key={c.id}
                   className={`flex items-center rounded-full border transition-all ${
-                    on ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300'
+                    on ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300'
                   }`}
                 >
                   <button
                     onClick={() => setActiveCollectionId(on ? null : c.id)}
-                    className="flex items-center gap-1.5 pl-3 pr-2 py-1 text-[11px] font-bold"
+                    className="flex items-center gap-1.5 pl-3 pr-2 py-1 text-xs font-bold"
                   >
                     <Folder className="w-3 h-3" />
                     {c.name}
@@ -497,12 +497,12 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], com
                     if (e.key === 'Escape') { setIsCreatingCollection(false); setNewCollectionName(''); }
                   }}
                   placeholder="Tên bộ sưu tập..."
-                  className="w-40 px-2.5 py-1 text-[11px] font-semibold border border-indigo-300 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-100 bg-white"
+                  className="w-40 px-2.5 py-1 text-xs font-semibold border border-indigo-300 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-100 bg-white"
                 />
                 <button
                   onClick={handleCreateCollection}
                   disabled={!newCollectionName.trim()}
-                  className="px-2.5 py-1 rounded-full bg-indigo-600 text-white text-[11px] font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-2.5 py-1 rounded-full bg-emerald-600 text-white text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Tạo
                 </button>
@@ -513,7 +513,7 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], com
             ) : (
               <button
                 onClick={() => setIsCreatingCollection(true)}
-                className="flex items-center gap-1 px-3 py-1 text-[11px] font-bold rounded-full border border-dashed border-slate-300 text-slate-500 hover:border-indigo-400 hover:text-indigo-600 transition-all"
+                className="flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-full border border-dashed border-slate-300 text-slate-500 hover:border-indigo-400 hover:text-indigo-600 transition-all"
               >
                 <Plus className="w-3 h-3" /> Bộ sưu tập
               </button>
@@ -542,7 +542,7 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], com
             {displayedTemplates.length} mẫu prompt{activeCollection ? ` · ${activeCollection.name}` : ''}
           </span>
           {(hasActiveFacets || activeCollection) && (
-            <button onClick={clearFacets} className="text-[11px] font-bold text-slate-500 hover:text-indigo-600 flex items-center gap-1">
+            <button onClick={clearFacets} className="text-xs font-bold text-slate-500 hover:text-indigo-600 flex items-center gap-1">
               <X className="w-3.5 h-3.5" />Xóa lọc
             </button>
           )}

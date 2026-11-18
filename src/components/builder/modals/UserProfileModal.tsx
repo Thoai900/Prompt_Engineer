@@ -33,7 +33,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         
         <div className="flex flex-col gap-4 mb-8">
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-550 dark:text-slate-400 mb-1.5 block">
+            <label className="text-xs font-bold text-slate-550 dark:text-slate-400 mb-1.5 block">
               Bạn là ai? Ngữ cảnh của bạn?
             </label>
             <textarea 
@@ -56,7 +56,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           </button>
           <button 
             onClick={() => onSaveProfile(userProfile)}
-            className="px-5 py-2 text-sm font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-lg hover:from-violet-500 hover:to-indigo-500 transition-colors shadow-md shadow-violet-900/10 flex items-center gap-1.5 cursor-pointer active:scale-95"
+            className="px-5 py-2 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
           >
             <Save size={14} />
             Lưu hồ sơ

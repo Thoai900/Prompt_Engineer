@@ -1,8 +1,8 @@
 import React from 'react';
 import { Sparkles, Loader2, Send } from 'lucide-react';
-import { GEMINI_FLASH, GEMINI_MODEL_OPTIONS } from '../../config/models';
 import AIResponseRenderer from '../common/AIResponseRenderer';
 import StepNarrator from '../common/StepNarrator';
+import { GEMINI_FLASH, GEMINI_MODEL_OPTIONS, GPT_MINI } from '../../config/models';
 
 // Trần token đầu ra hiển thị cho người dùng — khớp mặc định proxy (AI_MAX_OUTPUT_TOKENS ở api/ai.ts).
 // Kẹp tại client để người dùng không đặt vượt trần rồi bị backend cắt cụt âm thầm.
@@ -74,7 +74,7 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
       {showPlaygroundConfig && (
         <div className="absolute inset-x-0 top-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-4 z-20 flex flex-col gap-3 shadow-xl animate-in slide-in-from-top-2 duration-150 text-slate-800 dark:text-slate-100">
           <div className="flex justify-between items-center pb-2 border-b border-slate-150 dark:border-slate-800">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cấu hình AI Playground</span>
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Cấu hình AI Playground</span>
             <button 
               type="button" 
               onClick={() => setShowPlaygroundConfig(false)} 
@@ -86,13 +86,13 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
           
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col">
-              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-405 uppercase mb-1">Nhà cung cấp</label>
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-405 mb-1">Nhà cung cấp</label>
               <select
                 value={playgroundProvider}
                 onChange={(e) => {
                   const val = e.target.value as 'gemini' | 'openai';
                   setPlaygroundProvider(val);
-                  setPlaygroundModel(val === 'gemini' ? GEMINI_FLASH : 'gpt-4o-mini');
+                  setPlaygroundModel(val === 'gemini' ? GEMINI_FLASH : GPT_MINI);
                 }}
                 className="text-xs px-2.5 py-1.5 border border-slate-200 dark:border-slate-880 bg-slate-50 dark:bg-slate-955 rounded-lg text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-500 font-semibold cursor-pointer"
               >
@@ -101,7 +101,7 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
               </select>
             </div>
             <div className="flex flex-col">
-              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-405 uppercase mb-1">Mô hình (Model)</label>
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-405 mb-1">Mô hình (Model)</label>
               <select
                 value={playgroundModel}
                 onChange={(e) => setPlaygroundModel(e.target.value)}
@@ -115,7 +115,7 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
                   </>
                 ) : (
                   <>
-                    <option value="gpt-4o-mini">gpt-4o-mini</option>
+                    <option value={GPT_MINI}>gpt-4o-mini</option>
                     <option value="gpt-4o">gpt-4o</option>
                     <option value="o1-mini">o1-mini (Lập luận)</option>
                   </>
@@ -127,7 +127,7 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
           {playgroundProvider === 'gemini' ? (
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
-                <label htmlFor="useSystemKeyCheckbox" className="text-[10px] font-bold text-slate-600 dark:text-slate-350 cursor-pointer">Sử dụng API Key mặc định hệ thống</label>
+                <label htmlFor="useSystemKeyCheckbox" className="text-xs font-bold text-slate-600 dark:text-slate-350 cursor-pointer">Sử dụng API Key mặc định hệ thống</label>
                 <input
                   type="checkbox"
                   id="useSystemKeyCheckbox"
@@ -138,7 +138,7 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
               </div>
               {!useSystemGeminiKey && (
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[9px] text-slate-600 dark:text-slate-500 font-medium">Gemini API Key cá nhân:</span>
+                  <span className="text-xs text-slate-600 dark:text-slate-500 font-medium">Gemini API Key cá nhân:</span>
                   <input
                     type="password"
                     value={geminiApiKey}
@@ -151,7 +151,7 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
             </div>
           ) : (
             <div className="flex flex-col gap-0.5">
-              <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300 block">OpenAI API Key cá nhân:</label>
+              <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block">OpenAI API Key cá nhân:</label>
               <input
                 type="password"
                 value={openaiApiKey}
@@ -165,10 +165,10 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
           {/* Groq — mô hình DỰ PHÒNG cho việc tạo prompt khi Gemini lỗi/hết hạn mức.
               Áp dụng toàn cục, lưu cục bộ. */}
           <div className="flex flex-col gap-0.5 pt-2 border-t border-dashed border-slate-200 dark:border-slate-800">
-            <label className="text-[10px] font-bold text-amber-600 dark:text-amber-400 block flex items-center gap-1">
+            <label className="text-xs font-bold text-amber-600 dark:text-amber-400 block flex items-center gap-1">
               ⚡ Groq (GPT-OSS 20B) — dự phòng khi tạo prompt
             </label>
-            <span className="text-[9px] text-slate-500 dark:text-slate-500 leading-snug mb-0.5">
+            <span className="text-xs text-slate-500 dark:text-slate-500 leading-snug mb-0.5">
               Key mặc định của ứng dụng (Gemini + Groq) được giấu an toàn ở backend — chỉ cần đăng nhập là dùng được, việc tạo prompt dùng Gemini và tự chuyển sang Groq khi Gemini lỗi hoặc hết hạn mức. Nhập key Groq riêng vào đây để gọi thẳng bằng key của bạn (không qua backend).
             </span>
             <input
@@ -182,7 +182,7 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
 
           <div className="grid grid-cols-2 gap-3 mt-1">
             <div>
-              <div className="flex justify-between text-[9px] font-bold text-slate-500 dark:text-slate-450 uppercase mb-0.5">
+              <div className="flex justify-between text-xs font-bold text-slate-500 dark:text-slate-450 mb-0.5">
                 <span>Sáng tạo (Temp):</span>
                 <span className="text-violet-655 dark:text-violet-400">{playgroundTemp}</span>
               </div>
@@ -195,7 +195,7 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
               />
             </div>
             <div>
-              <div className="flex justify-between text-[9px] font-bold text-slate-500 dark:text-slate-450 uppercase mb-0.5">
+              <div className="flex justify-between text-xs font-bold text-slate-500 dark:text-slate-450 mb-0.5">
                 <span>Max tokens (≤ {MAX_TOKENS_LIMIT}):</span>
                 <span className="text-violet-655 dark:text-violet-400">{playgroundMaxTokens}</span>
               </div>
@@ -222,15 +222,15 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
               <Sparkles size={24} className="animate-pulse" />
             </div>
             <div>
-              <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Phiên thử nghiệm trống</h4>
-              <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+              <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Phiên thử nghiệm trống</h4>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                 Hãy khởi chạy phiên chat để đưa System Prompt hiện tại vào thử nghiệm trực tiếp.
               </p>
             </div>
             <button
               type="button"
               onClick={handleStartPlaygroundSession}
-              className="py-2.5 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-violet-900/10 active:scale-95 cursor-pointer flex items-center gap-1.5"
+              className="py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
             >
               <Sparkles size={12} /> Khởi chạy Chat
             </button>
@@ -240,13 +240,13 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
             const isAi = m.role === 'assistant';
             return (
               <div key={idx} className={`flex flex-col gap-1 max-w-[85%] ${isAi ? 'self-start text-left' : 'self-end items-end text-right'}`}>
-                <div className={`text-[8px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-550 ${isAi ? 'pl-2' : 'pr-2'}`}>
+                <div className={`text-xs font-bold text-slate-500 dark:text-slate-550 ${isAi ? 'pl-2' : 'pr-2'}`}>
                   {isAi ? '🤖 AI' : '👤 Bạn'}
                 </div>
                 <div className={`p-3 rounded-2xl text-[11.5px] leading-relaxed shadow-sm border text-left
                   ${isAi 
                     ? 'bg-slate-100 dark:bg-slate-900/80 backdrop-blur-sm border-slate-200 dark:border-slate-800 text-slate-850 dark:text-slate-200 rounded-tl-sm' 
-                    : 'bg-gradient-to-r from-violet-600 to-indigo-600 border-violet-500/10 text-white rounded-tr-sm'}`}
+                    : 'bg-emerald-600 hover:bg-emerald-700 border-violet-500/10 text-white rounded-tr-sm'}`}
                 >
                   {m.content === '' ? (
                     <StepNarrator flowKey="playground-sim" isActive placement="inline" className="min-w-[180px]" />
@@ -276,18 +276,18 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
           <button
             type="submit"
             disabled={isChatGenerating || !chatInput.trim() || playgroundMessages.length === 0}
-            className="w-10 h-10 shrink-0 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white rounded-xl flex items-center justify-center shadow-md shadow-violet-900/10 transition-colors disabled:text-slate-400 dark:disabled:text-slate-650 disabled:shadow-none cursor-pointer active:scale-95"
+            className="w-10 h-10 shrink-0 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white rounded-xl flex items-center justify-center shadow-md transition-colors disabled:text-slate-400 dark:disabled:text-slate-650 disabled:shadow-none cursor-pointer active:scale-95"
           >
             {isChatGenerating ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
           </button>
         </form>
         {playgroundMessages.length > 0 && (
-          <div className="flex justify-between items-center text-[9px] text-slate-500 px-1">
+          <div className="flex justify-between items-center text-xs text-slate-500 px-1">
             <span>Phiên chat đã nạp System Prompt tự động.</span>
             <button 
               type="button"
               onClick={handleResetPlayground} 
-              className="text-rose-450 hover:text-rose-350 font-bold uppercase transition-colors cursor-pointer"
+              className="text-rose-450 hover:text-rose-350 font-bold transition-colors cursor-pointer"
             >
               Reset Chat
             </button>

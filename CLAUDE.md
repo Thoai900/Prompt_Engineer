@@ -6,6 +6,7 @@
 
 - **Frontend**: React 19, Vite, Tailwind v4, `motion`, `lucide-react`. Vào từ `src/main.tsx` → `src/App.tsx`.
 - **Điều hướng**: KHÔNG dùng router lib — `activeTab` đồng bộ với `window.location.hash` (`#builder`, `#lab`…) trong App.tsx. Deep-link phụ dùng query-param (`?t=`, `?app=`) đọc trong tab tương ứng, không đụng App.tsx.
+- **Nhóm điều hướng**: `src/utils/navGroups.ts` (thuần) gom tab thành 4 nhóm Tạo/Thư viện/Thử nghiệm/Học — sidebar desktop có tiêu đề nhóm; mobile có thanh tab đáy (4 nhóm + "Thêm") và hàng tab con. Thêm tab mới thì nhớ thêm vào một nhóm (test `navGroups.test.ts` bắt lỗi thiếu).
 - **Tab**: Home (eager) + các tab lazy: Builder, ProjectChain, Rules&Skills, LLM Config, Library, Enhancer, Learn, **Lab**, AI Future. Tab mount-khi-mở, giữ nguyên state (`visitedTabs`).
 - **Lab** (`src/components/tabs/LabTab.tsx`): trung tâm "sức mạnh AI" 7 chế độ, mỗi chế độ một panel trong `src/components/lab/`:
   Bake-off (so tài model) · Auto-Optimizer (tối ưu prompt tiến hoá, chạy backend) · Prompt Health (CI cho prompt) · Linter · Cá nhân hoá (taste model) · Gia sư · Chain→App.

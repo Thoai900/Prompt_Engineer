@@ -28,11 +28,11 @@ export default function UsageStatsPanel() {
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <BarChart3 size={15} className="text-indigo-600" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Sử dụng AI (30 ngày)</span>
+          <span className="text-xs font-bold text-slate-500">Sử dụng AI (30 ngày)</span>
         </div>
         <button
           onClick={refresh}
-          className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
+          className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
           title="Làm mới thống kê"
         >
           <RefreshCw size={11} /> Làm mới
@@ -40,7 +40,7 @@ export default function UsageStatsPanel() {
       </div>
 
       {summary.totalCalls === 0 ? (
-        <p className="py-3 text-center text-[11px] italic text-slate-400">
+        <p className="py-3 text-center text-xs italic text-slate-400">
           Chưa có lượt gọi AI nào được ghi nhận trên thiết bị này.
         </p>
       ) : (
@@ -48,13 +48,13 @@ export default function UsageStatsPanel() {
           <div className="mb-3 flex items-end gap-4">
             <div>
               <div className="text-xl font-black text-slate-800">{summary.totalCalls.toLocaleString('vi-VN')}</div>
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Lượt gọi</div>
+              <div className="text-xs font-semibold text-slate-400">Lượt gọi</div>
             </div>
             <div>
               <div className="flex items-center gap-1 text-xl font-black text-amber-600">
                 <Coins size={15} /> {fmtUSD(summary.totalCostUSD)}
               </div>
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Chi phí ước tính</div>
+              <div className="text-xs font-semibold text-slate-400">Chi phí ước tính</div>
             </div>
           </div>
 
@@ -67,14 +67,14 @@ export default function UsageStatsPanel() {
                   style={{ height: `${Math.max(4, (d.calls / maxDayCalls) * 40)}px` }}
                   title={`${d.date}: ${d.calls} lượt`}
                 />
-                <span className="text-[8px] font-semibold text-slate-300">{d.date.slice(8)}</span>
+                <span className="text-xs font-semibold text-slate-300">{d.date.slice(8)}</span>
               </div>
             ))}
           </div>
 
           <div className="space-y-1">
             {summary.perModel.slice(0, 5).map((m) => (
-              <div key={m.model} className="flex items-center justify-between text-[11px]">
+              <div key={m.model} className="flex items-center justify-between text-xs">
                 <span className="truncate font-semibold text-slate-600">{modelLabel(m.model)}</span>
                 <span className="shrink-0 font-medium text-slate-400">
                   {m.calls.toLocaleString('vi-VN')} lượt · {fmtUSD(m.costUSD)}
@@ -82,7 +82,7 @@ export default function UsageStatsPanel() {
               </div>
             ))}
           </div>
-          <p className="mt-2 text-[9px] italic leading-relaxed text-slate-300">
+          <p className="mt-2 text-xs italic leading-relaxed text-slate-300">
             Ước lượng ~4 ký tự/token theo bảng giá trong app — dùng để so sánh tương đối, không phải hoá đơn.
           </p>
         </>

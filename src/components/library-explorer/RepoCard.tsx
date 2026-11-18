@@ -43,26 +43,26 @@ export default function RepoCard({ repo, selected, onClick }: Props) {
             <span className="font-bold text-slate-800 dark:text-slate-100">{name}</span>
           </span>
         </div>
-        <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-0.5 shrink-0">
+        <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-0.5 shrink-0">
           <Star size={11} className="fill-current" /> {compact(repo.stars)}
         </span>
       </div>
 
       {repo.description && (
-        <span className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">{repo.description}</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">{repo.description}</span>
       )}
 
       {repo.topics && repo.topics.length > 0 && (
         <div className="flex items-center gap-1 flex-wrap">
           {repo.topics.slice(0, 4).map((t) => (
-            <span key={t} className="text-[9px] text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded-full">
+            <span key={t} className="text-xs text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded-full">
               {t}
             </span>
           ))}
         </div>
       )}
 
-      <div className="flex items-center gap-2.5 flex-wrap text-[9px] text-slate-400 dark:text-slate-500">
+      <div className="flex items-center gap-2.5 flex-wrap text-xs text-slate-400 dark:text-slate-500">
         {repo.language && (
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-indigo-400 dark:bg-indigo-500 inline-block" /> {repo.language}

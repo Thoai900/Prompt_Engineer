@@ -67,7 +67,7 @@ export function ImportTemplateModal({
                 className="w-full text-left rounded-xl border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-950/40 hover:border-cyan-400 dark:hover:border-cyan-600 p-3 transition-colors cursor-pointer"
               >
                 <span className="block text-xs font-bold text-slate-800 dark:text-slate-200">{tpl.title}</span>
-                <span className="block text-[10.5px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{tpl.description}</span>
+                <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{tpl.description}</span>
               </button>
             ))
           )}

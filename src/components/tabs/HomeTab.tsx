@@ -1,19 +1,15 @@
 import { toast } from '../common/Toaster';
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useInView } from 'motion/react';
 import {
-  Search, Copy, Check, Sparkles, ArrowRight, Bookmark,
+  Search, Copy, Check, ArrowRight, Bookmark, Loader2,
   Briefcase, CheckCircle, Compass, Info, Edit3, Zap, Layers,
   Workflow, Library, ScrollText, GraduationCap, Brain, Moon, Sun
 } from 'lucide-react';
 // aiService kéo theo @google/genai (~280KB). Import động khi người dùng thực sự
 // bấm "Tạo prompt" để không nặng tải khởi động của trang chủ.
 import { TabType } from '../../types';
-import SpotlightCard from '../common/SpotlightCard';
 import { GhostTextInput } from '../common/GhostTextInput';
-// Lazy: kéo theo three.js (~rất nặng) — chỉ tải khi khối 3D thực sự hiển thị.
-const AIShowcase3D = lazy(() => import('../common/AIShowcase3D'));
-import AuroraBackground from '../common/AuroraBackground';
 
 interface HomeTabProps {
   onSelectTemplate: (template: any) => void;
@@ -39,7 +35,7 @@ const FEATURES: {
 }[] = [
   { tab: 'builder', title: 'Prompt Builder', desc: 'Dựng prompt theo khung Multi-block trực quan: vai trò, ràng buộc, định dạng — kéo thả, thêm biến số, kiểm soát từng khối tư duy.', icon: <Briefcase className="w-5 h-5" />, span: 'md:col-span-3', featured: true },
   { tab: 'projectchain', title: 'Project Chain', desc: 'Nối nhiều prompt thành một quy trình, trực quan hoá trên canvas và lan truyền thay đổi tự động.', icon: <Workflow className="w-5 h-5" />, span: 'md:col-span-3', featured: true },
-  { tab: 'enhancer', title: 'AI Enhancer', desc: 'Dán prompt thô, nhận lại bản tinh chỉnh rõ ràng hơn.', icon: <Sparkles className="w-5 h-5" />, span: 'md:col-span-2' },
+  { tab: 'enhancer', title: 'AI Enhancer', desc: 'Dán prompt thô, nhận lại bản tinh chỉnh rõ ràng hơn.', icon: <Edit3 className="w-5 h-5" />, span: 'md:col-span-2' },
   { tab: 'library', title: 'Thư viện mẫu', desc: 'Kho prompt cộng đồng và của riêng bạn, đồng bộ đám mây.', icon: <Library className="w-5 h-5" />, span: 'md:col-span-2' },
   { tab: 'rulesskills', title: 'Rules & Skills', desc: 'Bộ luật và kỹ năng tái sử dụng cho mọi prompt.', icon: <ScrollText className="w-5 h-5" />, span: 'md:col-span-2' },
   { tab: 'utilitybelt', title: 'LLM Config', desc: 'Tinh chỉnh model, nhiệt độ và tham số cho từng tác vụ.', icon: <Zap className="w-5 h-5" />, span: 'md:col-span-3' },
@@ -153,11 +149,11 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
     <div className="bg-surface text-ink w-full h-full overflow-x-hidden overflow-y-auto custom-scrollbar font-sans selection:bg-emerald-500/20 relative flex flex-col scroll-smooth">
 
       {/* ===================== TOP NAV ===================== */}
-      <header className="sticky top-0 z-50 w-full border-b border-line/60 bg-glass/70 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 w-full border-b border-line bg-panel">
         <nav className="mx-auto max-w-6xl px-4 h-16 flex items-center justify-between">
           <button onClick={() => onNavigateToTab('home')} className="flex items-center gap-2.5 cursor-pointer">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500 text-sm font-bold text-white shadow-sm shadow-emerald-500/30">P</div>
-            <span className="text-base font-bold tracking-tight text-ink">Prompt<span className="text-emerald-500">Builder</span></span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-sm font-bold text-white">P</div>
+            <span className="text-base font-semibold tracking-tight text-ink">PromptBuilder</span>
           </button>
 
           <div className="hidden md:flex items-center gap-1 text-sm font-semibold text-muted">
@@ -172,11 +168,11 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
               title={theme === 'light' ? 'Giao diện tối' : 'Giao diện sáng'}
               className="rounded-xl p-2 text-muted hover:text-ink hover:bg-hover transition-colors cursor-pointer"
             >
-              {theme === 'light' ? <Moon size={18} className="text-emerald-500" /> : <Sun size={18} className="text-amber-400" />}
+              {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
             </button>
             <button
               onClick={onNavigateToBuilder}
-              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 text-sm font-bold transition-all shadow-sm shadow-emerald-500/30 hover:shadow-md hover:shadow-emerald-500/40 active:scale-95 cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-sm font-semibold transition-colors cursor-pointer"
             >
               Vào ứng dụng
               <ArrowRight size={15} />
@@ -186,54 +182,40 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
       </header>
 
       {/* ===================== HERO ===================== */}
-      <section className="relative w-full shrink-0 overflow-hidden">
-        <AuroraBackground intensity="hero" />
-        <div className="absolute inset-0 hero-spotlight pointer-events-none z-[1]" />
-        <div className="absolute inset-0 hero-grid pointer-events-none z-[1]" />
-
-        <div className="relative z-10 mx-auto max-w-5xl px-4 pt-16 pb-20 md:pt-24 md:pb-24 flex flex-col items-center text-center">
-          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mb-7 uppercase tracking-[0.18em] animate-fade-in">
-            <Sparkles className="w-3.5 h-3.5" /> Nền tảng Prompt Engineering
-          </span>
-
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-ink tracking-tight leading-[1.05] mb-6 max-w-4xl text-balance">
-            Biến ý tưởng mơ hồ thành <span className="text-aurora-sweep">prompt cấp chuyên gia</span>
+      <section className="relative w-full shrink-0">
+        <div className="mx-auto max-w-5xl px-4 pt-14 pb-16 md:pt-20 md:pb-20 flex flex-col items-center text-center">
+          <h1 className="text-3xl md:text-5xl font-bold text-ink tracking-tight leading-[1.15] mb-5 max-w-3xl text-balance">
+            Biến ý tưởng mơ hồ thành prompt cấp chuyên gia
           </h1>
 
-          <p className="text-[15px] md:text-lg font-medium text-muted max-w-2xl leading-relaxed mx-auto mb-9 text-pretty">
+          <p className="text-base md:text-lg text-muted max-w-2xl leading-relaxed mx-auto mb-8 text-pretty">
             Chia nhỏ mục tiêu thành khung sườn Multi-Block vững chắc, đối kháng ảo giác AI. Dựng, nối chuỗi, tinh chỉnh và lưu trữ prompt — tất cả trong một workspace.
           </p>
 
-          <div className="flex flex-wrap justify-center gap-3 animate-fade-in mb-16">
+          <div className="flex flex-wrap justify-center gap-3 mb-12">
             <a
               href="#generate"
-              className="inline-flex items-center gap-2 px-6 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full text-sm font-black transition-all shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 cursor-pointer active:scale-95"
+              className="inline-flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-colors cursor-pointer"
             >
-              <Sparkles className="w-4 h-4" />
-              Tạo Prompt miễn phí
+              Tạo prompt miễn phí
             </a>
             <a
               href="#features"
-              className="inline-flex items-center gap-2 px-6 py-3.5 bg-panel hover:bg-hover border border-line text-ink rounded-full text-sm font-bold transition-all cursor-pointer active:scale-95"
+              className="inline-flex items-center gap-2 px-5 py-3 bg-panel hover:bg-hover border border-line text-ink rounded-lg text-sm font-semibold transition-colors cursor-pointer"
             >
               Khám phá tính năng
               <ArrowRight className="w-4 h-4" />
             </a>
           </div>
 
-          <motion.div
-            className="relative z-10 w-full"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.1 }}
-          >
-            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-faint mb-7">
-              Tối ưu cho mọi nền tảng AI hàng đầu
-            </p>
-            <Suspense fallback={<div className="h-[320px] w-full" />}>
-              <AIShowcase3D />
-            </Suspense>
-          </motion.div>
+          {/* Ảnh chụp giao diện thật (Prompt Graph) — thay cho khối 3D trang trí. */}
+          <img
+            src={theme === 'dark' ? '/screenshots/app-dark.webp' : '/screenshots/app-light.webp'}
+            alt="Giao diện PromptBuilder: Prompt Graph nối các khối Vai trò, Định dạng, Giọng điệu, Ràng buộc vào Prompt gốc"
+            width={2160}
+            height={1284}
+            className="hidden sm:block w-full h-auto rounded-xl border border-line shadow-sm"
+          />
         </div>
       </section>
 
@@ -254,10 +236,10 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
               transition={{ duration: 0.5, delay: i * 0.08 }}
               className="rounded-2xl bg-panel border border-line p-5 text-center"
             >
-              <div className="text-3xl md:text-4xl font-black tracking-tight text-emerald-600 dark:text-emerald-400 tabular-nums">
+              <div className="text-3xl md:text-4xl font-bold tracking-tight text-ink tabular-nums">
                 {stat.static ? stat.static : <CountUp to={stat.value!} suffix={stat.suffix} />}
               </div>
-              <p className="text-[11px] font-semibold text-muted mt-1.5 leading-snug">{stat.label}</p>
+              <p className="text-sm text-muted mt-1.5 leading-snug">{stat.label}</p>
             </motion.div>
           ))}
         </div>
@@ -267,9 +249,9 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
       <section id="features" className="w-full px-4 pt-24 pb-8 scroll-mt-20">
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl mb-10">
-            <span className="text-xs font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Tính năng</span>
-            <h2 className="text-3xl md:text-4xl font-black text-ink tracking-tight mt-2 text-balance">Một workspace, trọn vẹn vòng đời của một prompt</h2>
-            <p className="text-sm font-medium text-muted mt-3 leading-relaxed">Từ lúc nảy ra ý tưởng đến khi dựng, nối chuỗi, tinh chỉnh và chia sẻ — mọi công đoạn đều nằm gọn trong một nơi.</p>
+            <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Tính năng</span>
+            <h2 className="text-2xl md:text-3xl font-bold text-ink tracking-tight mt-2 text-balance">Một workspace, trọn vẹn vòng đời của một prompt</h2>
+            <p className="text-base text-muted mt-3 leading-relaxed">Từ lúc nảy ra ý tưởng đến khi dựng, nối chuỗi, tinh chỉnh và chia sẻ — mọi công đoạn đều nằm gọn trong một nơi.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
@@ -283,18 +265,18 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
                 transition={{ duration: 0.45, delay: (i % 3) * 0.07 }}
                 className={`group ${f.span} text-left`}
               >
-                <SpotlightCard className={`h-full bg-panel border border-line rounded-2xl hover:border-emerald-500/40 hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-500/5 transition-all duration-300 flex flex-col ${f.featured ? 'p-7 gap-4' : 'p-6 gap-3'}`}>
-                  <div className={`flex items-center justify-center shrink-0 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ${f.featured ? 'w-12 h-12' : 'w-10 h-10'}`}>
+                <div className={`h-full bg-panel border border-line rounded-xl hover:border-emerald-600/50 transition-colors flex flex-col ${f.featured ? 'p-6 gap-4' : 'p-5 gap-3'}`}>
+                  <div className="flex items-center justify-center shrink-0 rounded-lg bg-hover text-muted w-10 h-10">
                     {f.icon}
                   </div>
                   <div>
-                    <h3 className={`font-black text-ink tracking-tight mb-1 flex items-center gap-1.5 ${f.featured ? 'text-lg' : 'text-sm'}`}>
+                    <h3 className="font-semibold text-ink mb-1 flex items-center gap-1.5 text-base">
                       {f.title}
-                      <ArrowRight className="w-3.5 h-3.5 text-emerald-500 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                      <ArrowRight className="w-4 h-4 text-faint group-hover:text-emerald-600 transition-colors" />
                     </h3>
-                    <p className={`text-muted font-medium leading-relaxed ${f.featured ? 'text-[13px]' : 'text-[11px]'}`}>{f.desc}</p>
+                    <p className="text-sm text-muted leading-relaxed">{f.desc}</p>
                   </div>
-                </SpotlightCard>
+                </div>
               </motion.button>
             ))}
           </div>
@@ -304,14 +286,14 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
       {/* ===================== TRY IT NOW (GENERATE) ===================== */}
       <section id="generate" className="w-full px-4 pt-20 pb-8 scroll-mt-20">
         <div className="mx-auto max-w-3xl flex flex-col items-center text-center">
-          <span className="text-xs font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Thử ngay</span>
-          <h2 className="text-3xl md:text-4xl font-black text-ink tracking-tight mt-2 text-balance">Mô tả một câu, nhận về prompt có cấu trúc</h2>
-          <p className="text-sm font-medium text-muted mt-3 mb-9 max-w-xl leading-relaxed">Nhập chủ đề bạn đang vướng. AI sẽ phân rã thành các khối Vai trò · Ràng buộc · Định dạng để bạn dùng ngay hoặc mở trong Builder.</p>
+          <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Thử ngay</span>
+          <h2 className="text-2xl md:text-3xl font-bold text-ink tracking-tight mt-2 text-balance">Mô tả một câu, nhận về prompt có cấu trúc</h2>
+          <p className="text-base text-muted mt-3 mb-8 max-w-xl leading-relaxed">Nhập chủ đề bạn đang vướng. AI sẽ phân rã thành các khối Vai trò · Ràng buộc · Định dạng để bạn dùng ngay hoặc mở trong Builder.</p>
 
-          <div className="glow-border w-full rounded-[26px] relative">
-            <div className="rounded-[26px] bg-panel border border-line p-3 md:p-4 shadow-xl shadow-emerald-500/5">
+          <div className="w-full">
+            <div className="rounded-xl bg-panel border border-line p-3 md:p-4">
               <form onSubmit={handleGeneratePrompt} className="relative flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
-                <div className="relative flex-1 flex items-center bg-hover border border-line rounded-full">
+                <div className="relative flex-1 flex items-center bg-hover border border-line rounded-lg">
                   <Search className="absolute left-4 w-5 h-5 text-faint" />
                   <GhostTextInput
                     type="text"
@@ -320,36 +302,33 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
                     value={searchInput}
                     onValueChange={(next) => setSearchInput(next)}
                     disabled={isGenerating}
-                    className="w-full pl-12 pr-4 py-4 input-transparent text-ink placeholder-faint focus:outline-none focus:ring-0 text-medium md:text-[15px] font-semibold"
+                    className="w-full pl-12 pr-4 py-3.5 input-transparent text-ink placeholder-faint focus:outline-none focus:ring-0 text-base"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={isGenerating || !searchInput.trim()}
-                  className="py-3.5 px-6 rounded-full bg-emerald-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 transition-all hover:bg-emerald-600 hover:shadow-lg hover:shadow-emerald-500/30 active:scale-95 disabled:bg-emerald-500/40 disabled:text-white/70 disabled:scale-100 disabled:cursor-not-allowed cursor-pointer"
+                  className="py-3 px-5 rounded-lg bg-emerald-600 text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors hover:bg-emerald-700 disabled:bg-emerald-600/40 disabled:text-white/80 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {isGenerating ? (
                     <>
-                      <Sparkles className="w-4 h-4 animate-pulse" />
-                      Đang phân rã...
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Đang tạo...
                     </>
                   ) : (
-                    <>
-                      <Sparkles className="w-4 h-4" />
-                      Tạo Prompt
-                    </>
+                    <>Tạo prompt</>
                   )}
                 </button>
               </form>
 
               <div className="mt-4 pt-3 border-t border-line flex flex-wrap gap-2 items-center text-left">
-                <span className="text-[11px] font-black text-faint uppercase tracking-widest pl-1">Gợi ý:</span>
+                <span className="text-sm font-medium text-muted pl-1">Gợi ý:</span>
                 {POPULAR_SUGGESTIONS.map((suggestion, index) => (
                   <button
                     key={index}
                     onClick={() => setSearchInput(suggestion.text)}
                     type="button"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-hover border border-line rounded-xl text-xs text-muted font-semibold hover:border-emerald-500/40 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-hover border border-line rounded-lg text-sm text-muted hover:border-emerald-600/50 hover:text-ink transition-colors cursor-pointer"
                   >
                     <span>{suggestion.icon}</span>
                     <span>{suggestion.text}</span>
@@ -367,18 +346,16 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="w-full max-w-2xl mt-8 bg-panel border border-emerald-500/20 rounded-3xl p-6 text-center shadow-lg overflow-hidden"
+                className="w-full max-w-2xl mt-8 bg-panel border border-line rounded-xl p-6 text-center overflow-hidden"
               >
                 <div className="flex flex-col items-center gap-4">
-                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 animate-pulse">
-                    <Sparkles className="w-6 h-6 text-emerald-500" />
-                  </div>
+                  <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
                   <div className="flex flex-col gap-1.5 w-full">
-                    <span className="text-[13px] font-bold text-emerald-600 dark:text-emerald-300 animate-pulse">{steps[generationStep]}</span>
+                    <span className="text-sm font-medium text-ink">{steps[generationStep]}</span>
                     <div className="w-48 h-1 bg-hover rounded-full mx-auto overflow-hidden">
-                      <div className="h-full bg-emerald-500 transition-all duration-1000 ease-out" style={{ width: `${((generationStep + 1) / steps.length) * 100}%` }} />
+                      <div className="h-full bg-emerald-600 transition-all duration-1000 ease-out" style={{ width: `${((generationStep + 1) / steps.length) * 100}%` }} />
                     </div>
-                    <span className="text-[10px] text-faint font-medium">Bố cục Multi-block đang cấu hình cho tối ưu ngữ cảnh</span>
+                    <span className="text-xs text-muted">Bố cục Multi-block đang cấu hình cho tối ưu ngữ cảnh</span>
                   </div>
                 </div>
               </motion.div>
@@ -405,23 +382,22 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
               >
                 <div className="flex items-center justify-between mb-4 px-1">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-xs font-bold text-muted uppercase tracking-widest">Kết quả prompt hoàn chỉnh</span>
+                    <CheckCircle className="w-4 h-4 text-emerald-600" />
+                    <span className="text-sm font-semibold text-ink">Kết quả prompt hoàn chỉnh</span>
                   </div>
-                  <div className="text-[10px] text-faint font-bold uppercase select-none">AI Generation Engine</div>
                 </div>
 
-                <div className="bg-panel border border-line shadow-xl rounded-3xl overflow-hidden relative">
-                  <div className="p-6 md:p-8 bg-emerald-500/[0.04] border-b border-line flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="bg-panel border border-line rounded-xl overflow-hidden relative">
+                  <div className="p-5 md:p-6 border-b border-line flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="space-y-1">
-                      <h3 className="text-xl font-black text-ink tracking-tight flex items-center gap-2">✨ {generatedTemplate.title}</h3>
-                      <p className="text-xs font-semibold text-muted leading-relaxed">{generatedTemplate.description}</p>
+                      <h3 className="text-lg font-semibold text-ink tracking-tight">{generatedTemplate.title}</h3>
+                      <p className="text-sm text-muted leading-relaxed">{generatedTemplate.description}</p>
                       <div className="flex flex-wrap gap-1.5 pt-1">
-                        <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-wider">
+                        <span className="px-2 py-0.5 bg-emerald-600/10 rounded-md text-xs font-medium text-emerald-700 dark:text-emerald-400">
                           {generatedTemplate.category || 'Mẫu của tôi'}
                         </span>
                         {generatedTemplate.tags?.map((tag: string, index: number) => (
-                          <span key={index} className="px-2 py-0.5 bg-hover rounded-md text-[9px] font-bold text-muted">#{tag}</span>
+                          <span key={index} className="px-2 py-0.5 bg-hover rounded-md text-xs text-muted">#{tag}</span>
                         ))}
                       </div>
                     </div>
@@ -429,37 +405,33 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
                     <div className="flex flex-wrap items-center gap-2 sm:self-center">
                       <button
                         onClick={handleCopyPrompt}
-                        className="px-3.5 py-2 rounded-xl bg-hover text-muted hover:text-ink border border-line font-extrabold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                        className="px-3.5 py-2 rounded-lg bg-panel text-ink hover:bg-hover border border-line font-medium text-sm flex items-center gap-1.5 transition-colors cursor-pointer"
                         title="Sao chép toàn bộ"
                       >
                         {textCopied ? (
-                          <><Check className="w-3.5 h-3.5 text-emerald-500" /> Đã chép</>
+                          <><Check className="w-4 h-4 text-emerald-600" /> Đã chép</>
                         ) : (
-                          <><Copy className="w-3.5 h-3.5 text-emerald-500" /> Sao chép</>
+                          <><Copy className="w-4 h-4" /> Sao chép</>
                         )}
                       </button>
 
                       <button
                         onClick={handleSaveToLibrary}
                         disabled={isSaved || saveLoading}
-                        className={`px-3.5 py-2 rounded-xl font-extrabold text-xs flex items-center gap-1.5 border transition-all cursor-pointer active:scale-95 ${
-                          isSaved
-                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                            : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                        }`}
+                        className="px-3.5 py-2 rounded-lg font-medium text-sm flex items-center gap-1.5 border border-line bg-panel text-ink hover:bg-hover transition-colors cursor-pointer disabled:cursor-default"
                       >
                         {isSaved ? (
-                          <><CheckCircle className="w-3.5 h-3.5" /> Đã lưu</>
+                          <><CheckCircle className="w-4 h-4 text-emerald-600" /> Đã lưu</>
                         ) : (
-                          <><Bookmark className="w-3.5 h-3.5" /> {saveLoading ? 'Đang lưu...' : 'Lưu kết quả'}</>
+                          <><Bookmark className="w-4 h-4" /> {saveLoading ? 'Đang lưu...' : 'Lưu kết quả'}</>
                         )}
                       </button>
 
                       <button
                         onClick={() => onSelectTemplate(generatedTemplate)}
-                        className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 shadow-sm shadow-emerald-500/30 hover:shadow-md transition-all cursor-pointer active:scale-95"
+                        className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
                       >
-                        <Edit3 className="w-3.5 h-3.5" />
+                        <Edit3 className="w-4 h-4" />
                         Mở trong Builder
                       </button>
                     </div>
@@ -469,20 +441,20 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
                     {generatedTemplate.blocks?.map((block: any) => (
                       <div key={block.id} className="p-5 md:p-6 flex flex-col md:flex-row gap-4 md:items-start hover:bg-hover/60 transition-colors">
                         <div className="w-full md:w-44 shrink-0 flex items-center gap-1.5 md:flex-col md:items-stretch">
-                          <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 font-mono uppercase tracking-widest py-0.5 bg-emerald-500/10 border border-emerald-500/20 px-2 rounded-md self-start">
+                          <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400 font-mono py-0.5 bg-emerald-600/10 px-2 rounded-md self-start">
                             {block.type}
                           </span>
-                          <h4 className="text-xs font-black text-ink tracking-tight">{block.title}</h4>
+                          <h4 className="text-sm font-semibold text-ink">{block.title}</h4>
                         </div>
-                        <div className="flex-1 bg-hover border border-line p-4 rounded-xl font-mono text-[11px] md:text-xs text-muted whitespace-pre-wrap leading-relaxed">
+                        <div className="flex-1 bg-hover border border-line p-4 rounded-xl font-mono text-xs md:text-sm text-ink whitespace-pre-wrap leading-relaxed">
                           {block.content}
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  <div className="p-4 bg-hover/50 border-t border-line flex items-center gap-2 text-[10px] text-faint font-semibold px-6">
-                    <Info className="w-3.5 h-3.5 shrink-0" />
+                  <div className="p-4 bg-hover/50 border-t border-line flex items-center gap-2 text-sm text-muted px-6">
+                    <Info className="w-4 h-4 shrink-0" />
                     Nhấn "Mở trong Builder" để tách nhỏ biến số, thêm khối tư duy mới, hay chỉnh giọng AI một cách chuyên nghiệp nhất.
                   </div>
                 </div>
@@ -496,8 +468,8 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
       <section id="how" className="w-full px-4 pt-24 pb-8 scroll-mt-20">
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl mb-10">
-            <span className="text-xs font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Quy trình</span>
-            <h2 className="text-3xl md:text-4xl font-black text-ink tracking-tight mt-2 text-balance">Ba khối tư duy làm nên một prompt vững chắc</h2>
+            <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Quy trình</span>
+            <h2 className="text-2xl md:text-3xl font-bold text-ink tracking-tight mt-2 text-balance">Ba khối tư duy làm nên một prompt vững chắc</h2>
           </div>
 
           <motion.div
@@ -516,17 +488,17 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
                 key={idx}
                 variants={{ hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } } }}
               >
-                <SpotlightCard className="h-full bg-panel border border-line p-6 rounded-2xl hover:border-emerald-500/40 transition-all flex flex-col gap-3">
+                <div className="h-full bg-panel border border-line p-6 rounded-xl flex flex-col gap-3">
                   <div className="flex items-center justify-between">
-                    <div className="w-11 h-11 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">{item.icon}</div>
-                    <span className="text-3xl font-black text-line tabular-nums">{item.num}</span>
+                    <div className="w-10 h-10 rounded-lg bg-hover text-muted flex items-center justify-center shrink-0">{item.icon}</div>
+                    <span className="text-sm font-semibold text-faint tabular-nums">{item.num}</span>
                   </div>
                   <div>
-                    <h3 className="text-base font-black text-ink tracking-tight">{item.title}</h3>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-2">{item.sub}</p>
-                    <p className="text-[12px] text-muted font-medium leading-relaxed">{item.desc}</p>
+                    <h3 className="text-base font-semibold text-ink">{item.title}</h3>
+                    <p className="text-sm text-muted mb-2">{item.sub}</p>
+                    <p className="text-sm text-muted leading-relaxed">{item.desc}</p>
                   </div>
-                </SpotlightCard>
+                </div>
               </motion.div>
             ))}
           </motion.div>
@@ -540,28 +512,24 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.3 }}
           transition={{ duration: 0.6 }}
-          className="mx-auto max-w-6xl relative overflow-hidden rounded-[28px] border border-emerald-500/20 bg-emerald-500/[0.06] px-6 py-14 md:px-12 md:py-20 text-center"
+          className="mx-auto max-w-6xl rounded-xl border border-line bg-panel px-6 py-12 md:px-12 md:py-16 text-center"
         >
-          <div className="absolute inset-0 hero-spotlight opacity-80 pointer-events-none" />
-          <div className="relative z-10 flex flex-col items-center">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center mb-5 shadow-lg shadow-emerald-500/30">
-              <Zap className="w-6 h-6" />
-            </div>
-            <h2 className="text-3xl md:text-5xl font-black text-ink tracking-tight max-w-2xl leading-[1.1] text-balance">
-              Sẵn sàng dựng prompt <span className="text-aurora-sweep">tốt hơn</span> ngay hôm nay?
+          <div className="flex flex-col items-center">
+            <h2 className="text-2xl md:text-4xl font-bold text-ink tracking-tight max-w-2xl leading-[1.15] text-balance">
+              Sẵn sàng dựng prompt tốt hơn ngay hôm nay?
             </h2>
-            <p className="text-sm font-medium text-muted mt-4 max-w-xl">Bắt đầu với một câu mô tả, hoặc tự tay dựng từng khối trong Prompt Builder. Bạn toàn quyền kiểm soát.</p>
+            <p className="text-base text-muted mt-4 max-w-xl">Bắt đầu với một câu mô tả, hoặc tự tay dựng từng khối trong Prompt Builder. Bạn toàn quyền kiểm soát.</p>
             <div className="flex flex-wrap justify-center gap-3 mt-8">
               <button
                 onClick={onNavigateToBuilder}
-                className="inline-flex items-center gap-2 px-6 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full text-sm font-black transition-all shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 cursor-pointer active:scale-95"
+                className="inline-flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-colors cursor-pointer"
               >
                 <Briefcase className="w-4 h-4" />
                 Mở Prompt Builder
               </button>
               <a
                 href="#generate"
-                className="inline-flex items-center gap-2 px-6 py-3.5 bg-panel hover:bg-hover border border-line text-ink rounded-full text-sm font-bold transition-all cursor-pointer active:scale-95"
+                className="inline-flex items-center gap-2 px-5 py-3 bg-panel hover:bg-hover border border-line text-ink rounded-lg text-sm font-semibold transition-colors cursor-pointer"
               >
                 Tạo nhanh bằng AI
                 <ArrowRight className="w-4 h-4" />
@@ -572,13 +540,13 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
       </section>
 
       {/* ===================== FOOTER ===================== */}
-      <footer className="w-full border-t border-line/60">
+      <footer className="w-full border-t border-line">
         <div className="mx-auto max-w-6xl px-4 py-8 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500 text-xs font-bold text-white">P</div>
-            <span className="text-sm font-bold tracking-tight text-ink">Prompt<span className="text-emerald-500">Builder</span></span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600 text-xs font-bold text-white">P</div>
+            <span className="text-sm font-semibold tracking-tight text-ink">PromptBuilder</span>
           </div>
-          <p className="text-[11px] font-semibold text-faint uppercase tracking-widest">© 2026 PromptBuilder Org • Thân thiện • Hiện đại</p>
+          <p className="text-sm text-muted">© 2026 PromptBuilder</p>
         </div>
       </footer>
     </div>

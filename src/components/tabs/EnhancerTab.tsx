@@ -116,7 +116,7 @@ export default function EnhancerTab({ onApplyTemplate }: EnhancerTabProps) {
         {/* Input */}
         <div className="flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-             <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Ý tưởng ban đầu</h3>
+             <h3 className="text-xs font-bold text-slate-400">Ý tưởng ban đầu</h3>
           </div>
           <div className="flex-1 p-0 relative min-h-[220px]">
             <GhostTextArea
@@ -133,7 +133,7 @@ export default function EnhancerTab({ onApplyTemplate }: EnhancerTabProps) {
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-slate-700 flex flex-col">
                   <span>🧠 Lập luận chuyên sâu (Deep Reasoning)</span>
-                  <span className="text-[10px] text-slate-400 font-normal">Sử dụng Gemini 2.5 Pro cho cấu trúc phức tạp</span>
+                  <span className="text-xs text-slate-400 font-normal">Sử dụng Gemini 2.5 Pro cho cấu trúc phức tạp</span>
                 </label>
                 <input
                   type="checkbox"
@@ -182,7 +182,7 @@ export default function EnhancerTab({ onApplyTemplate }: EnhancerTabProps) {
              <button
               onClick={handleEnhance}
               disabled={!inputPrompt.trim() || isLoading}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md text-xs font-semibold shadow-sm hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 bg-emerald-600 text-white rounded-md text-xs font-semibold shadow-sm hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isLoading ? <Loader2 size={14} className="animate-pulse" /> : <Sparkles size={14} />}
               <span>{isLoading ? 'Đang tối ưu...' : 'Tối ưu hóa Prompt'}</span>
@@ -193,7 +193,7 @@ export default function EnhancerTab({ onApplyTemplate }: EnhancerTabProps) {
         {/* Output */}
         <div className="flex flex-col bg-slate-50 rounded-xl border border-indigo-200 shadow-sm overflow-hidden flex-1 p-4 h-full relative">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
-             <h3 className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">Cấu trúc Tối ưu</h3>
+             <h3 className="text-xs font-bold text-indigo-600">Cấu trúc Tối ưu</h3>
              {optimizedBlocks && optimizedBlocks.length > 0 && (
                <div className="flex items-center gap-2 w-full md:w-auto">
                  <button
@@ -206,7 +206,7 @@ export default function EnhancerTab({ onApplyTemplate }: EnhancerTabProps) {
                   {onApplyTemplate && (
                     <button
                       onClick={handleApplyToBuilder}
-                      className="flex-[2] md:flex-none justify-center px-3 py-2 bg-indigo-600 border border-indigo-600 rounded-md text-xs font-semibold text-white hover:bg-indigo-700 flex items-center gap-1.5 transition-colors shadow-sm"
+                      className="flex-[2] md:flex-none justify-center px-3 py-2 bg-emerald-600 border border-emerald-600 rounded-md text-xs font-semibold text-white hover:bg-emerald-700 flex items-center gap-1.5 transition-colors shadow-sm"
                     >
                       <ExternalLink size={14} />
                       <span>Áp dụng vào Builder</span>
@@ -228,7 +228,7 @@ export default function EnhancerTab({ onApplyTemplate }: EnhancerTabProps) {
              {isLoading ? (
                streamingText ? (
                  <div className="flex flex-col gap-2">
-                   <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-indigo-600">
+                   <div className="flex items-center gap-2 text-xs font-bold text-indigo-600">
                      <Loader2 size={13} className="animate-spin" />
                      AI đang soạn…
                    </div>
@@ -250,7 +250,7 @@ export default function EnhancerTab({ onApplyTemplate }: EnhancerTabProps) {
                <div className="flex flex-col gap-4">
                  {optimizedBlocks.map(block => (
                    <div key={block.id} className="border border-slate-100 rounded-lg p-3 bg-slate-50/50">
-                     <h4 className="text-xs font-bold text-indigo-700 uppercase tracking-widest mb-1.5">
+                     <h4 className="text-xs font-bold text-indigo-700 mb-1.5">
                        [{block.title}]
                      </h4>
                      <p className="text-sm text-slate-700 leading-relaxed font-mono whitespace-pre-wrap">

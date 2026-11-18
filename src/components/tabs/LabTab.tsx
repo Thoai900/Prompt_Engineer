@@ -40,7 +40,7 @@ export default function LabTab({ libraryTemplates = [], onApplyTemplate, onSaveT
   }, []);
 
   return (
-    <div className="flex-1 overflow-y-auto bg-surface p-6">
+    <div className="flex-1 overflow-y-auto bg-surface p-4 md:p-6">
       <div className="mx-auto max-w-5xl">
         <div className="mb-5 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
@@ -52,46 +52,46 @@ export default function LabTab({ libraryTemplates = [], onApplyTemplate, onSaveT
           </div>
         </div>
 
-        <div className="mb-6 inline-flex rounded-xl border border-line bg-panel p-1">
+        <div className="mb-6 inline-flex max-w-full overflow-x-auto no-scrollbar rounded-xl border border-line bg-panel p-1" role="tablist">
           <button
             onClick={() => setMode('bakeoff')}
-            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${mode === 'bakeoff' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
+            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 min-h-10 text-sm font-semibold transition-colors ${mode === 'bakeoff' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
           >
             <Scale size={15} /> So tài Model
           </button>
           <button
             onClick={() => setMode('optimizer')}
-            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${mode === 'optimizer' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
+            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 min-h-10 text-sm font-semibold transition-colors ${mode === 'optimizer' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
           >
             <Sparkles size={15} /> Auto-Optimizer
           </button>
           <button
             onClick={() => setMode('health')}
-            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${mode === 'health' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
+            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 min-h-10 text-sm font-semibold transition-colors ${mode === 'health' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
           >
             <Activity size={15} /> Prompt Health
           </button>
           <button
             onClick={() => setMode('linter')}
-            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${mode === 'linter' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
+            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 min-h-10 text-sm font-semibold transition-colors ${mode === 'linter' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
           >
             <ShieldCheck size={15} /> Linter
           </button>
           <button
             onClick={() => setMode('taste')}
-            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${mode === 'taste' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
+            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 min-h-10 text-sm font-semibold transition-colors ${mode === 'taste' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
           >
             <Fingerprint size={15} /> Cá nhân hoá
           </button>
           <button
             onClick={() => setMode('tutor')}
-            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${mode === 'tutor' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
+            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 min-h-10 text-sm font-semibold transition-colors ${mode === 'tutor' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
           >
             <GraduationCap size={15} /> Gia sư
           </button>
           <button
             onClick={() => setMode('app')}
-            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${mode === 'app' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
+            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 min-h-10 text-sm font-semibold transition-colors ${mode === 'app' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
           >
             <AppWindow size={15} /> Chain → App
           </button>

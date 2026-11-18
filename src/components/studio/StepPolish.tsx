@@ -153,7 +153,7 @@ export default function StepPolish({ draft, assembledText, onPatch }: StepPolish
       <div className="rounded-2xl border border-line bg-panel/80 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/15 to-cyan-500/15 text-violet-500">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600/10 text-emerald-700 dark:text-emerald-400">
               <Gauge size={16} />
             </div>
             <div>
@@ -178,12 +178,12 @@ export default function StepPolish({ draft, assembledText, onPatch }: StepPolish
             </div>
             {draft.runScore.feedback && <p className="mt-1.5 text-xs leading-relaxed text-muted">{draft.runScore.feedback}</p>}
             {draft.runOutput && (
-              <button onClick={() => setShowOutput(!showOutput)} className="mt-2 cursor-pointer text-[11px] font-semibold text-violet-500 hover:text-violet-400">
+              <button onClick={() => setShowOutput(!showOutput)} className="mt-2 cursor-pointer text-xs font-semibold text-violet-500 hover:text-violet-400">
                 {showOutput ? 'Ẩn đầu ra' : 'Xem đầu ra thử nghiệm'}
               </button>
             )}
             {showOutput && draft.runOutput && (
-              <pre className="custom-scrollbar mt-2 max-h-56 overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-line bg-surface p-3 font-mono text-[11px] leading-relaxed text-muted">{draft.runOutput}</pre>
+              <pre className="custom-scrollbar mt-2 max-h-56 overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-line bg-surface p-3 font-mono text-xs leading-relaxed text-muted">{draft.runOutput}</pre>
             )}
           </div>
         )}
@@ -193,7 +193,7 @@ export default function StepPolish({ draft, assembledText, onPatch }: StepPolish
       <div className="rounded-2xl border border-line bg-panel/80 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/15 to-cyan-500/15 text-violet-500">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600/10 text-emerald-700 dark:text-emerald-400">
               <Wand2 size={16} />
             </div>
             <div>
@@ -247,7 +247,7 @@ export default function StepPolish({ draft, assembledText, onPatch }: StepPolish
       <div className="rounded-2xl border border-line bg-panel/80 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/15 to-cyan-500/15 text-violet-500">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600/10 text-emerald-700 dark:text-emerald-400">
               <Scale size={16} />
             </div>
             <div>
@@ -271,15 +271,15 @@ export default function StepPolish({ draft, assembledText, onPatch }: StepPolish
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-bold text-ink">{r.model}</span>
                   {!r.error && (
-                    <span className="text-[10px] font-semibold text-faint">
+                    <span className="text-xs font-semibold text-faint">
                       {(r.latencyMs / 1000).toFixed(1)}s · ~${r.costUSD.toFixed(5)}
                     </span>
                   )}
                 </div>
                 {r.error ? (
-                  <p className="mt-2 text-[11px] text-rose-500">{r.error}</p>
+                  <p className="mt-2 text-xs text-rose-500">{r.error}</p>
                 ) : (
-                  <pre className="custom-scrollbar mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-muted">{r.text}</pre>
+                  <pre className="custom-scrollbar mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-muted">{r.text}</pre>
                 )}
               </div>
             ))}

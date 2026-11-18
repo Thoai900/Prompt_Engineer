@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wand2, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
+import { FileText, Search, AlertCircle, RefreshCw } from 'lucide-react';
 import { GhostTextInput } from '../common/GhostTextInput';
 import StepNarrator from '../common/StepNarrator';
 
@@ -52,8 +52,8 @@ export const EmptyStateGenerator: React.FC<EmptyStateGeneratorProps> = ({
       ) : (
         <>
           <div className="flex flex-col items-center gap-2">
-            <div className="w-12 h-12 bg-violet-500/10 border border-violet-500/20 rounded-2xl flex items-center justify-center text-violet-600 dark:text-violet-400">
-              <Wand2 size={24} />
+            <div className="w-12 h-12 bg-hover border border-line rounded-xl flex items-center justify-center text-muted">
+              <FileText size={24} />
             </div>
             <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
               Bắt đầu từ một ý tưởng
@@ -64,13 +64,15 @@ export const EmptyStateGenerator: React.FC<EmptyStateGeneratorProps> = ({
             </p>
           </div>
 
-          <div className="w-full max-w-lg flex flex-col sm:flex-row items-stretch gap-2">
-            <div className="relative flex-1 flex items-center bg-slate-50/50 dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-xl focus-within:ring-2 focus-within:ring-violet-500/40 focus-within:border-violet-500 transition-colors">
-              <Sparkles className="absolute left-3 w-4 h-4 text-slate-400 dark:text-slate-550 pointer-events-none" />
+          {/* Container query: xếp dọc khi CỘT hẹp (không phụ thuộc bề rộng màn hình) để ô nhập không bị cắt chữ */}
+          <div className="@container w-full max-w-lg">
+          <div className="w-full flex flex-col @md:flex-row items-stretch gap-2">
+            <div className="relative flex-1 flex items-center bg-slate-50/50 dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-xl focus-within:ring-2 focus-within:ring-emerald-600/30 focus-within:border-emerald-600 transition-colors">
+              <Search className="absolute left-3 w-4 h-4 text-slate-400 dark:text-slate-550 pointer-events-none" />
               <GhostTextInput
                 type="text"
                 ghostMode="prose"
-                placeholder="Bạn muốn tạo prompt để giải quyết bài toán gì?..."
+                placeholder="Bạn cần prompt cho việc gì?"
                 value={value}
                 onValueChange={onValueChange}
                 onKeyDown={handleKeyDown}
@@ -81,10 +83,11 @@ export const EmptyStateGenerator: React.FC<EmptyStateGeneratorProps> = ({
             <button
               onClick={onGenerate}
               disabled={!canGenerate}
-              className="shrink-0 px-5 py-2.5 text-sm font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-xl transition-all shadow-md shadow-violet-900/10 flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-95"
+              className="shrink-0 px-5 py-2.5 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-95"
             >
-              <Wand2 size={15} /> Tạo prompt
+              Tạo prompt
             </button>
+          </div>
           </div>
 
           {error && (
@@ -114,7 +117,7 @@ export const EmptyStateGenerator: React.FC<EmptyStateGeneratorProps> = ({
             ))}
           </div>
 
-          <div className="flex items-center gap-3 w-full max-w-lg text-[11px] font-semibold text-slate-400 dark:text-slate-550 uppercase tracking-wider select-none">
+          <div className="flex items-center gap-3 w-full max-w-lg text-xs font-semibold text-slate-400 dark:text-slate-550 select-none">
             <span className="flex-1 h-px bg-slate-200 dark:bg-slate-850" />
             hoặc kéo thả khối từ cột trái
             <span className="flex-1 h-px bg-slate-200 dark:bg-slate-850" />

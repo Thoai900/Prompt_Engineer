@@ -70,7 +70,7 @@ export default function StepEnhance({ draft, rules, skills, onPatch, onNavigateT
 
       {/* Đề xuất */}
       <div>
-        <div className="mb-3 text-[10px] font-bold uppercase tracking-wider text-faint">Đề xuất cho prompt này</div>
+        <div className="mb-3 text-xs font-bold text-faint">Đề xuất cho prompt này</div>
         {hasSuggestions ? (
           <div className="grid gap-3 lg:grid-cols-2">
             <AnimatePresence>
@@ -132,7 +132,7 @@ export default function StepEnhance({ draft, rules, skills, onPatch, onNavigateT
                     />
                     <span>
                       <span className="block text-xs font-semibold text-ink">{r.title}</span>
-                      <span className="block text-[11px] text-faint line-clamp-1">{r.description}</span>
+                      <span className="block text-xs text-faint line-clamp-1">{r.description}</span>
                     </span>
                   </label>
                 );
@@ -151,7 +151,7 @@ export default function StepEnhance({ draft, rules, skills, onPatch, onNavigateT
                     />
                     <span>
                       <span className="block text-xs font-semibold text-ink">{s.title}</span>
-                      <span className="block text-[11px] text-faint line-clamp-1">{s.description}</span>
+                      <span className="block text-xs text-faint line-clamp-1">{s.description}</span>
                     </span>
                   </label>
                 );
@@ -161,7 +161,7 @@ export default function StepEnhance({ draft, rules, skills, onPatch, onNavigateT
         )}
         <button
           onClick={() => onNavigateToTab('rulesskills')}
-          className="mt-3 flex cursor-pointer items-center gap-1.5 text-[11px] font-semibold text-violet-500 transition-colors hover:text-violet-400"
+          className="mt-3 flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-violet-500 transition-colors hover:text-violet-400"
         >
           <ExternalLink size={11} /> Quản lý Rules & Skills đầy đủ
         </button>

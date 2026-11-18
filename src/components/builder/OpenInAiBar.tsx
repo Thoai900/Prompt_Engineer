@@ -36,7 +36,7 @@ export function OpenInAiBar({ getPrompt }: OpenInAiBarProps) {
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-455 text-left">
+      <span className="text-xs font-bold text-slate-500 dark:text-slate-455 text-left">
         Dùng ngay với AI
       </span>
       <div className="flex flex-wrap gap-1.5">
@@ -45,7 +45,7 @@ export function OpenInAiBar({ getPrompt }: OpenInAiBarProps) {
             key={target.id}
             onClick={() => handleLaunch(target)}
             title={`Sao chép prompt & mở ${target.name}`}
-            className="touch-manipulation flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-violet-400/50 dark:hover:border-violet-500/40 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-[10px] font-bold transition-all cursor-pointer active:scale-95 shadow-sm"
+            className="touch-manipulation flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-violet-400/50 dark:hover:border-violet-500/40 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-sm"
           >
             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${target.accentClass}`} />
             {target.name}

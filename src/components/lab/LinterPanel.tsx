@@ -47,7 +47,7 @@ export default function LinterPanel({ onOptimize }: LinterPanelProps) {
       <p className="mb-4 text-sm text-muted">Phân tích <span className="font-semibold text-ink">tĩnh</span> một prompt — bắt mâu thuẫn, mơ hồ, thiếu ngữ cảnh, ràng buộc thừa <span className="font-semibold text-ink">trước khi chạy</span>, kèm gợi ý sửa.</p>
 
       <div className="mb-6 rounded-2xl border border-line bg-panel p-5">
-        <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Prompt cần kiểm tra</label>
+        <label className="mb-1.5 block text-xs font-bold text-muted">Prompt cần kiểm tra</label>
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
@@ -102,7 +102,7 @@ export default function LinterPanel({ onOptimize }: LinterPanelProps) {
               <div key={i} className={`rounded-2xl border bg-panel p-4 ${s.border}`}>
                 <div className="mb-1.5 flex items-center gap-2">
                   <Icon size={15} className="shrink-0" />
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${s.badge}`}>{s.label}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${s.badge}`}>{s.label}</span>
                   <span className="text-xs font-semibold text-muted">{issue.category}</span>
                 </div>
                 <p className="mb-2 text-sm text-ink">{issue.message}</p>

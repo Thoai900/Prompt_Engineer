@@ -120,13 +120,13 @@ export default function AuthoringWizard({ open, onClose, user, defaultKind, mode
               <div className="flex bg-slate-100 dark:bg-slate-950 p-0.5 rounded-xl border border-slate-200/50 dark:border-slate-800 w-fit">
                 {(['skill', 'rule', 'config'] as Kind[]).map((k) => (
                   <button key={k} onClick={() => setKind(k)}
-                    className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${kind === k ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${kind === k ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
                     {KIND_LABEL[k]}
                   </button>
                 ))}
               </div>
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Mô tả một câu</label>
+                <label className="text-xs font-bold text-slate-400 block mb-1">Mô tả một câu</label>
                 <textarea value={brief} onChange={(e) => setBrief(e.target.value)}
                   placeholder={kind === 'skill' ? 'Ví dụ: kỹ năng review code TypeScript và đề xuất sửa'
                     : kind === 'rule' ? 'Ví dụ: quy tắc gia sư Socratic không giải hộ bài'
@@ -134,24 +134,24 @@ export default function AuthoringWizard({ open, onClose, user, defaultKind, mode
                   className={`${inputCls} h-24 resize-none leading-relaxed`} />
               </div>
               <button onClick={handleDraft} disabled={drafting}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
                 {drafting ? <RefreshCw size={13} className="animate-spin" /> : <Sparkles size={13} />}
                 {drafting ? 'AI đang dựng nháp…' : 'AI dựng nháp'}
               </button>
             </>
           ) : draft && (
             <>
-              <button onClick={() => setStep(1)} className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 hover:underline cursor-pointer"><ChevronLeft size={13} /> Sửa mô tả</button>
+              <button onClick={() => setStep(1)} className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 hover:underline cursor-pointer"><ChevronLeft size={13} /> Sửa mô tả</button>
 
               {/* Lint */}
               {findings.length === 0 ? (
-                <div className="flex items-center gap-2 text-[11px] text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900/40 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2 text-xs text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900/40 rounded-lg px-3 py-2">
                   <CheckCircle2 size={13} /> Không phát hiện vấn đề — sẵn sàng lưu.
                 </div>
               ) : (
                 <div className="space-y-1">
                   {findings.map((f, i) => (
-                    <div key={i} className={`flex items-start gap-2 text-[11px] rounded-lg px-3 py-1.5 ${f.level === 'error' ? 'text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20' : 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20'}`}>
+                    <div key={i} className={`flex items-start gap-2 text-xs rounded-lg px-3 py-1.5 ${f.level === 'error' ? 'text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20' : 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20'}`}>
                       <AlertTriangle size={12} className="mt-0.5 shrink-0" /> <span>{f.message}</span>
                     </div>
                   ))}
@@ -174,7 +174,7 @@ export default function AuthoringWizard({ open, onClose, user, defaultKind, mode
                   {kind === 'skill' ? (
                     <>
                       {(draft.inputs?.length || draft.steps?.length) ? (
-                        <p className="text-[10px] text-slate-400">
+                        <p className="text-xs text-slate-400">
                           {draft.inputs?.length || 0} input · {draft.steps?.length || 0} step (tinh chỉnh chi tiết trong editor sau khi lưu)
                         </p>
                       ) : null}
@@ -194,18 +194,18 @@ export default function AuthoringWizard({ open, onClose, user, defaultKind, mode
           <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 bg-slate-50/50 dark:bg-slate-950/40">
             {kind !== 'config' ? (
               <div className="relative group">
-                <button className="px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-[11px] font-semibold text-slate-600 dark:text-slate-350 flex items-center gap-1.5 cursor-pointer">
+                <button className="px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-350 flex items-center gap-1.5 cursor-pointer">
                   <Download size={13} /> Xuất
                 </button>
                 <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block group-focus-within:block bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-20 py-1 min-w-[140px]">
                   {[['skill', 'SKILL.md'], ['cursor', '.cursorrules'], ['agents', 'AGENTS.md'], ['claude', 'CLAUDE.md']].map(([f, l]) => (
-                    <button key={f} onClick={() => doExport(f)} className="w-full text-left px-3.5 py-2 text-[11px] hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer">{l}</button>
+                    <button key={f} onClick={() => doExport(f)} className="w-full text-left px-3.5 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer">{l}</button>
                   ))}
                 </div>
               </div>
             ) : <span />}
             <button onClick={handleSave} disabled={saving || findings.some((f) => f.level === 'error')}
-              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
               title={findings.some((f) => f.level === 'error') ? 'Sửa các lỗi (error) trước khi lưu' : ''}>
               {saving && <RefreshCw size={13} className="animate-spin" />} Lưu vào thư viện
             </button>
@@ -219,7 +219,7 @@ export default function AuthoringWizard({ open, onClose, user, defaultKind, mode
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">{label}</label>
+      <label className="text-xs font-bold text-slate-400 block mb-1">{label}</label>
       {children}
     </div>
   );

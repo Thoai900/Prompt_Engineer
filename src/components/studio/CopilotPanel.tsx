@@ -63,14 +63,14 @@ export default function CopilotPanel({ draft, quality, onGoToStep }: CopilotPane
     <div className="flex max-h-[calc(100vh-7rem)] flex-col gap-3">
       {/* Hành động kế tiếp (tất định, miễn phí) */}
       <div className="rounded-2xl border border-line bg-panel/80 p-4">
-        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-faint">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-faint">
           <Sparkles size={11} className="text-violet-500" /> Hành động kế tiếp
         </div>
         <div className="mt-1.5 text-sm font-bold tracking-tight text-ink">{next.title}</div>
-        <p className="mt-1 text-[11px] leading-relaxed text-muted">{next.reason}</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted">{next.reason}</p>
         <button
           onClick={() => onGoToStep(stepIndexByKey(next.step))}
-          className="mt-3 flex cursor-pointer items-center gap-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-cyan-600 px-3 py-2 text-xs font-bold text-white shadow-sm shadow-violet-500/20 transition-all hover:shadow-md"
+          className="mt-3 flex cursor-pointer items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-2 text-xs font-bold text-white shadow-sm transition-all hover:shadow-md"
         >
           Đến bước này <ArrowRight size={12} />
         </button>
@@ -79,16 +79,16 @@ export default function CopilotPanel({ draft, quality, onGoToStep }: CopilotPane
       {/* Điểm chất lượng tổng hợp */}
       {quality && (
         <div className="rounded-2xl border border-line bg-panel/80 p-4">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-faint">Điểm chất lượng</div>
+          <div className="text-xs font-bold text-faint">Điểm chất lượng</div>
           <div className="mt-1 flex items-baseline gap-1.5">
             <span className={`text-2xl font-bold tracking-tight ${quality.score >= 80 ? 'text-emerald-500' : quality.score >= 60 ? 'text-amber-500' : 'text-rose-500'}`}>
               {quality.score}
             </span>
-            <span className="text-[10px] font-semibold text-faint">/100</span>
+            <span className="text-xs font-semibold text-faint">/100</span>
           </div>
           <div className="mt-2 space-y-1">
             {quality.parts.map((p) => (
-              <div key={p.key} className="flex items-center justify-between text-[11px]">
+              <div key={p.key} className="flex items-center justify-between text-xs">
                 <span className="text-muted">{p.label}</span>
                 <span className={p.value === null ? 'text-faint' : 'font-semibold text-ink'}>
                   {p.value === null ? 'chưa đo' : p.value}
@@ -101,12 +101,12 @@ export default function CopilotPanel({ draft, quality, onGoToStep }: CopilotPane
 
       {/* Chat tư vấn */}
       <div className="flex min-h-48 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-panel/80">
-        <div className="flex items-center gap-1.5 border-b border-line/60 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-faint">
+        <div className="flex items-center gap-1.5 border-b border-line/60 px-4 py-2.5 text-xs font-bold text-faint">
           <Bot size={11} className="text-violet-500" /> Hỏi copilot
         </div>
         <div ref={scrollRef} className="custom-scrollbar flex-1 space-y-3 overflow-y-auto px-4 py-3">
           {messages.length === 0 && (
-            <p className="text-[11px] leading-relaxed text-faint">
+            <p className="text-xs leading-relaxed text-faint">
               Copilot biết trạng thái bản nháp của bạn. Hỏi bất cứ điều gì: "khối ràng buộc nên thêm gì?",
               "vì sao lint báo mơ hồ?"… Copilot chỉ tư vấn — mọi thay đổi vẫn do bạn thực hiện.
             </p>
@@ -129,7 +129,7 @@ export default function CopilotPanel({ draft, quality, onGoToStep }: CopilotPane
           <button
             onClick={handleAsk}
             disabled={isThinking || !input.trim()}
-            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-gradient-to-r from-violet-600 to-cyan-600 text-white shadow-sm transition-all hover:shadow-md disabled:opacity-40"
+            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-all hover:shadow-md disabled:opacity-40"
           >
             {isThinking ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
           </button>

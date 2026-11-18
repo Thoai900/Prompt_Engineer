@@ -28,7 +28,7 @@ export function PromptMeter({ text }: PromptMeterProps) {
   if (!text.trim()) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-semibold text-muted">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-muted">
       <span className="flex items-center gap-1" title="Ước lượng ~4 ký tự/token">
         <Hash size={11} className="text-violet-400" />
         ~{tokens.toLocaleString('vi-VN')} token · {text.length.toLocaleString('vi-VN')} ký tự

@@ -91,7 +91,7 @@ export const PersonaManagerModal: React.FC<PersonaManagerModalProps> = ({ isOpen
         {isEditing ? (
           <div className="flex flex-col gap-4">
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-550 dark:text-slate-400">Tên persona</label>
+              <label className="mb-1.5 block text-xs font-bold text-slate-550 dark:text-slate-400">Tên persona</label>
               <input
                 autoFocus
                 value={formName}
@@ -101,7 +101,7 @@ export const PersonaManagerModal: React.FC<PersonaManagerModalProps> = ({ isOpen
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-550 dark:text-slate-400">Chỉ dẫn hệ thống (System Instructions)</label>
+              <label className="mb-1.5 block text-xs font-bold text-slate-550 dark:text-slate-400">Chỉ dẫn hệ thống (System Instructions)</label>
               <textarea
                 value={formInstructions}
                 onChange={(e) => setFormInstructions(e.target.value)}
@@ -115,7 +115,7 @@ export const PersonaManagerModal: React.FC<PersonaManagerModalProps> = ({ isOpen
               <button
                 onClick={handleSave}
                 disabled={!formName.trim()}
-                className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-md transition-colors hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-5 py-2 text-sm font-semibold text-white shadow-md transition-colors disabled:opacity-50"
               >
                 <Save size={14} />
                 {editingId === '__new__' ? 'Tạo persona' : 'Lưu thay đổi'}
@@ -147,9 +147,9 @@ export const PersonaManagerModal: React.FC<PersonaManagerModalProps> = ({ isOpen
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200">
                           {p.name}
-                          {preset && <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[9px] font-bold uppercase text-slate-500 dark:bg-slate-700 dark:text-slate-300">Preset</span>}
+                          {preset && <span className="rounded bg-slate-200 px-1.5 py-0.5 text-xs font-bold text-slate-500 dark:bg-slate-700 dark:text-slate-300">Preset</span>}
                         </span>
-                        <span className="block truncate text-[11px] text-slate-400 dark:text-slate-500">{p.systemInstructions}</span>
+                        <span className="block truncate text-xs text-slate-400 dark:text-slate-500">{p.systemInstructions}</span>
                       </span>
                       {isActive && <Check size={16} className="shrink-0 text-emerald-500" />}
                     </button>

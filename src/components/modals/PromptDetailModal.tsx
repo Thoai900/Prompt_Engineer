@@ -142,7 +142,7 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
                 <span className="text-slate-300 mx-1">•</span>
                 <span className="text-xs text-slate-500 font-medium hover:text-indigo-600 cursor-pointer transition-colors">Theo dõi</span>
               </div>
-              <span className="text-[11px] text-slate-400 font-medium">Xuất bản: {template.createdAt ? new Date(template.createdAt).toLocaleDateString() : 'Gần đây'}</span>
+              <span className="text-xs text-slate-400 font-medium">Xuất bản: {template.createdAt ? new Date(template.createdAt).toLocaleDateString() : 'Gần đây'}</span>
             </div>
           </div>
           <button onClick={onClose} aria-label="Đóng chi tiết template" className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
@@ -174,24 +174,24 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
 
             <div className="mt-8 border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
               <div className="px-4 py-3 border-b border-slate-200 bg-white flex justify-between items-center">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Cấu trúc khối ({template.blocks.length})</h4>
+                <h4 className="text-xs font-bold text-slate-500">Cấu trúc khối ({template.blocks.length})</h4>
               </div>
               <div className="p-4 flex flex-col gap-2">
                  {template.blocks.map((block, idx) => (
                     <div key={idx} className="flex gap-3 bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
                       <div className="shrink-0 pt-0.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center text-[10px] font-bold">
+                        <span className="w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-bold">
                           {idx + 1}
                         </span>
                       </div>
                       <div className="flex flex-col">
                         <span className="text-xs font-bold text-slate-800 mb-1">{block.title}</span>
-                        <span className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">{block.content}</span>
+                        <span className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{block.content}</span>
                       </div>
                     </div>
                  ))}
                  <div className="text-center pt-2">
-                   <p className="text-[10px] text-slate-400 font-medium">Nhấn Remix để xem chi tiết và chỉnh sửa cấu trúc khối.</p>
+                   <p className="text-xs text-slate-400 font-medium">Nhấn Remix để xem chi tiết và chỉnh sửa cấu trúc khối.</p>
                  </div>
               </div>
             </div>
@@ -200,7 +200,7 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
               <div className="mt-6 border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
                 <div className="px-4 py-3 border-b border-slate-200 bg-white flex items-center gap-2">
                   <History className="w-4 h-4 text-indigo-500" />
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Lịch sử phiên bản ({versions.length})</h4>
+                  <h4 className="text-xs font-bold text-slate-500">Lịch sử phiên bản ({versions.length})</h4>
                 </div>
                 <div className="p-3 flex flex-col gap-2">
                   {versions.map((v) => {
@@ -218,19 +218,19 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
                               <span className="text-xs font-bold text-slate-700">
                                 {v.version ? `${v.version} · ` : ''}{new Date(v.at).toLocaleString('vi-VN')}
                               </span>
-                              <span className="text-[10px] text-slate-400">{(v.blocks || []).length} khối{v.note ? ` · ${v.note}` : ''}</span>
+                              <span className="text-xs text-slate-400">{(v.blocks || []).length} khối{v.note ? ` · ${v.note}` : ''}</span>
                             </div>
                           </button>
                           <button
                             onClick={() => handleRestoreVersion(v)}
-                            className="flex shrink-0 items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10px] font-bold text-amber-700 transition-colors hover:bg-amber-100 cursor-pointer"
+                            className="flex shrink-0 items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100 cursor-pointer"
                             title="Mở bản này trong Builder — bấm Lưu Template để chốt khôi phục"
                           >
                             <RotateCcw className="w-3 h-3" /> Khôi phục
                           </button>
                         </div>
                         {isOpen && (
-                          <div className="max-h-56 overflow-y-auto border-t border-slate-100 bg-slate-950 p-3 font-mono text-[10px] leading-relaxed">
+                          <div className="max-h-56 overflow-y-auto border-t border-slate-100 bg-slate-950 p-3 font-mono text-xs leading-relaxed">
                             {computeUnifiedDiff(blocksToText(v.blocks), blocksToText(template.blocks)).map((line, idx) => (
                               <div
                                 key={idx}
@@ -248,7 +248,7 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
                       </div>
                     );
                   })}
-                  <p className="text-[10px] text-slate-400 font-medium px-1">
+                  <p className="text-xs text-slate-400 font-medium px-1">
                     Diff hiển thị: <span className="text-rose-500">− bản cũ</span> → <span className="text-emerald-600">+ bản hiện tại</span>. "Khôi phục" mở bản cũ trong Builder; bấm Lưu Template để chốt.
                   </p>
                 </div>
@@ -270,7 +270,7 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
                    <div className={`p-2.5 rounded-full transition-all ${isLiked ? 'bg-rose-100 text-rose-500' : 'bg-white border border-slate-200 text-slate-400 group-hover:bg-rose-50 group-hover:text-rose-400 group-hover:border-rose-200 shadow-sm'}`}>
                      <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
                    </div>
-                   <span className={`text-[10px] font-bold ${isLiked ? 'text-rose-600' : 'text-slate-500'}`}>
+                   <span className={`text-xs font-bold ${isLiked ? 'text-rose-600' : 'text-slate-500'}`}>
                      {likeCount}
                    </span>
                  </button>
@@ -278,7 +278,7 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
                    <div className={`p-2.5 rounded-full transition-all ${isSaved ? 'bg-indigo-100 text-indigo-600' : 'bg-white border border-slate-200 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-500 group-hover:border-indigo-200 shadow-sm'}`}>
                      <Bookmark className={`w-5 h-5 ${isSaved ? 'fill-current' : ''}`} />
                    </div>
-                   <span className={`text-[10px] font-bold ${isSaved ? 'text-indigo-600' : 'text-slate-500'}`}>
+                   <span className={`text-xs font-bold ${isSaved ? 'text-indigo-600' : 'text-slate-500'}`}>
                      {isSaved ? 'Đã lưu' : 'Lưu'}
                    </span>
                  </button>
@@ -286,7 +286,7 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
                    <div className={`p-2.5 rounded-full bg-white border border-slate-200 text-slate-400 shadow-sm`}>
                      <Users className={`w-5 h-5`} />
                    </div>
-                   <span className={`text-[10px] font-bold text-slate-500`}>
+                   <span className={`text-xs font-bold text-slate-500`}>
                      {metrics.usageCount || 0} Uses
                    </span>
                  </div>
@@ -305,7 +305,7 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
                      </button>
                      {showReportMenu && (
                        <div className="absolute right-0 top-12 z-20 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
-                         <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Lý do báo cáo</p>
+                         <p className="px-2 py-1 text-xs font-bold text-slate-400">Lý do báo cáo</p>
                          {REPORT_REASONS.map((r) => (
                            <button
                              key={r}
@@ -348,7 +348,7 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
                     ))}
                     <span className="text-sm font-bold text-slate-700 ml-1">{(metrics.averageRating || 0).toFixed(1)}</span>
                   </div>
-                  <span className="text-[10px] text-slate-400 font-medium">Điểm đánh giá trung bình</span>
+                  <span className="text-xs text-slate-400 font-medium">Điểm đánh giá trung bình</span>
                 </div>
               ) : (
                 <div>
@@ -357,7 +357,7 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
                       <Star key={i} className="w-4 h-4 text-slate-200" />
                     ))}
                   </div>
-                  <span className="text-[10px] text-slate-400 font-medium">Chưa có đánh giá</span>
+                  <span className="text-xs text-slate-400 font-medium">Chưa có đánh giá</span>
                 </div>
               )}
             </div>
@@ -372,18 +372,18 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
               <div className="flex flex-col gap-4 mb-4 flex-1">
                 {comments.map(comment => (
                   <div key={comment.id} className="flex gap-3">
-                    <div className="w-7 h-7 rounded-full bg-slate-200 shrink-0 flex items-center justify-center text-[10px] font-bold text-slate-500">
+                    <div className="w-7 h-7 rounded-full bg-slate-200 shrink-0 flex items-center justify-center text-xs font-bold text-slate-500">
                       {comment.user.charAt(0)}
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs font-bold text-slate-800">{comment.user}</span>
-                        <span className="text-[10px] text-slate-400">{comment.time}</span>
+                        <span className="text-xs text-slate-400">{comment.time}</span>
                       </div>
                       <p className="text-xs text-slate-600 leading-relaxed bg-white p-2.5 rounded-r-xl rounded-bl-xl border border-slate-200 shadow-sm">{comment.text}</p>
                       <div className="flex items-center gap-3 mt-1.5 ml-1">
-                        <button className="text-[10px] font-semibold text-slate-400 hover:text-rose-500 transition-colors">Thích ({comment.likes})</button>
-                        <button className="text-[10px] font-semibold text-slate-400 hover:text-indigo-500 transition-colors">Phản hồi</button>
+                        <button className="text-xs font-semibold text-slate-400 hover:text-rose-500 transition-colors">Thích ({comment.likes})</button>
+                        <button className="text-xs font-semibold text-slate-400 hover:text-indigo-500 transition-colors">Phản hồi</button>
                       </div>
                     </div>
                   </div>
@@ -446,7 +446,7 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
           {onAddToProject && (
             <button 
               onClick={() => onAddToProject(template)}
-              className="px-5 py-2.5 text-sm font-bold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-all shadow-md shadow-cyan-600/20 hover:shadow-lg hover:shadow-cyan-600/30 flex items-center gap-2 active:scale-95 cursor-pointer animate-fade-in"
+              className="px-5 py-2.5 text-sm font-bold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-all shadow-md hover:shadow-lg flex items-center gap-2 active:scale-95 cursor-pointer animate-fade-in"
             >
               <Workflow className="w-4 h-4" />
               Thêm vào Chain
@@ -454,7 +454,7 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
           )}
           <button 
             onClick={handleRemix}
-            className="px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-md shadow-indigo-600/20 hover:shadow-lg hover:shadow-indigo-600/30 flex items-center gap-2 active:scale-95"
+            className="px-6 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-md hover:shadow-lg flex items-center gap-2 active:scale-95"
           >
             <Copy className="w-4 h-4" />
             Remix Framework Này

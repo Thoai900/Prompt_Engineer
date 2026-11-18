@@ -65,12 +65,12 @@ export default function PersonalGuide({ libraryTemplates = [], onNavigate }: Per
           <Sparkles className="text-amber-500" />
           <h3 className="text-lg font-bold text-ink">Dành riêng cho bạn</h3>
         </div>
-        <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
+        <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
           Chẩn đoán từ thư viện của bạn
         </span>
       </div>
 
-      <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-5 shadow-sm dark:border-amber-900/50 dark:from-amber-950/20 dark:to-orange-950/10">
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm dark:border-amber-900/50 dark:bg-amber-950/20">
         {!diagnosis ? (
           <div className="flex items-start gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-panel text-xl shadow-sm">🎯</div>
@@ -88,7 +88,7 @@ export default function PersonalGuide({ libraryTemplates = [], onNavigate }: Per
                 {running ? 'Đang chẩn đoán…' : `Chẩn đoán ngay (${prompts.length} prompt)`}
               </button>
               {prompts.length === 0 && (
-                <p className="mt-2 text-[11px] text-faint">
+                <p className="mt-2 text-xs text-faint">
                   Thư viện đang trống — hãy lưu vài prompt ở Builder, hoặc dùng chế độ Gia sư trong Lab để dán prompt tự do.
                 </p>
               )}
@@ -100,10 +100,10 @@ export default function PersonalGuide({ libraryTemplates = [], onNavigate }: Per
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h4 className="text-base font-bold text-ink">Kỹ năng cần luyện: {focus.skill}</h4>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${levelBadge}`}>{focus.level}</span>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${levelBadge}`}>{focus.level}</span>
               </div>
               {focus.evidence && (
-                <p className="mt-1 text-[11px] italic text-faint">Bằng chứng từ prompt của bạn: “{focus.evidence}”</p>
+                <p className="mt-1 text-xs italic text-faint">Bằng chứng từ prompt của bạn: “{focus.evidence}”</p>
               )}
               <p className="mb-3 mt-1.5 text-xs leading-relaxed text-muted">{suggestion.reason}</p>
               <div className="flex flex-wrap items-center gap-2">

@@ -281,7 +281,7 @@ ${outputFormat || '(Chưa điền)'}`;
             <h1 className="text-base md:text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
               Bộ Nhớ & Cấu Hình LLM
             </h1>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold uppercase tracking-wider hidden sm:block">
+            <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold hidden sm:block">
               Quản lý Custom Instructions & Thiết lập hệ thống cho Gemini, ChatGPT, Claude
             </p>
           </div>
@@ -292,7 +292,7 @@ ${outputFormat || '(Chưa điền)'}`;
             onClick={() => setGhostTextEnabled(!ghostTextEnabled)}
             className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer border ${
               ghostTextEnabled
-                ? 'bg-violet-600 text-white border-violet-600 hover:bg-violet-500'
+                ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700'
                 : 'bg-transparent text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700 hover:border-violet-400'
             }`}
             title="Bật/tắt gợi ý gõ nhanh (ghost-text). Nhấn Tab để điền."
@@ -312,7 +312,7 @@ ${outputFormat || '(Chưa điền)'}`;
 
           <button
             onClick={() => setWizardOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-white bg-violet-600 hover:bg-violet-500 rounded-xl transition-all cursor-pointer active:scale-95 shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all cursor-pointer active:scale-95 shadow-sm"
             title="Tạo cấu hình bằng AI từ 1 câu mô tả"
           >
             <Sparkles size={14} />
@@ -372,7 +372,7 @@ ${outputFormat || '(Chưa điền)'}`;
           <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
             {/* Profile Name Edit */}
             <div>
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Tên Cấu Hình</label>
+              <label className="text-xs font-bold text-slate-400 block mb-1.5">Tên Cấu Hình</label>
               <input 
                 type="text" 
                 value={profileName}
@@ -387,9 +387,9 @@ ${outputFormat || '(Chưa điền)'}`;
 
             {/* Field 1: Role & Persona */}
             <div>
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-slate-400 flex items-center justify-between mb-1.5">
                 <span>🎭 Vai trò & Tính cách (Role & Persona)</span>
-                <span className="text-[9px] text-slate-300 font-normal lowercase">AI là ai?</span>
+                <span className="text-xs text-slate-300 font-normal lowercase">AI là ai?</span>
               </label>
               <textarea
                 value={role}
@@ -404,9 +404,9 @@ ${outputFormat || '(Chưa điền)'}`;
 
             {/* Field 2: Context & Memory */}
             <div>
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-slate-400 flex items-center justify-between mb-1.5">
                 <span>📌 Bối cảnh & Bộ nhớ dự án (Context & Memory)</span>
-                <span className="text-[9px] text-slate-300 font-normal lowercase">Dự án/Công việc hiện tại</span>
+                <span className="text-xs text-slate-300 font-normal lowercase">Dự án/Công việc hiện tại</span>
               </label>
               <textarea
                 value={context}
@@ -421,9 +421,9 @@ ${outputFormat || '(Chưa điền)'}`;
 
             {/* Field 3: Rules & Constraints */}
             <div>
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-slate-400 flex items-center justify-between mb-1.5">
                 <span>⚠️ Luật lệ & Ràng buộc (Rules & Constraints)</span>
-                <span className="text-[9px] text-slate-300 font-normal lowercase">Những điều cấm kỵ/Phải làm</span>
+                <span className="text-xs text-slate-300 font-normal lowercase">Những điều cấm kỵ/Phải làm</span>
               </label>
               <textarea
                 value={constraints}
@@ -438,9 +438,9 @@ ${outputFormat || '(Chưa điền)'}`;
 
             {/* Field 4: Output Preferences */}
             <div>
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-slate-400 flex items-center justify-between mb-1.5">
                 <span>📋 Định dạng đầu ra (Output Preferences)</span>
-                <span className="text-[9px] text-slate-300 font-normal lowercase">Định dạng hiển thị kết quả</span>
+                <span className="text-xs text-slate-300 font-normal lowercase">Định dạng hiển thị kết quả</span>
               </label>
               <textarea
                 value={outputFormat}
@@ -482,7 +482,7 @@ ${outputFormat || '(Chưa điền)'}`;
               <button
                 onClick={handleOptimizeWithAI}
                 disabled={isOptimizing}
-                className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 rounded-xl transition-all shadow-md shadow-indigo-100 hover:shadow-lg hover:shadow-indigo-200/50 cursor-pointer active:scale-95 disabled:scale-100"
+                className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 rounded-xl transition-all shadow-md hover:shadow-lg cursor-pointer active:scale-95 disabled:scale-100"
               >
                 {isOptimizing ? (
                   <>
@@ -539,7 +539,7 @@ ${outputFormat || '(Chưa điền)'}`;
                 <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
-                    <span className="text-[10px] font-black text-slate-500 tracking-wider uppercase">Full System Prompt</span>
+                    <span className="text-xs font-black text-slate-500">Full System Prompt</span>
                   </div>
                   <button
                     onClick={() => handleCopy(compiledFullPrompt, 'full')}
@@ -556,7 +556,7 @@ ${outputFormat || '(Chưa điền)'}`;
                 <div className="font-mono text-slate-600 text-xs whitespace-pre-wrap leading-relaxed bg-slate-50/60 p-4 rounded-xl border border-slate-100/50 shadow-inner max-h-[300px] overflow-y-auto custom-scrollbar">
                   {compiledFullPrompt}
                 </div>
-                <div className="text-[10px] text-slate-400 font-medium flex items-center gap-1.5">
+                <div className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
                   <Info size={12} className="shrink-0" />
                   Sử dụng tệp cấu hình nguyên khối này dán vào hộp **Gems** (Gemini), **Projects** (Claude) hoặc **Custom GPTs** (ChatGPT).
                 </div>
@@ -566,16 +566,16 @@ ${outputFormat || '(Chưa điền)'}`;
               <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-5">
                 <div className="pb-2 border-b border-slate-100 flex items-center gap-2">
                   <MessageSquare className="text-orange-500" size={16} />
-                  <span className="text-[10px] font-black text-slate-500 tracking-wider uppercase">ChatGPT Custom Instructions (Hộp chia đôi)</span>
+                  <span className="text-xs font-black text-slate-500">ChatGPT Custom Instructions (Hộp chia đôi)</span>
                 </div>
 
                 {/* Box 1 */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-[10.5px] font-black text-slate-600">Hộp 1: What to know (Bối cảnh về bạn)</span>
+                    <span className="text-xs font-black text-slate-600">Hộp 1: What to know (Bối cảnh về bạn)</span>
                     <button
                       onClick={() => handleCopy(compiledChatGPTBox1, 'box1')}
-                      className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+                      className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
                         copyStates['box1']
                         ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
                         : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600'
@@ -585,7 +585,7 @@ ${outputFormat || '(Chưa điền)'}`;
                       Dán Hộp 1
                     </button>
                   </div>
-                  <div className="font-mono text-slate-600 text-[11px] whitespace-pre-wrap leading-relaxed bg-slate-50/40 p-3 rounded-lg border border-slate-100 max-h-[100px] overflow-y-auto custom-scrollbar">
+                  <div className="font-mono text-slate-600 text-xs whitespace-pre-wrap leading-relaxed bg-slate-50/40 p-3 rounded-lg border border-slate-100 max-h-[100px] overflow-y-auto custom-scrollbar">
                     {compiledChatGPTBox1 || '(Chưa có thông tin bối cảnh dự án)'}
                   </div>
                 </div>
@@ -593,10 +593,10 @@ ${outputFormat || '(Chưa điền)'}`;
                 {/* Box 2 */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-[10.5px] font-black text-slate-600">Hộp 2: How to respond (Cách AI phản hồi)</span>
+                    <span className="text-xs font-black text-slate-600">Hộp 2: How to respond (Cách AI phản hồi)</span>
                     <button
                       onClick={() => handleCopy(compiledChatGPTBox2, 'box2')}
-                      className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+                      className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
                         copyStates['box2']
                         ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
                         : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600'
@@ -606,7 +606,7 @@ ${outputFormat || '(Chưa điền)'}`;
                       Dán Hộp 2
                     </button>
                   </div>
-                  <div className="font-mono text-slate-600 text-[11px] whitespace-pre-wrap leading-relaxed bg-slate-50/40 p-3 rounded-lg border border-slate-100 max-h-[120px] overflow-y-auto custom-scrollbar">
+                  <div className="font-mono text-slate-600 text-xs whitespace-pre-wrap leading-relaxed bg-slate-50/40 p-3 rounded-lg border border-slate-100 max-h-[120px] overflow-y-auto custom-scrollbar">
                     {compiledChatGPTBox2}
                   </div>
                 </div>
@@ -620,13 +620,13 @@ ${outputFormat || '(Chưa điền)'}`;
               
               {/* Premium Platform Selector */}
               <div className="mb-4">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Bước 1: Chọn nền tảng AI của bạn</span>
+                <span className="text-xs font-bold text-slate-400 block mb-2">Bước 1: Chọn nền tảng AI của bạn</span>
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     onClick={() => handlePlatformChange('gemini')}
                     className={`p-3 rounded-2xl border text-xs font-black transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer text-center relative overflow-hidden ${
                       selectedPlatform === 'gemini'
-                      ? 'border-indigo-200 bg-gradient-to-br from-indigo-50/80 to-blue-50/50 text-indigo-950 shadow-sm ring-1 ring-indigo-300'
+                      ? 'border-indigo-200 bg-indigo-50/80 text-indigo-950 shadow-sm ring-1 ring-indigo-300'
                       : 'border-slate-200 hover:border-slate-300 bg-white text-slate-600'
                     }`}
                   >
@@ -638,7 +638,7 @@ ${outputFormat || '(Chưa điền)'}`;
                     onClick={() => handlePlatformChange('chatgpt')}
                     className={`p-3 rounded-2xl border text-xs font-black transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer text-center relative overflow-hidden ${
                       selectedPlatform === 'chatgpt'
-                      ? 'border-emerald-200 bg-gradient-to-br from-emerald-50/80 to-teal-50/50 text-emerald-950 shadow-sm ring-1 ring-emerald-300'
+                      ? 'border-emerald-200 bg-emerald-50/80 text-emerald-950 shadow-sm ring-1 ring-emerald-300'
                       : 'border-slate-200 hover:border-slate-300 bg-white text-slate-600'
                     }`}
                   >
@@ -650,7 +650,7 @@ ${outputFormat || '(Chưa điền)'}`;
                     onClick={() => handlePlatformChange('claude')}
                     className={`p-3 rounded-2xl border text-xs font-black transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer text-center relative overflow-hidden ${
                       selectedPlatform === 'claude'
-                      ? 'border-orange-200 bg-gradient-to-br from-orange-50/80 to-amber-50/50 text-orange-950 shadow-sm ring-1 ring-orange-300'
+                      ? 'border-orange-200 bg-orange-50/80 text-orange-950 shadow-sm ring-1 ring-orange-300'
                       : 'border-slate-200 hover:border-slate-300 bg-white text-slate-600'
                     }`}
                   >
@@ -662,13 +662,13 @@ ${outputFormat || '(Chưa điền)'}`;
 
               {/* Step 2: Specific Integration Type Switcher */}
               <div className="mb-4">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Bước 2: Chọn phương thức cấu hình</span>
+                <span className="text-xs font-bold text-slate-400 block mb-2">Bước 2: Chọn phương thức cấu hình</span>
                 
                 {selectedPlatform === 'gemini' && (
                   <div className="flex gap-1.5 bg-slate-100 p-0.5 rounded-xl border border-slate-200/50 w-fit">
                     <button
                       onClick={() => setActiveGuideLLM('gemini_gems')}
-                      className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
                         activeGuideLLM === 'gemini_gems'
                         ? 'bg-white text-indigo-700 shadow-sm'
                         : 'text-slate-500 hover:text-slate-700'
@@ -678,7 +678,7 @@ ${outputFormat || '(Chưa điền)'}`;
                     </button>
                     <button
                       onClick={() => setActiveGuideLLM('gemini_studio')}
-                      className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
                         activeGuideLLM === 'gemini_studio'
                         ? 'bg-white text-indigo-700 shadow-sm'
                         : 'text-slate-500 hover:text-slate-700'
@@ -693,7 +693,7 @@ ${outputFormat || '(Chưa điền)'}`;
                   <div className="flex gap-1.5 bg-slate-100 p-0.5 rounded-xl border border-slate-200/50 w-fit">
                     <button
                       onClick={() => setActiveGuideLLM('chatgpt_custom')}
-                      className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
                         activeGuideLLM === 'chatgpt_custom'
                         ? 'bg-white text-emerald-700 shadow-sm'
                         : 'text-slate-500 hover:text-slate-700'
@@ -703,7 +703,7 @@ ${outputFormat || '(Chưa điền)'}`;
                     </button>
                     <button
                       onClick={() => setActiveGuideLLM('chatgpt_gpt')}
-                      className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
                         activeGuideLLM === 'chatgpt_gpt'
                         ? 'bg-white text-emerald-700 shadow-sm'
                         : 'text-slate-500 hover:text-slate-700'
@@ -718,7 +718,7 @@ ${outputFormat || '(Chưa điền)'}`;
                   <div className="flex gap-1.5 bg-slate-100 p-0.5 rounded-xl border border-slate-200/50 w-fit">
                     <button
                       onClick={() => setActiveGuideLLM('claude_projects')}
-                      className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
                         activeGuideLLM === 'claude_projects'
                         ? 'bg-white text-orange-700 shadow-sm'
                         : 'text-slate-500 hover:text-slate-700'
@@ -745,31 +745,31 @@ ${outputFormat || '(Chưa điền)'}`;
                     </p>
                     <ol className="space-y-3.5 text-xs text-slate-600 font-medium">
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">1</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">1</span>
                         <div className="leading-relaxed">
                           Tại trang chủ <strong>Gemini.google.com</strong>, nhìn ở thanh điều hướng bên trái, tìm và nhấp chọn <strong>Gems Manager</strong> hoặc biểu tượng <strong>New Gem</strong> (Gem mới).
                         </div>
                       </li>
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">2</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">2</span>
                         <div className="leading-relaxed">
                           Đặt tên gợi nhớ cho Gem của bạn (ví dụ: <em>{profileName || 'Gia sư học tập'}</em>).
                         </div>
                       </li>
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">3</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">3</span>
                         <div className="leading-relaxed">
                           Chuyển qua tab **Xem trước & Sao chép** của chúng tôi, bấm nút <strong>"Sao chép Full"</strong>.
                         </div>
                       </li>
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">4</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">4</span>
                         <div className="leading-relaxed">
                           Dán toàn bộ mã chỉ dẫn vừa sao chép vào hộp <strong>Instructions (Hướng dẫn cho Gem)</strong>.
                         </div>
                       </li>
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">5</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">5</span>
                         <div className="leading-relaxed">
                           Bấm nút <strong>Create (Tạo)</strong> ở góc trên bên phải. Từ đây trợ lý chuyên dụng của bạn đã sẵn sàng làm việc nhất quán!
                         </div>
@@ -790,31 +790,31 @@ ${outputFormat || '(Chưa điền)'}`;
                     </p>
                     <ol className="space-y-3.5 text-xs text-slate-600 font-medium">
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">1</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">1</span>
                         <div className="leading-relaxed">
                           Truy cập vào trang **[Google AI Studio](https://aistudio.google.com/)** và đăng nhập tài khoản Google Developer.
                         </div>
                       </li>
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">2</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">2</span>
                         <div className="leading-relaxed">
                           Bấm nút <strong>Create new prompt</strong> (ví dụ: Chat Prompt) ở góc trên bên trái màn hình.
                         </div>
                       </li>
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">3</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">3</span>
                         <div className="leading-relaxed">
                           Nhìn sang thanh cấu hình bên phải màn hình, tìm mục **System Instructions** (Chỉ dẫn hệ thống).
                         </div>
                       </li>
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">4</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">4</span>
                         <div className="leading-relaxed">
                           Click <strong>"Sao chép Full"</strong> tại tab Xem trước và dán toàn bộ vào ô **System Instructions**.
                         </div>
                       </li>
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">5</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">5</span>
                         <div className="leading-relaxed">
                           Nhập test case ở ô chat ở giữa để chạy thử nghiệm xem mô hình phản hồi nhất quán theo định hướng hay chưa.
                         </div>
@@ -835,31 +835,31 @@ ${outputFormat || '(Chưa điền)'}`;
                     </p>
                     <ol className="space-y-3.5 text-xs text-slate-600 font-medium">
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">1</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">1</span>
                         <div className="leading-relaxed">
                           Nhấp vào <strong>Ảnh đại diện tài khoản (Avatar)</strong> của bạn ở góc trên bên phải hoặc thanh điều hướng.
                         </div>
                       </li>
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">2</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">2</span>
                         <div className="leading-relaxed">
                           Chọn mục <strong>Customize ChatGPT</strong> (Tùy chỉnh ChatGPT) trong danh sách menu xổ xuống.
                         </div>
                       </li>
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">3</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">3</span>
                         <div className="leading-relaxed">
                           Tại ô nhập thứ nhất (<em>"What would you like ChatGPT to know about you..."</em>), hãy copy nội dung từ nút <strong>"Dán Hộp 1"</strong> ở tab Xem trước và dán vào.
                         </div>
                       </li>
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">4</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">4</span>
                         <div className="leading-relaxed">
                           Tại ô nhập thứ hai (<em>"How would you like ChatGPT to respond..."</em>), hãy copy nội dung từ nút <strong>"Dán Hộp 2"</strong> ở tab Xem trước và dán vào.
                         </div>
                       </li>
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">5</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">5</span>
                         <div className="leading-relaxed">
                           Nhấn nút <strong>Save (Lưu)</strong>. Từ nay các phiên chat mới của bạn sẽ tự động áp dụng bộ cấu hình này.
                         </div>
@@ -880,31 +880,31 @@ ${outputFormat || '(Chưa điền)'}`;
                     </p>
                     <ol className="space-y-3.5 text-xs text-slate-600 font-medium">
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">1</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">1</span>
                         <div className="leading-relaxed">
                           Nhấp chọn mục <strong>Explore GPTs (Khám phá GPT)</strong> ở thanh bên và click vào nút <strong>Create (Tạo)</strong> ở góc trên cùng bên phải.
                         </div>
                       </li>
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">2</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">2</span>
                         <div className="leading-relaxed">
                           Chuyển đổi giao diện từ tab <em>Create</em> sang tab <strong>Configure (Cấu hình)</strong> ở phía trên.
                         </div>
                       </li>
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">3</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">3</span>
                         <div className="leading-relaxed">
                           Bấm sao chép **Full System Prompt** ở tab Xem trước.
                         </div>
                       </li>
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">4</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">4</span>
                         <div className="leading-relaxed">
                           Dán văn bản vừa copy vào ô <strong>Instructions</strong>.
                         </div>
                       </li>
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">5</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">5</span>
                         <div className="leading-relaxed">
                           Nhấn nút <strong>Save</strong> hoặc <strong>Publish</strong> ở góc trên bên phải để hoàn tất lưu trữ.
                         </div>
@@ -925,25 +925,25 @@ ${outputFormat || '(Chưa điền)'}`;
                     </p>
                     <ol className="space-y-3.5 text-xs text-slate-600 font-medium">
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">1</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">1</span>
                         <div className="leading-relaxed">
                           Ở trang chủ Claude.ai, nhấp chọn mục <strong>Projects (Dự án)</strong> ở sidebar và bấm <strong>Create Project</strong> để tạo dự án mới.
                         </div>
                       </li>
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">2</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">2</span>
                         <div className="leading-relaxed">
                           Đặt tên và bấm tạo. Sau khi giao diện dự án mở ra, tìm bảng <strong>Set custom instructions</strong> ở cột bên phải.
                         </div>
                       </li>
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">3</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">3</span>
                         <div className="leading-relaxed">
                           Chuyển sang tab Xem trước của chúng tôi, bấm <strong>"Sao chép Full"</strong> để copy toàn bộ System Prompt.
                         </div>
                       </li>
                       <li className="flex gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-700">4</span>
+                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-xs font-bold text-slate-700">4</span>
                         <div className="leading-relaxed">
                           Dán nội dung vào panel và nhấn <strong>Save Instructions</strong>. Mọi đoạn chat trong Project này sẽ tự động được định cấu hình.
                         </div>

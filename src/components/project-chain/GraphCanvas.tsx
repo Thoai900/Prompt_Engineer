@@ -251,7 +251,7 @@ export function GraphCanvas({
           <Panel position="top-center">
             <button
               onClick={handleGroupClick}
-              className="flex items-center gap-1.5 py-2 px-4 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold shadow-xl shadow-violet-900/30 cursor-pointer transition-all active:scale-95 animate-in fade-in slide-in-from-top-2 duration-150"
+              className="flex items-center gap-1.5 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xl cursor-pointer transition-all active:scale-95 animate-in fade-in slide-in-from-top-2 duration-150"
               title="Đóng gói các node đã chọn thành 1 Bundle node (mỗi thành viên vẫn vào đúng cổng của nó)"
             >
               📦 Gom {groupableIds.length} node thành nhóm

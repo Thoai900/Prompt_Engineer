@@ -53,7 +53,7 @@ export default function ExamplePreviewModal({ template, onClose }: ExamplePrevie
           <div className="w-full lg:w-2/5 p-6 border-b lg:border-b-0 lg:border-r border-slate-200 overflow-y-auto flex flex-col bg-white">
             <div className="flex items-center gap-2 mb-4">
               <span className="w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-bold">1</span>
-              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Bạn nhập</h3>
+              <h3 className="text-sm font-bold text-slate-800">Bạn nhập</h3>
             </div>
             <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap flex-1 shadow-inner">
               {sc.input || 'Điền các biến {{...}} theo tình huống của bạn.'}
@@ -69,10 +69,10 @@ export default function ExamplePreviewModal({ template, onClose }: ExamplePrevie
           <div className="w-full lg:w-3/5 p-6 overflow-y-auto flex flex-col bg-slate-50/50">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold">2</span>
-                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Kết quả AI</h3>
+                <span className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">2</span>
+                <h3 className="text-sm font-bold text-slate-800">Kết quả AI</h3>
               </div>
-              <span className="text-[10px] font-semibold text-slate-400">Mẫu đại diện — không phải cam kết</span>
+              <span className="text-xs font-semibold text-slate-400">Mẫu đại diện — không phải cam kết</span>
             </div>
 
             {isCode ? (

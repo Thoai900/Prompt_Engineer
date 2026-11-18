@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { GEMINI_FLASH } from '../config/models';
 import { runPlaygroundChatStream } from '../services/aiService';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { GEMINI_FLASH } from '../config/models';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';

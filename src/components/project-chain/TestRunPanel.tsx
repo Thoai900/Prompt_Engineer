@@ -139,15 +139,15 @@ export function TestRunPanel({
     <div className="flex-1 flex flex-col min-h-0 overflow-y-auto custom-scrollbar text-left">
       {/* Biến đầu vào */}
       <div className="p-3 border-b border-line/60 flex flex-col gap-2">
-        <div className="text-[10px] font-extrabold uppercase tracking-wider text-faint">
+        <div className="text-xs font-extrabold text-faint">
           Biến đầu vào ({variables.length})
         </div>
         {variables.length === 0 && (
-          <p className="text-[11px] text-faint italic">Prompt không có biến {'{{...}}'} nào.</p>
+          <p className="text-xs text-faint italic">Prompt không có biến {'{{...}}'} nào.</p>
         )}
         {variables.map((v) => (
           <div key={v.name}>
-            <label className="text-[10px] font-bold text-muted block mb-1 font-mono">
+            <label className="text-xs font-bold text-muted block mb-1 font-mono">
               {`{{${v.name}}}`}{v.description ? <span className="text-faint font-sans"> — {v.description}</span> : null}
             </label>
             {v.type === 'long-text' ? (
@@ -176,7 +176,7 @@ export function TestRunPanel({
           <select
             value={model}
             onChange={(e) => setModel(e.target.value)}
-            className="flex-1 min-w-0 bg-transparent border border-line/70 rounded-xl px-2 py-2 text-[11px] font-bold text-ink focus:outline-none cursor-pointer"
+            className="flex-1 min-w-0 bg-transparent border border-line/70 rounded-xl px-2 py-2 text-xs font-bold text-ink focus:outline-none cursor-pointer"
           >
             {ALL_MODEL_OPTIONS.filter((m) => !m.requiresUserKey).map((m) => (
               <option key={m.value} value={m.value}>{m.label}</option>
@@ -185,7 +185,7 @@ export function TestRunPanel({
           <button
             onClick={handleRun}
             disabled={isRunning}
-            className="flex items-center gap-1.5 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-900/20 cursor-pointer transition-all active:scale-95 disabled:opacity-60"
+            className="flex items-center gap-1.5 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg cursor-pointer transition-all active:scale-95 disabled:opacity-60"
           >
             {isRunning ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} fill="currentColor" />}
             {isRunning
@@ -197,11 +197,11 @@ export function TestRunPanel({
         {/* Vòng tự sửa lỗi (self-correction loop) */}
         <div className="flex items-center gap-2">
           <RefreshCw size={11} className="text-violet-500 shrink-0" />
-          <label className="text-[10px] font-bold text-muted shrink-0">Vòng tự sửa lỗi</label>
+          <label className="text-xs font-bold text-muted shrink-0">Vòng tự sửa lỗi</label>
           <select
             value={selfCorrectRounds}
             onChange={(e) => setSelfCorrectRounds(Number(e.target.value))}
-            className="bg-transparent border border-line/70 rounded-lg px-2 py-1 text-[11px] font-bold text-ink focus:outline-none cursor-pointer"
+            className="bg-transparent border border-line/70 rounded-lg px-2 py-1 text-xs font-bold text-ink focus:outline-none cursor-pointer"
           >
             <option value={0}>Tắt</option>
             <option value={1}>1 vòng</option>
@@ -209,7 +209,7 @@ export function TestRunPanel({
             <option value={3}>3 vòng</option>
           </select>
           {selfCorrectRounds > 0 && (
-            <span className="text-[9px] text-amber-500 font-bold">
+            <span className="text-xs text-amber-500 font-bold">
               ≈ {selfCorrectRounds + 1} lượt gọi model (tốn token hơn)
             </span>
           )}
@@ -225,14 +225,14 @@ export function TestRunPanel({
               <div className="flex flex-col gap-1.5">
                 <button
                   onClick={() => setShowDrafts((v) => !v)}
-                  className="self-start text-[10px] font-bold text-violet-500 hover:text-violet-400 cursor-pointer"
+                  className="self-start text-xs font-bold text-violet-500 hover:text-violet-400 cursor-pointer"
                 >
                   {showDrafts ? '▾' : '▸'} {previousDrafts.length} bản nháp trước khi tự sửa
                 </button>
                 {showDrafts && previousDrafts.map((draft, i) => (
                   <div key={i} className="border border-line/50 rounded-xl p-2.5 opacity-70">
-                    <div className="text-[9px] font-extrabold uppercase tracking-wider text-faint mb-1">Bản {i + 1}</div>
-                    <pre className="text-[10px] text-muted whitespace-pre-wrap break-words max-h-40 overflow-y-auto custom-scrollbar">{draft}</pre>
+                    <div className="text-xs font-extrabold text-faint mb-1">Bản {i + 1}</div>
+                    <pre className="text-xs text-muted whitespace-pre-wrap break-words max-h-40 overflow-y-auto custom-scrollbar">{draft}</pre>
                   </div>
                 ))}
               </div>
@@ -251,7 +251,7 @@ export function TestRunPanel({
           </>
         ) : (
           !isRunning && (
-            <p className="text-[11px] text-faint italic p-2 leading-relaxed">
+            <p className="text-xs text-faint italic p-2 leading-relaxed">
               Điền biến (nếu có) rồi bấm <b>Chạy thử</b> — prompt hoàn chỉnh sẽ được gửi cho model và kết quả hiện ở đây.
             </p>
           )
@@ -264,24 +264,24 @@ export function TestRunPanel({
               <span className="text-2xl font-black" style={{ color: evaluation.score >= 75 ? '#10b981' : evaluation.score >= 50 ? '#f59e0b' : '#f43f5e' }}>
                 {evaluation.score}
               </span>
-              <span className="text-[10px] font-bold text-faint uppercase tracking-wider">/100 điểm chất lượng</span>
+              <span className="text-xs font-bold text-faint">/100 điểm chất lượng</span>
             </div>
             {evaluation.weaknesses.length > 0 && (
-              <ul className="text-[11px] text-muted list-disc pl-4 flex flex-col gap-1">
+              <ul className="text-xs text-muted list-disc pl-4 flex flex-col gap-1">
                 {evaluation.weaknesses.map((w, i) => <li key={i}>{w}</li>)}
               </ul>
             )}
-            <div className="text-[10px] font-extrabold uppercase tracking-wider text-faint mt-1">
+            <div className="text-xs font-extrabold text-faint mt-1">
               Gợi ý — bấm để thêm thành node "Sửa lỗi"
             </div>
             {evaluation.suggestions.map((s, i) => (
               <div key={i} className="border border-line/60 rounded-xl p-2.5 flex flex-col gap-1.5">
-                <div className="text-[11px] font-bold text-ink">{s.title}</div>
-                <p className="text-[10px] text-muted leading-relaxed">{s.description}</p>
+                <div className="text-xs font-bold text-ink">{s.title}</div>
+                <p className="text-xs text-muted leading-relaxed">{s.description}</p>
                 <button
                   onClick={() => handleAddSuggestion(i)}
                   disabled={addedSuggestions[i]}
-                  className={`self-start flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors ${
+                  className={`self-start flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors ${
                     addedSuggestions[i]
                       ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                       : 'bg-rose-500/10 text-rose-500 hover:bg-rose-500/20'
@@ -294,7 +294,7 @@ export function TestRunPanel({
             ))}
             <button
               onClick={handleRun}
-              className="flex items-center justify-center gap-1.5 py-2 rounded-xl border border-line/70 text-muted text-[11px] font-bold hover:text-ink cursor-pointer transition-colors"
+              className="flex items-center justify-center gap-1.5 py-2 rounded-xl border border-line/70 text-muted text-xs font-bold hover:text-ink cursor-pointer transition-colors"
             >
               <RefreshCw size={11} /> Chạy lại với đồ thị mới
             </button>

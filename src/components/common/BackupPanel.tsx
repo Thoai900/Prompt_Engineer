@@ -62,9 +62,9 @@ export default function BackupPanel() {
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-2 flex items-center gap-2">
         <DatabaseBackup size={15} className="text-emerald-600" />
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Sao lưu &amp; Khôi phục dữ liệu</span>
+        <span className="text-xs font-bold text-slate-500">Sao lưu &amp; Khôi phục dữ liệu</span>
       </div>
-      <p className="mb-3 text-[11px] leading-relaxed text-slate-400">
+      <p className="mb-3 text-xs leading-relaxed text-slate-400">
         Xuất template cục bộ, chain, rule, skill, hồ sơ phong cách… ra một file JSON để backup hoặc chuyển máy.
         File <span className="font-semibold">không chứa API key</span>.
       </p>

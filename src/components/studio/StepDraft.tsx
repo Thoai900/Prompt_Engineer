@@ -81,7 +81,7 @@ export default function StepDraft({ draft, onPatch }: StepDraftProps) {
           </p>
         </header>
         <div className="rounded-2xl border border-line bg-panel/70 p-5">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-faint">Ý tưởng của bạn</div>
+          <div className="text-xs font-bold text-faint">Ý tưởng của bạn</div>
           <p className="mt-1.5 text-sm leading-relaxed text-ink">
             {draft.idea.trim() || <span className="text-faint">Chưa có — quay lại bước 1 để nhập.</span>}
           </p>
@@ -89,7 +89,7 @@ export default function StepDraft({ draft, onPatch }: StepDraftProps) {
         <button
           onClick={handleGenerate}
           disabled={isGenerating || !draft.idea.trim()}
-          className="flex cursor-pointer items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600 px-5 py-3 text-sm font-bold text-white shadow-md shadow-violet-500/20 transition-all hover:shadow-lg hover:shadow-violet-500/30 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex cursor-pointer items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-5 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-40"
         >
           {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
           {isGenerating ? GENERATING_STEPS[narration] : 'Dựng bản nháp bằng AI'}
@@ -124,7 +124,7 @@ export default function StepDraft({ draft, onPatch }: StepDraftProps) {
         {draft.template.blocks.map((block) => (
           <div key={block.id} className="group rounded-2xl border border-line bg-panel/80 p-4 transition-colors focus-within:border-violet-400/50">
             <div className="mb-2 flex items-center justify-between gap-2">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-muted">{block.title}</div>
+              <div className="text-xs font-bold text-muted">{block.title}</div>
               <button
                 onClick={() => removeBlock(block.id)}
                 title="Xoá khối"

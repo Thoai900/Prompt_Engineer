@@ -636,7 +636,7 @@ export default function AIFutureTab({ theme = 'dark' }: { theme?: 'light' | 'dar
             transition={{ delay: 0.05 }}
             className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3"
           >
-            Không Gian Tương Tác <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-600 dark:from-blue-400 dark:via-indigo-400 dark:to-emerald-400">3D & Tin Tức AI</span>
+            Không Gian Tương Tác <span className="text-emerald-700 dark:text-emerald-400">3D & Tin Tức AI</span>
           </motion.h1>
           
           <motion.p 
@@ -658,7 +658,7 @@ export default function AIFutureTab({ theme = 'dark' }: { theme?: 'light' | 'dar
             <div className="flex flex-wrap justify-between items-center gap-3 z-20 mb-3">
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-ping"></div>
-                <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">
                   3D Simulation Mode: {active3DMode === 'transformer' ? 'Transformer Token Flow' : 'Semantic Vector Space'}
                 </span>
               </div>
@@ -666,7 +666,7 @@ export default function AIFutureTab({ theme = 'dark' }: { theme?: 'light' | 'dar
                 <button
                   onClick={() => { setActive3DMode('transformer'); setSelectedNode(null); }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                    active3DMode === 'transformer' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                    active3DMode === 'transformer' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
                 >
                   <Workflow size={13} /> Flow Token
@@ -674,7 +674,7 @@ export default function AIFutureTab({ theme = 'dark' }: { theme?: 'light' | 'dar
                 <button
                   onClick={() => { setActive3DMode('vector'); setSelectedNode(null); }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                    active3DMode === 'vector' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                    active3DMode === 'vector' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                   }`}
                 >
                   <Globe size={13} /> Không gian Vector
@@ -683,7 +683,7 @@ export default function AIFutureTab({ theme = 'dark' }: { theme?: 'light' | 'dar
             </div>
 
             {/* Help tooltip */}
-            <div className="absolute bottom-6 left-6 z-20 pointer-events-none bg-white/90 dark:bg-slate-950/80 border border-slate-250 dark:border-white/5 px-3 py-2 rounded-xl backdrop-blur-sm text-[10px] text-slate-500 dark:text-slate-400 space-y-1 shadow-md">
+            <div className="absolute bottom-6 left-6 z-20 pointer-events-none bg-white/90 dark:bg-slate-950/80 border border-slate-250 dark:border-white/5 px-3 py-2 rounded-xl backdrop-blur-sm text-xs text-slate-500 dark:text-slate-400 space-y-1 shadow-md">
               <p className="flex items-center gap-1"><HelpCircle size={10} className="text-indigo-500 dark:text-indigo-400" /> Tương tác 3D:</p>
               <p>• Chuột trái & kéo: Xoay camera</p>
               <p>• Cuộn chuột: Thu phóng không gian</p>
@@ -778,7 +778,7 @@ export default function AIFutureTab({ theme = 'dark' }: { theme?: 'light' | 'dar
 
                     <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-white/5 space-y-2.5">
                       <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">TOKEN PIPELINE SIMULATOR</span>
-                      <div className="space-y-1.5 font-mono text-[10px] text-slate-555 dark:text-slate-400">
+                      <div className="space-y-1.5 font-mono text-xs text-slate-555 dark:text-slate-400">
                         <div className="flex justify-between">
                           <span>Input String:</span>
                           <span className="text-blue-600 dark:text-blue-300">"Tôi yêu trí tuệ nhân tạo"</span>
@@ -823,7 +823,7 @@ export default function AIFutureTab({ theme = 'dark' }: { theme?: 'light' | 'dar
                         />
                         <button
                           type="submit"
-                          className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold text-white transition-colors flex items-center justify-center cursor-pointer"
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-xs font-bold text-white transition-colors flex items-center justify-center cursor-pointer"
                         >
                           <Plus size={14} /> Phóng
                         </button>
@@ -838,7 +838,7 @@ export default function AIFutureTab({ theme = 'dark' }: { theme?: 'light' | 'dar
                             key={c.val}
                             type="button"
                             onClick={() => setNewWordCategory(c.val)}
-                            className={`px-1.5 py-1 text-[9px] font-bold border rounded-lg transition-colors cursor-pointer ${
+                            className={`px-1.5 py-1 text-xs font-bold border rounded-lg transition-colors cursor-pointer ${
                               newWordCategory === c.val 
                                 ? 'bg-indigo-50 dark:bg-indigo-600/20 text-indigo-600 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30 shadow-sm' 
                                 : 'bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/5 hover:bg-slate-200 dark:hover:bg-slate-800'
@@ -868,16 +868,16 @@ export default function AIFutureTab({ theme = 'dark' }: { theme?: 'light' | 'dar
                         <div className="space-y-2">
                           <div>
                             <span className="text-sm font-bold text-indigo-700 dark:text-indigo-200">{selectedNode.word}</span>
-                            <span className="inline-block text-[9px] uppercase px-1.5 py-0.5 ml-2 font-bold rounded bg-indigo-55 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20 shadow-sm">
+                            <span className="inline-block text-xs px-1.5 py-0.5 ml-2 font-bold rounded bg-indigo-55 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20 shadow-sm">
                               {selectedNode.category}
                             </span>
                           </div>
                           
-                          <p className="text-[11px] text-slate-655 dark:text-slate-400 leading-relaxed font-sans">
+                          <p className="text-xs text-slate-655 dark:text-slate-400 leading-relaxed font-sans">
                             {selectedNode.definition}
                           </p>
 
-                          <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 space-y-1 border-t border-slate-200 dark:border-white/5 pt-2">
+                          <div className="text-xs font-mono text-slate-500 dark:text-slate-400 space-y-1 border-t border-slate-200 dark:border-white/5 pt-2">
                             <div className="flex justify-between">
                               <span>3D Coordinates:</span>
                               <span className="text-slate-800 dark:text-slate-200">[{selectedNode.pos[0].toFixed(2)}, {selectedNode.pos[1].toFixed(2)}, {selectedNode.pos[2].toFixed(2)}]</span>
@@ -900,7 +900,7 @@ export default function AIFutureTab({ theme = 'dark' }: { theme?: 'light' | 'dar
             </div>
 
             {/* Lower Area - Quick Footer */}
-            <div className="border-t border-white/5 pt-4 text-[10px] text-slate-500 flex justify-between">
+            <div className="border-t border-white/5 pt-4 text-xs text-slate-500 flex justify-between">
               <span>Engine: Three.js WebGL</span>
               <span>Coordinates System: Cartesian 3D</span>
             </div>
@@ -982,7 +982,7 @@ function BigThreeSection() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Gemini Card */}
         <div className="bg-white dark:bg-[#0d121f] rounded-3xl p-5 border border-slate-200 dark:border-[#4285F4]/20 relative overflow-hidden group hover:border-blue-400 dark:hover:border-[#4285F4]/50 transition-all flex flex-col justify-between shadow-sm dark:shadow-none">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-[#4285F4]"></div>
+          <div className="absolute top-0 left-0 w-full h-1 bg-[#4285F4]"></div>
           
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center border border-blue-200 dark:border-blue-500/30">
@@ -990,7 +990,7 @@ function BigThreeSection() {
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-800 dark:text-white">Google Gemini</h3>
-              <p className="text-[10px] text-blue-600 dark:text-blue-400 font-mono tracking-wider">GEMINI 3.5 PRO & FLASH</p>
+              <p className="text-xs text-blue-600 dark:text-blue-400 font-mono tracking-wider">GEMINI 3.5 PRO & FLASH</p>
             </div>
           </div>
           <div className="space-y-3">
@@ -998,20 +998,20 @@ function BigThreeSection() {
               <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1 flex items-center gap-1.5">
                 <Globe size={12} className="text-blue-555 dark:text-blue-400" /> Ngữ cảnh cực lớn (Multimodal)
               </h4>
-              <p className="text-[11px] text-slate-555 dark:text-slate-400 leading-relaxed">Xử lý hàng triệu token, đọc toàn bộ tài liệu hoặc video dài trong chớp mắt.</p>
+              <p className="text-xs text-slate-555 dark:text-slate-400 leading-relaxed">Xử lý hàng triệu token, đọc toàn bộ tài liệu hoặc video dài trong chớp mắt.</p>
             </div>
             <div className="bg-slate-50 dark:bg-white/5 p-3 rounded-xl border border-slate-100 dark:border-white/5">
               <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1 flex items-center gap-1.5">
                 <Search size={12} className="text-blue-555 dark:text-blue-400" /> Deep Research
               </h4>
-              <p className="text-[11px] text-slate-555 dark:text-slate-400 leading-relaxed">Hệ thống tác nhân tự động thực hiện nghiên cứu Internet sâu và viết báo cáo hoàn chỉnh.</p>
+              <p className="text-xs text-slate-555 dark:text-slate-400 leading-relaxed">Hệ thống tác nhân tự động thực hiện nghiên cứu Internet sâu và viết báo cáo hoàn chỉnh.</p>
             </div>
           </div>
         </div>
 
         {/* OpenAI Card */}
         <div className="bg-white dark:bg-[#0d1411] rounded-3xl p-5 border border-slate-200 dark:border-[#10a37f]/20 relative overflow-hidden group hover:border-emerald-400 dark:hover:border-[#10a37f]/50 transition-all flex flex-col justify-between shadow-sm dark:shadow-none">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-[#10a37f]"></div>
+          <div className="absolute top-0 left-0 w-full h-1 bg-[#10a37f]"></div>
           
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-xl bg-emerald-55 dark:bg-emerald-500/10 flex items-center justify-center border border-emerald-200 dark:border-emerald-500/30">
@@ -1019,7 +1019,7 @@ function BigThreeSection() {
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-800 dark:text-white">OpenAI</h3>
-              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono tracking-wider">GPT-5 & o3</p>
+              <p className="text-xs text-emerald-600 dark:text-emerald-400 font-mono tracking-wider">GPT-5 & o3</p>
             </div>
           </div>
           <div className="space-y-3">
@@ -1027,20 +1027,20 @@ function BigThreeSection() {
               <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1 flex items-center gap-1.5">
                 <Cpu size={12} className="text-emerald-555 dark:text-emerald-400" /> Lý thuyết O3 (Reasoning)
               </h4>
-              <p className="text-[11px] text-slate-555 dark:text-slate-400 leading-relaxed">Phát triển các dòng mô hình suy nghĩ chậm, tối ưu tính toán cho Toán, Code và Khoa học.</p>
+              <p className="text-xs text-slate-555 dark:text-slate-400 leading-relaxed">Phát triển các dòng mô hình suy nghĩ chậm, tối ưu tính toán cho Toán, Code và Khoa học.</p>
             </div>
             <div className="bg-slate-50 dark:bg-white/5 p-3 rounded-xl border border-slate-100 dark:border-white/5">
               <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1 flex items-center gap-1.5">
                 <Workflow size={12} className="text-emerald-555 dark:text-emerald-400" /> GPT Store & Canvas
               </h4>
-              <p className="text-[11px] text-slate-555 dark:text-slate-400 leading-relaxed">Hỗ trợ Canvas giúp cùng sửa code và văn bản trực tiếp trên giao diện tương tác.</p>
+              <p className="text-xs text-slate-555 dark:text-slate-400 leading-relaxed">Hỗ trợ Canvas giúp cùng sửa code và văn bản trực tiếp trên giao diện tương tác.</p>
             </div>
           </div>
         </div>
 
         {/* Claude Card */}
         <div className="bg-white dark:bg-[#140e0c] rounded-3xl p-5 border border-slate-200 dark:border-[#d97757]/20 relative overflow-hidden group hover:border-orange-400 dark:hover:border-[#d97757]/50 transition-all flex flex-col justify-between shadow-sm dark:shadow-none">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-400 to-[#d97757]"></div>
+          <div className="absolute top-0 left-0 w-full h-1 bg-[#d97757]"></div>
           
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center border border-orange-200 dark:border-orange-500/30">
@@ -1048,7 +1048,7 @@ function BigThreeSection() {
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-800 dark:text-white">Anthropic Claude</h3>
-              <p className="text-[10px] text-orange-650 dark:text-orange-400 font-mono tracking-wider">CLAUDE 4.5 & OPUS</p>
+              <p className="text-xs text-orange-650 dark:text-orange-400 font-mono tracking-wider">CLAUDE 4.5 & OPUS</p>
             </div>
           </div>
           <div className="space-y-3">
@@ -1056,13 +1056,13 @@ function BigThreeSection() {
               <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1 flex items-center gap-1.5">
                 <Smile size={12} className="text-orange-600 dark:text-orange-400" /> Hành văn xuất sắc nhất
               </h4>
-              <p className="text-[11px] text-slate-555 dark:text-slate-400 leading-relaxed">Khả năng diễn đạt ngôn từ trôi chảy, viết học thuật đỉnh cao và an toàn thông tin vượt bậc.</p>
+              <p className="text-xs text-slate-555 dark:text-slate-400 leading-relaxed">Khả năng diễn đạt ngôn từ trôi chảy, viết học thuật đỉnh cao và an toàn thông tin vượt bậc.</p>
             </div>
             <div className="bg-slate-50 dark:bg-white/5 p-3 rounded-xl border border-slate-100 dark:border-white/5">
               <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1 flex items-center gap-1.5">
                 <Globe size={12} className="text-orange-600 dark:text-orange-400" /> Computer Use API
               </h4>
-              <p className="text-[11px] text-slate-555 dark:text-slate-400 leading-relaxed">AI có thể tự click, gõ bàn phím và sử dụng máy tính như một nhân sự thực tế.</p>
+              <p className="text-xs text-slate-555 dark:text-slate-400 leading-relaxed">AI có thể tự click, gõ bàn phím và sử dụng máy tính như một nhân sự thực tế.</p>
             </div>
           </div>
         </div>
@@ -1130,7 +1130,7 @@ function OpenSourceSection() {
         <p className="text-xs text-slate-600 dark:text-slate-400 mb-4 h-16 leading-relaxed">
           Đầu tàu của thế giới mã nguồn Weights mở. Dòng Llama 4 đạt điểm hiệu suất vượt trội, sánh ngang với các giải pháp độc quyền hàng đầu hiện nay.
         </p>
-        <div className="flex flex-wrap gap-2 text-[9px] font-mono">
+        <div className="flex flex-wrap gap-2 text-xs font-mono">
           <span className="px-2 py-0.5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/15 rounded text-slate-600 dark:text-slate-300">Llama 4 405B</span>
         </div>
       </div>
@@ -1145,7 +1145,7 @@ function OpenSourceSection() {
         <p className="text-xs text-slate-600 dark:text-slate-400 mb-4 h-16 leading-relaxed">
           Công nghệ lõi tinh gọn từ Châu Âu. Phiên bản Mistral Large và các dòng MoE (Mixture of Experts) cho hiệu suất vận hành nhỏ gọn và tiết kiệm phần cứng.
         </p>
-        <div className="flex flex-wrap gap-2 text-[9px] font-mono">
+        <div className="flex flex-wrap gap-2 text-xs font-mono">
           <span className="px-2 py-0.5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/15 rounded text-slate-600 dark:text-slate-300">Mistral Large 3</span>
         </div>
       </div>
@@ -1160,7 +1160,7 @@ function OpenSourceSection() {
         <p className="text-xs text-slate-600 dark:text-slate-400 mb-4 h-16 leading-relaxed">
           Hiện tượng công nghệ chuyên toán và lập trình mã nguồn mở. Thuật toán tối ưu hóa chi phí huấn luyện cực thấp, định hình lại kinh tế học AI.
         </p>
-        <div className="flex flex-wrap gap-2 text-[9px] font-mono">
+        <div className="flex flex-wrap gap-2 text-xs font-mono">
           <span className="px-2 py-0.5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/15 rounded text-slate-600 dark:text-slate-300">DeepSeek-V4 MoE</span>
         </div>
       </div>
@@ -1230,7 +1230,7 @@ function TrendsSection() {
           </div>
           <div className="space-y-1">
             <h4 className="text-xs font-bold text-slate-800 dark:text-white">{t.title}</h4>
-            <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">{t.desc}</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{t.desc}</p>
           </div>
         </div>
       ))}

@@ -145,10 +145,10 @@ export default function InteractiveFewShotPanel({ template, onRemixWithFewShots 
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="rounded-full border border-indigo-100 bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-indigo-600">
+          <span className="rounded-full border border-indigo-100 bg-white px-2.5 py-1 text-xs font-black text-indigo-600">
             {examples.length} shots
           </span>
-          <span className="rounded-full border border-emerald-100 bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-600">
+          <span className="rounded-full border border-emerald-100 bg-white px-2.5 py-1 text-xs font-black text-emerald-600">
             {completeness}% ready
           </span>
         </div>
@@ -157,10 +157,10 @@ export default function InteractiveFewShotPanel({ template, onRemixWithFewShots 
       <div className="grid gap-0 lg:grid-cols-[220px_1fr]">
         <div className="border-b border-slate-100 bg-slate-50/70 p-3 lg:border-b-0 lg:border-r">
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Example set</span>
+            <span className="text-xs font-black text-slate-400">Example set</span>
             <button
               onClick={addExample}
-              className="flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-[10px] font-bold text-indigo-600 shadow-sm ring-1 ring-slate-200 transition-colors hover:bg-indigo-50"
+              className="flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-xs font-bold text-indigo-600 shadow-sm ring-1 ring-slate-200 transition-colors hover:bg-indigo-50"
             >
               <Plus className="h-3 w-3" />
               Add
@@ -182,7 +182,7 @@ export default function InteractiveFewShotPanel({ template, onRemixWithFewShots 
                   <span className="text-xs font-black text-slate-800">Shot {index + 1}</span>
                   <span className={`h-2 w-2 rounded-full ${example.input.trim() && example.output.trim() ? 'bg-emerald-500' : 'bg-amber-400'}`} />
                 </div>
-                <p className="line-clamp-2 text-[11px] font-medium leading-relaxed text-slate-500">
+                <p className="line-clamp-2 text-xs font-medium leading-relaxed text-slate-500">
                   {example.input || 'Chua co input mau'}
                 </p>
               </button>
@@ -193,7 +193,7 @@ export default function InteractiveFewShotPanel({ template, onRemixWithFewShots 
         <div className="grid gap-4 p-4 xl:grid-cols-2">
           <div className="space-y-3">
             <label className="block">
-              <span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-400">Input mau</span>
+              <span className="mb-1.5 block text-xs font-black text-slate-400">Input mau</span>
               <textarea
                 value={activeExample.input}
                 onChange={(event) => updateActiveExample('input', event.target.value)}
@@ -204,7 +204,7 @@ export default function InteractiveFewShotPanel({ template, onRemixWithFewShots 
             </label>
 
             <label className="block">
-              <span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-400">Output mong muon</span>
+              <span className="mb-1.5 block text-xs font-black text-slate-400">Output mong muon</span>
               <textarea
                 value={activeExample.output}
                 onChange={(event) => updateActiveExample('output', event.target.value)}
@@ -215,7 +215,7 @@ export default function InteractiveFewShotPanel({ template, onRemixWithFewShots 
             </label>
 
             <label className="block">
-              <span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-400">Ly do / pattern can hoc</span>
+              <span className="mb-1.5 block text-xs font-black text-slate-400">Ly do / pattern can hoc</span>
               <textarea
                 value={activeExample.explanation || ''}
                 onChange={(event) => updateActiveExample('explanation', event.target.value)}
@@ -230,18 +230,18 @@ export default function InteractiveFewShotPanel({ template, onRemixWithFewShots 
             <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
               <div className="flex items-center gap-2">
                 <ArrowRight className="h-4 w-4 text-indigo-300" />
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-300">Compiled few-shot block</span>
+                <span className="text-xs font-black text-slate-300">Compiled few-shot block</span>
               </div>
               <button
                 onClick={copyCompiled}
                 disabled={!compiledPrompt.trim()}
-                className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-2.5 py-1.5 text-[10px] font-bold text-slate-300 ring-1 ring-slate-800 transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-slate-300 ring-1 ring-slate-800 transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                 {copied ? 'Copied' : 'Copy'}
               </button>
             </div>
-            <pre className="custom-scrollbar flex-1 overflow-auto whitespace-pre-wrap p-4 text-[11px] leading-relaxed text-slate-300">
+            <pre className="custom-scrollbar flex-1 overflow-auto whitespace-pre-wrap p-4 text-xs leading-relaxed text-slate-300">
               {compiledPrompt || 'Them input/output mau de bien dich thanh khoi few-shot.'}
             </pre>
           </div>
@@ -259,7 +259,7 @@ export default function InteractiveFewShotPanel({ template, onRemixWithFewShots 
         <button
           onClick={() => onRemixWithFewShots(buildTemplateWithFewShots(template, examples))}
           disabled={!compiledPrompt.trim()}
-          className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-indigo-600/20 transition-all hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-black text-white shadow-md transition-all hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <FilePlus2 className="h-4 w-4" />
           Remix voi Few-Shot

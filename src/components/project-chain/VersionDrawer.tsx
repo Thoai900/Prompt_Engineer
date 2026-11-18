@@ -51,7 +51,7 @@ export function VersionDrawer({
             <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-855 bg-slate-50 dark:bg-slate-950 flex justify-between items-center shrink-0">
               <div className="flex items-center gap-2">
                 <Clock size={16} className="text-violet-600 dark:text-violet-400" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-355">Lịch sử phiên bản</h3>
+                <h3 className="text-xs font-bold text-slate-700 dark:text-slate-355">Lịch sử phiên bản</h3>
               </div>
               <button
                 onClick={handleClose}
@@ -71,7 +71,7 @@ export function VersionDrawer({
                 <>
                   {/* Version List */}
                   <div className="flex flex-col gap-2 shrink-0">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left">Danh sách phiên bản ({versions.length})</span>
+                    <span className="text-xs font-bold text-slate-400 text-left">Danh sách phiên bản ({versions.length})</span>
                     <div className="flex flex-col gap-2 max-h-56 overflow-y-auto custom-scrollbar p-0.5">
                       {versions.map((ver) => {
                         const isSelected = selectedVersion?.id === ver.id;
@@ -85,7 +85,7 @@ export function VersionDrawer({
                                 : 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-850 hover:border-slate-300 dark:hover:border-slate-800'}`}
                           >
                             <div className="flex justify-between items-start gap-2">
-                              <span className="text-[10.5px] font-bold text-slate-800 dark:text-slate-200">
+                              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                                 {new Date(ver.timestamp).toLocaleString()}
                               </span>
                               <button
@@ -93,12 +93,12 @@ export function VersionDrawer({
                                   e.stopPropagation();
                                   onRestore(ver);
                                 }}
-                                className="py-1 px-2.5 bg-violet-600 dark:bg-violet-650 hover:bg-violet-500 text-white text-[9.5px] font-bold rounded-lg transition-colors cursor-pointer"
+                                className="py-1 px-2.5 bg-emerald-600 dark:bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
                               >
                                 Khôi phục
                               </button>
                             </div>
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed font-semibold">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed font-semibold">
                               {ver.description}
                             </p>
                           </div>
@@ -110,10 +110,10 @@ export function VersionDrawer({
                   {/* Diff Viewer panel */}
                   {selectedVersion && (
                     <div className="flex-1 flex flex-col gap-2 min-h-[250px]">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left">
+                      <span className="text-xs font-bold text-slate-400 text-left">
                         So sánh khác biệt (So với Hiện tại)
                       </span>
-                      <div className="flex-1 p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-900 rounded-2xl overflow-y-auto custom-scrollbar font-mono text-[10px] text-left select-text whitespace-pre-wrap leading-relaxed">
+                      <div className="flex-1 p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-900 rounded-2xl overflow-y-auto custom-scrollbar font-mono text-xs text-left select-text whitespace-pre-wrap leading-relaxed">
                         {computeUnifiedDiff(selectedVersion.content, currentContent).map((line, idx) => {
                           if (line.type === 'added') {
                             return (

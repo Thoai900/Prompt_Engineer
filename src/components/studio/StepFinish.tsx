@@ -75,7 +75,7 @@ export default function StepFinish({ finalText, mergedTemplate, personaName, onS
       <div className="flex flex-wrap items-center gap-2.5">
         <button
           onClick={handleCopy}
-          className="flex cursor-pointer items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600 px-5 py-3 text-sm font-bold text-white shadow-md shadow-violet-500/20 transition-all hover:shadow-lg hover:shadow-violet-500/30"
+          className="flex cursor-pointer items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-5 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
         >
           {copied ? <Check size={16} /> : <Copy size={16} />}
           {copied ? 'Đã copy' : 'Copy prompt'}
@@ -111,7 +111,7 @@ export default function StepFinish({ finalText, mergedTemplate, personaName, onS
         </button>
       </div>
 
-      <p className="text-[11px] leading-relaxed text-faint">
+      <p className="text-xs leading-relaxed text-faint">
         Khi lưu hoặc mở trong Builder, các Rules/Skills đã chọn được chuyển thành khối thật trong template —
         template tự chứa, không phụ thuộc Studio. Persona không được nhúng (là cấu hình chạy, chọn lại trong Builder).
       </p>

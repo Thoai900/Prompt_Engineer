@@ -84,7 +84,7 @@ export const PromptBlockList: React.FC<PromptBlockListProps> = ({
           <span className="text-xs font-bold text-slate-400">Workshop ({blocks.length} khối)</span>
           <button 
             onClick={() => setShowMobilePanel('preview')} 
-            className="flex items-center p-2 px-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white min-h-[40px] text-xs font-bold cursor-pointer"
+            className="flex items-center p-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white min-h-[40px] text-xs font-bold cursor-pointer"
           >
             <span>Xem trước</span>
             <ChevronRight size={14} className="ml-1" />

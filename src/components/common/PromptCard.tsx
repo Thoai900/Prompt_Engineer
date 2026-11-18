@@ -46,16 +46,16 @@ export default function PromptCard({ template, onSelect, onRemix, onPreview, isS
           title="Xem kết quả mẫu đầy đủ"
         >
           <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-slate-500">
+            <span className="flex items-center gap-1.5 text-xs font-black text-slate-500">
               <OutIcon className="w-3 h-3 text-indigo-500" /> Kết quả mẫu
             </span>
-            <span className="text-[9px] font-bold text-slate-400 group-hover:text-indigo-500 transition-colors">Xem đầy đủ →</span>
+            <span className="text-xs font-bold text-slate-400 group-hover:text-indigo-500 transition-colors">Xem đầy đủ →</span>
           </div>
 
           {showcase.input && (
             <>
-              <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Bạn nhập</div>
-              <div className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-700 leading-snug line-clamp-2">
+              <div className="text-xs font-bold text-slate-400">Bạn nhập</div>
+              <div className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 leading-snug line-clamp-2">
                 {showcase.input}
               </div>
               <div className="flex justify-center text-slate-300">
@@ -64,12 +64,12 @@ export default function PromptCard({ template, onSelect, onRemix, onPreview, isS
             </>
           )}
 
-          <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Kết quả AI</div>
+          <div className="text-xs font-bold text-slate-400">Kết quả AI</div>
           <div
             className={`rounded-lg px-2.5 py-2 leading-snug whitespace-pre-line line-clamp-4 overflow-hidden ${
               isCode
-                ? 'bg-[#0B0E14] border border-slate-800 text-[#A9B2C3] font-mono text-[10px]'
-                : 'bg-white border border-slate-200 text-slate-600 text-[11px]'
+                ? 'bg-[#0B0E14] border border-slate-800 text-[#A9B2C3] font-mono text-xs'
+                : 'bg-white border border-slate-200 text-slate-600 text-xs'
             }`}
           >
             {showcase.output}
@@ -80,7 +80,7 @@ export default function PromptCard({ template, onSelect, onRemix, onPreview, isS
           <div className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center shadow-sm">
             <FileText className="w-6 h-6 text-slate-300" />
           </div>
-          <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-400">
+          <span className="flex items-center gap-1 text-xs font-semibold text-slate-400">
             <Clock className="w-3 h-3" /> Kết quả mẫu sẽ bổ sung sau
           </span>
         </div>
@@ -94,17 +94,17 @@ export default function PromptCard({ template, onSelect, onRemix, onPreview, isS
             {template.authorAvatar ? (
               <img src={template.authorAvatar} alt={template.authorName || 'Author'} className="w-6 h-6 rounded-full object-cover border border-slate-100 shadow-sm" />
             ) : (
-              <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] font-bold shadow-sm">
+              <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold shadow-sm">
                 {getAvatarFallback(template.authorName || 'Anonymous')}
               </div>
             )}
             <div className="flex items-center gap-1">
-              <span className="text-[11px] font-bold text-slate-700">{template.authorName || 'Anonymous'}</span>
+              <span className="text-xs font-bold text-slate-700">{template.authorName || 'Anonymous'}</span>
               {template.isVerified && <CheckCircle className="w-3 h-3 text-blue-500" />}
             </div>
           </div>
           {template.category && (
-            <span className="bg-slate-50 border border-slate-100 text-slate-500 text-[9px] font-bold px-2 py-1 rounded-lg whitespace-nowrap">
+            <span className="bg-slate-50 border border-slate-100 text-slate-500 text-xs font-bold px-2 py-1 rounded-lg whitespace-nowrap">
               {template.category.toUpperCase()}
             </span>
           )}
@@ -126,12 +126,12 @@ export default function PromptCard({ template, onSelect, onRemix, onPreview, isS
           <div className="flex-1 min-h-0 overflow-hidden">
             <div className="flex flex-wrap gap-1.5 content-start pb-1">
               {fw && (
-                <span className="text-[10px] font-bold px-2 py-1 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-md">
+                <span className="text-xs font-bold px-2 py-1 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-md">
                   Khung {fw}
                 </span>
               )}
               {(template.tags || []).slice(0, fw ? 3 : 4).map(tag => (
-                <span key={tag} className="text-[10px] font-semibold px-2 py-1 bg-slate-50 text-slate-600 border border-slate-100 rounded-md">
+                <span key={tag} className="text-xs font-semibold px-2 py-1 bg-slate-50 text-slate-600 border border-slate-100 rounded-md">
                   #{tag}
                 </span>
               ))}
@@ -179,7 +179,7 @@ export default function PromptCard({ template, onSelect, onRemix, onPreview, isS
 
           <button
             onClick={(e) => { e.stopPropagation(); if (onRemix) onRemix(template); else onSelect(template); }}
-            className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl text-[11px] font-bold transition-all shadow-md shadow-indigo-600/20 hover:shadow-lg hover:shadow-indigo-600/30 active:scale-95"
+            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl text-xs font-bold transition-all shadow-md hover:shadow-lg active:scale-95"
           >
             <Copy className="w-3.5 h-3.5" />
             Remix

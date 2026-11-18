@@ -44,7 +44,7 @@ export const SaveTemplateModal: React.FC<SaveTemplateModalProps> = ({
 
         <div className="flex flex-col gap-4 mb-8">
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-550 dark:text-slate-400 mb-1.5 block">
+            <label className="text-xs font-bold text-slate-550 dark:text-slate-400 mb-1.5 block">
               Tên Template
             </label>
             <input
@@ -57,7 +57,7 @@ export const SaveTemplateModal: React.FC<SaveTemplateModalProps> = ({
             />
           </div>
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-550 dark:text-slate-400 mb-1.5 block">
+            <label className="text-xs font-bold text-slate-550 dark:text-slate-400 mb-1.5 block">
               Mô tả (Không bắt buộc)
             </label>
             <textarea
@@ -69,7 +69,7 @@ export const SaveTemplateModal: React.FC<SaveTemplateModalProps> = ({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">Ngôn ngữ</label>
+              <label className="text-xs font-bold text-slate-400 mb-1.5 block">Ngôn ngữ</label>
               <select
                 value={templateLanguage}
                 onChange={e => setTemplateLanguage(e.target.value)}
@@ -80,7 +80,7 @@ export const SaveTemplateModal: React.FC<SaveTemplateModalProps> = ({
               </select>
             </div>
             <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">
+              <label className="text-xs font-bold text-slate-400 mb-1.5 block">
                 Tags (phẩy để tách)
               </label>
               <input
@@ -118,7 +118,7 @@ export const SaveTemplateModal: React.FC<SaveTemplateModalProps> = ({
           </button>
           <button
             onClick={onConfirmSave}
-            className="px-5 py-2 text-sm font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-lg hover:from-violet-500 hover:to-indigo-500 transition-colors shadow-md shadow-violet-900/10 flex items-center gap-1.5 cursor-pointer active:scale-95"
+            className="px-5 py-2 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
           >
             <Save size={14} />
             Lưu template

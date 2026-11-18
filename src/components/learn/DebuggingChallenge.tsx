@@ -122,7 +122,7 @@ export default function DebuggingChallenge({ onBack, onComplete }: { onBack: () 
           <div className="max-w-4xl mx-auto space-y-6">
             <div className="bg-white border-2 border-rose-200 rounded-2xl overflow-hidden shadow-sm">
               <div className="bg-rose-50 border-b border-rose-100 p-4">
-                <span className="font-bold text-rose-800 text-sm uppercase tracking-wider flex items-center gap-2">
+                <span className="font-bold text-rose-800 text-sm flex items-center gap-2">
                   <AlertTriangle size={16} /> Hiện trạng: {level.title}
                 </span>
                 <p className="text-xs text-rose-600 mt-1">{level.description}</p>
@@ -168,7 +168,7 @@ export default function DebuggingChallenge({ onBack, onComplete }: { onBack: () 
                  <button 
                    onClick={handleFix}
                    disabled={isTesting || selectedOptions.length === 0}
-                   className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-bold py-2.5 px-8 rounded-lg flex items-center gap-2 shadow-md transition-all"
+                   className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold py-2.5 px-8 rounded-lg flex items-center gap-2 shadow-md transition-all"
                  >
                    {isTesting ? "Đang vá lỗi..." : <><Play size={18} /> Khởi động lại AI</>}
                  </button>
@@ -199,7 +199,7 @@ export default function DebuggingChallenge({ onBack, onComplete }: { onBack: () 
             {testSuccess && (
               <div className="bg-white border-2 border-emerald-200 rounded-2xl overflow-hidden shadow-sm mb-8 animate-in fade-in slide-in-from-bottom-6">
                  <div className="bg-emerald-50 border-b border-emerald-100 p-4">
-                   <span className="font-bold text-emerald-800 text-sm uppercase tracking-wider">AI phản hồi (Sau khi vá lỗi chuẩn)</span>
+                   <span className="font-bold text-emerald-800 text-sm">AI phản hồi (Sau khi vá lỗi chuẩn)</span>
                  </div>
                  <div className="p-6 prose prose-sm text-slate-700 whitespace-pre-wrap font-sans leading-relaxed">
                    {level.successResult}

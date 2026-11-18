@@ -96,7 +96,7 @@ export default function OptimizerPanel({ initialPrompt, onApplyTemplate, onSaveT
       <p className="mb-4 text-sm text-muted">Bạn không viết prompt — bạn mô tả <span className="font-semibold text-ink">thế nào là tốt</span>. Hệ thống tự sinh biến thể, chấm điểm và tiến hoá để tìm prompt tối ưu. <span className="text-faint">(Chạy trên server, cần đăng nhập.)</span></p>
 
       <div className="mb-6 rounded-2xl border border-line bg-panel p-5">
-        <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Prompt gốc</label>
+        <label className="mb-1.5 block text-xs font-bold text-muted">Prompt gốc</label>
         <textarea
           value={basePrompt}
           onChange={(e) => setBasePrompt(e.target.value)}
@@ -105,7 +105,7 @@ export default function OptimizerPanel({ initialPrompt, onApplyTemplate, onSaveT
           className="mb-4 w-full resize-y rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
         />
 
-        <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Đầu vào thử (tuỳ chọn)</label>
+        <label className="mb-1.5 block text-xs font-bold text-muted">Đầu vào thử (tuỳ chọn)</label>
         <textarea
           value={testInput}
           onChange={(e) => setTestInput(e.target.value)}
@@ -114,7 +114,7 @@ export default function OptimizerPanel({ initialPrompt, onApplyTemplate, onSaveT
           className="mb-4 w-full resize-y rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
         />
 
-        <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Tiêu chí "thế nào là tốt" <span className="font-normal normal-case text-faint">(trống = tiêu chí mặc định)</span></label>
+        <label className="mb-1.5 block text-xs font-bold text-muted">Tiêu chí "thế nào là tốt" <span className="font-normal normal-case text-faint">(trống = tiêu chí mặc định)</span></label>
         <div className="mb-2 flex flex-wrap gap-1.5">
           {criteria.map((c, i) => (
             <span key={i} className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
@@ -177,12 +177,12 @@ export default function OptimizerPanel({ initialPrompt, onApplyTemplate, onSaveT
           {/* Tóm tắt cải thiện */}
           <div className="flex flex-wrap items-center gap-5 rounded-2xl border border-emerald-300 bg-emerald-50/60 p-5 dark:border-emerald-900 dark:bg-emerald-950/20">
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-faint">prompt gốc</div>
+              <div className="text-xs font-semibold text-faint">prompt gốc</div>
               <div className={`text-2xl font-black ${scoreColor(result.baselineScore)}`}>{result.baselineScore}</div>
             </div>
             <TrendingUp size={24} className="text-emerald-500" />
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-faint">prompt tối ưu</div>
+              <div className="text-xs font-semibold text-faint">prompt tối ưu</div>
               <div className={`text-2xl font-black ${scoreColor(result.bestScore)}`}>{result.bestScore}</div>
             </div>
             <div className="ml-auto rounded-full bg-emerald-600 px-3 py-1 text-sm font-bold text-white">
@@ -201,7 +201,7 @@ export default function OptimizerPanel({ initialPrompt, onApplyTemplate, onSaveT
                 {onApplyTemplate && (
                   <button
                     onClick={() => onApplyTemplate(promptToTemplate(result.bestPrompt, 'auto-optimizer'))}
-                    className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-500"
+                    className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700"
                   >
                     <Briefcase size={13} /> Dùng ở Builder
                   </button>
@@ -233,11 +233,11 @@ export default function OptimizerPanel({ initialPrompt, onApplyTemplate, onSaveT
                     {h.candidates.map((c, i) => (
                       <div key={i} className="rounded-lg border border-line bg-panel p-2.5">
                         <div className="mb-1 flex items-center justify-between">
-                          <span className="text-[11px] font-semibold text-muted">Biến thể {i + 1}</span>
+                          <span className="text-xs font-semibold text-muted">Biến thể {i + 1}</span>
                           <span className={`text-sm font-bold ${scoreColor(c.score)}`}>{c.score}</span>
                         </div>
-                        {c.feedback && <p className="mb-1 text-[11px] italic text-faint">{c.feedback}</p>}
-                        <pre className="max-h-28 overflow-y-auto whitespace-pre-wrap break-words rounded bg-surface p-2 font-mono text-[10px] leading-relaxed text-muted">{c.prompt}</pre>
+                        {c.feedback && <p className="mb-1 text-xs italic text-faint">{c.feedback}</p>}
+                        <pre className="max-h-28 overflow-y-auto whitespace-pre-wrap break-words rounded bg-surface p-2 font-mono text-xs leading-relaxed text-muted">{c.prompt}</pre>
                       </div>
                     ))}
                   </div>
