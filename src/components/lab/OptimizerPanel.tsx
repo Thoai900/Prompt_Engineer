@@ -1,18 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { Sparkles, Loader2, Plus, X, Copy, Check, AlertCircle, TrendingUp, ChevronDown, Briefcase, Save } from 'lucide-react';
+import { Sparkles, Loader2, Plus, X, Copy, Check, AlertCircle, TrendingUp, ChevronDown, Briefcase, Save, Link2 } from 'lucide-react';
 import { optimizePrompt, type OptimizeResult } from '../../services/aiProxy';
 import { PromptTemplate } from '../../types';
 import { promptToTemplate } from '../../utils/labUtils';
 import { toast } from '../common/Toaster';
 import PromptInspector from '../common/PromptInspector';
+import SaveAsVersionPanel from './SaveAsVersionPanel';
+import type { LabSeed } from '../../services/labSeed';
 
 interface OptimizerPanelProps {
-  /** Prompt mồi (vd gửi sang từ Linter) — điền sẵn vào ô prompt gốc. */
-  initialPrompt?: string;
+  /** Seed gửi từ tab khác / từ Health (prompt, đầu vào thử, tiêu chí, template gốc). */
+  seed?: LabSeed | null;
+  /** Template của tôi — tra template gốc của seed để lưu thành phiên bản mới. */
+  myTemplates?: PromptTemplate[];
   /** Mở prompt kết quả trong Builder. */
   onApplyTemplate?: (t: PromptTemplate) => void;
   /** Lưu prompt kết quả vào thư viện. */
-  onSaveTemplate?: (t: PromptTemplate) => void;
+  onSaveTemplate?: (t: PromptTemplate) => Promise<void> | void;
 }
 
 function scoreColor(score: number): string {
@@ -25,15 +29,25 @@ function scoreColor(score: number): string {
  * Auto-Optimizer (mũi nhọn Tầng 1): mô tả "thế nào là tốt" (tiêu chí + input thử),
  * backend tự sinh biến thể prompt → chấm điểm → tiến hoá → trả prompt tốt nhất.
  */
-export default function OptimizerPanel({ initialPrompt, onApplyTemplate, onSaveTemplate }: OptimizerPanelProps) {
-  const [basePrompt, setBasePrompt] = useState(initialPrompt || '');
+export default function OptimizerPanel({ seed, myTemplates = [], onApplyTemplate, onSaveTemplate }: OptimizerPanelProps) {
+  const [basePrompt, setBasePrompt] = useState(seed?.prompt || '');
+  const [testInput, setTestInput] = useState(seed?.testInputs?.[0] || '');
+  const [criteria, setCriteria] = useState<string[]>(seed?.criteria || []);
+  // Vòng chất lượng: prompt đến từ một template đã lưu (qua Health) → lưu kết quả thành phiên bản của nó.
+  const [loop, setLoop] = useState<{ templateId: string; suiteId?: string } | null>(
+    seed?.templateId ? { templateId: seed.templateId, suiteId: seed.suiteId } : null);
 
-  // Prompt mồi thay đổi (gửi từ tab khác qua labSeed) → cập nhật ô nhập.
+  // Seed mới (gửi từ tab khác qua labSeed) → điền lại các ô. Phụ thuộc object nên gửi lặp cùng prompt vẫn nhận.
   useEffect(() => {
-    if (initialPrompt) setBasePrompt(initialPrompt);
-  }, [initialPrompt]);
-  const [testInput, setTestInput] = useState('');
-  const [criteria, setCriteria] = useState<string[]>([]);
+    if (!seed) return;
+    setBasePrompt(seed.prompt);
+    setTestInput(seed.testInputs?.[0] || '');
+    setCriteria(seed.criteria || []);
+    setLoop(seed.templateId ? { templateId: seed.templateId, suiteId: seed.suiteId } : null);
+    setResult(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seed]);
+  const loopTemplate = loop ? myTemplates.find((t) => t.id === loop.templateId) || null : null;
   const [criterionDraft, setCriterionDraft] = useState('');
   const [populationN, setPopulationN] = useState(3);
   const [rounds, setRounds] = useState(2);
@@ -95,6 +109,16 @@ export default function OptimizerPanel({ initialPrompt, onApplyTemplate, onSaveT
   return (
     <>
       <p className="mb-4 text-sm text-muted">Bạn không viết prompt — bạn mô tả <span className="font-semibold text-ink">thế nào là tốt</span>. Hệ thống tự sinh biến thể, chấm điểm và tiến hoá để tìm prompt tối ưu. <span className="text-faint">(Chạy trên server, cần đăng nhập.)</span></p>
+
+      {loop && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-xs text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-300">
+          <Link2 size={13} className="shrink-0" />
+          {loopTemplate
+            ? <span>Đang tối ưu template <b>“{loopTemplate.title}”</b>{loop.suiteId ? ' với test điểm thấp nhất của bộ Health' : ''}. Xong có thể lưu thành phiên bản mới của template.</span>
+            : <span>Không tìm thấy template gốc trong thư viện của bạn — kết quả sẽ lưu thành template mới như bình thường.</span>}
+          <button onClick={() => setLoop(null)} className="ml-auto font-semibold underline-offset-2 hover:underline">Bỏ liên kết</button>
+        </div>
+      )}
 
       <div className="mb-6 rounded-2xl border border-line bg-panel p-5">
         <label className="mb-1.5 block text-xs font-bold text-muted">Prompt gốc</label>
@@ -223,6 +247,16 @@ export default function OptimizerPanel({ initialPrompt, onApplyTemplate, onSaveT
             </div>
             <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-lg bg-surface p-3 font-mono text-xs leading-relaxed text-ink">{result.bestPrompt}</pre>
           </div>
+
+          {loopTemplate && onSaveTemplate && (
+            <SaveAsVersionPanel
+              key={result.bestPrompt}
+              template={loopTemplate}
+              suiteId={loop?.suiteId}
+              bestPrompt={result.bestPrompt}
+              onSaveTemplate={onSaveTemplate}
+            />
+          )}
 
           {/* Lịch sử tiến hoá */}
           <div className="rounded-2xl border border-line bg-panel p-5">

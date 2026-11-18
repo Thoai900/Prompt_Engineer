@@ -142,6 +142,7 @@ service cloud.firestore {
         && ( !('prompt' in data.keys()) || (data.prompt is string && data.prompt.size() <= 50000) )
         && ( !('model' in data.keys()) || (data.model is string && data.model.size() <= 60) )
         && ( !('workspaceId' in data.keys()) || (data.workspaceId is string && data.workspaceId.size() <= 128) )
+        && ( !('templateId' in data.keys()) || (data.templateId is string && data.templateId.size() <= 128) )
         && ( !('testCases' in data.keys()) || (data.testCases is list && data.testCases.size() <= 50) )
         && ( !('runs' in data.keys()) || (data.runs is list && data.runs.size() <= 50) )
         && data.createdAt is timestamp

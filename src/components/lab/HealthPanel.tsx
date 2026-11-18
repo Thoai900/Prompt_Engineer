@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, Play, Loader2, Save, Activity, TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Plus, Trash2, Play, Loader2, Save, Activity, TrendingUp, TrendingDown, Minus, AlertTriangle, Wand2, Sparkles, Link2 } from 'lucide-react';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { ALL_MODEL_OPTIONS, GEMINI_FLASH } from '../../config/models';
 import { HealthSuite, HealthTest } from '../../types';
@@ -8,6 +8,9 @@ import {
 } from '../../services/healthService';
 import { toast } from '../common/Toaster';
 import { confirmDialog } from '../common/ConfirmDialog';
+import { draftHealthTests } from '../../services/aiService';
+import { sendToLab, type LabSeed } from '../../services/labSeed';
+import { MAX_SUITE_TESTS, findSuiteForTemplate, needsOptimization, normalizeDraftTests, pickOptimizerSeedFromRun } from '../../utils/healthUtils';
 
 function scoreColor(score: number): string {
   if (score >= 80) return 'text-emerald-600 dark:text-emerald-400';
@@ -17,14 +20,21 @@ function scoreColor(score: number): string {
 
 function tid(): string { return `t_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`; }
 
-/** Prompt Health/CI: suite có version + bộ test, chạy "khám sức khoẻ" và bắt hồi quy. */
-export default function HealthPanel() {
+/**
+ * Prompt Health/CI: suite có version + bộ test, chạy "khám sức khoẻ" và bắt hồi quy.
+ * Vòng chất lượng: nhận seed từ một template (mở/tạo suite gắn templateId, AI soạn test),
+ * và khi điểm yếu thì gửi sang Auto-Optimizer kèm test tệ nhất + tiêu chí.
+ */
+export default function HealthPanel({ seed }: { seed?: LabSeed | null }) {
   const { user, geminiApiKey, groqApiKey, openaiApiKey, useSystemGeminiKey, activeWorkspaceId } = useWorkspace();
 
   const [suites, setSuites] = useState<HealthSuite[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [drafting, setDrafting] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const handledSeed = useRef<LabSeed | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,6 +42,7 @@ export default function HealthPanel() {
       if (cancelled) return;
       setSuites(s);
       setActiveId((prev) => prev || s[0]?.id || null);
+      setLoaded(true);
 
       // H3 (thông báo hồi quy): suite nào lần chạy MỚI NHẤT tụt ≥10 điểm so với lần
       // trước (kể cả run do cron chạy nền) → cảnh báo ngay khi mở panel.
@@ -46,6 +57,45 @@ export default function HealthPanel() {
   }, [user]);
 
   const active = useMemo(() => suites.find((s) => s.id === activeId) || null, [suites, activeId]);
+
+  /** AI soạn test cho suite (thêm vào danh sách để người dùng duyệt/sửa rồi mới Lưu). */
+  const draftTestsFor = async (suite: HealthSuite) => {
+    if (!suite.prompt.trim()) { toast.error('Nhập prompt cần kiểm thử trước.'); return; }
+    const room = MAX_SUITE_TESTS - suite.testCases.length;
+    if (room <= 0) { toast.error(`Suite đã có ${suite.testCases.length} test — xoá bớt trước khi soạn thêm.`); return; }
+    setDrafting(true);
+    try {
+      const tests = normalizeDraftTests(await draftHealthTests(suite.prompt)).slice(0, room);
+      if (tests.length === 0) { toast.error('AI không soạn được test nào. Thử lại hoặc thêm tay.'); return; }
+      setSuites((prev) => prev.map((s) => (s.id === suite.id ? { ...s, testCases: [...s.testCases, ...tests] } : s)));
+      toast.success(`AI đã soạn ${tests.length} test — xem lại, sửa nếu cần rồi bấm Lưu hoặc Chạy kiểm tra.`);
+    } catch (e: any) {
+      toast.error(e?.message || 'Không soạn được test. Hãy đăng nhập và thử lại.');
+    } finally {
+      setDrafting(false);
+    }
+  };
+
+  // Seed từ template (Library / Studio): mở suite sẵn có của template, hoặc tạo mới + AI soạn test.
+  useEffect(() => {
+    if (!seed || !loaded || handledSeed.current === seed) return;
+    handledSeed.current = seed;
+    const existing = findSuiteForTemplate(suites, seed.templateId);
+    if (existing) {
+      setActiveId(existing.id);
+      if (existing.prompt !== seed.prompt) {
+        setSuites((prev) => prev.map((s) => (s.id === existing.id ? { ...s, prompt: seed.prompt } : s)));
+        toast.info('Đã cập nhật prompt của suite theo template hiện tại — bấm Lưu để giữ.');
+      }
+      return;
+    }
+    const s: HealthSuite = { ...newHealthSuite(seed.templateTitle || 'Suite mới', GEMINI_FLASH), prompt: seed.prompt, templateId: seed.templateId };
+    if (activeWorkspaceId) s.workspaceId = activeWorkspaceId;
+    setSuites((prev) => [s, ...prev]);
+    setActiveId(s.id);
+    void draftTestsFor(s);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seed, loaded]);
 
   const patchActive = (patch: Partial<HealthSuite>) => {
     setSuites((prev) => prev.map((s) => (s.id === activeId ? { ...s, ...patch } : s)));
@@ -146,6 +196,12 @@ export default function HealthPanel() {
               <button onClick={() => removeSuite(active.id, active.name)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/30" title="Xoá suite" aria-label="Xoá suite"><Trash2 size={15} /></button>
             </div>
 
+            {active.templateId && (
+              <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-muted">
+                <Link2 size={12} className="text-emerald-500" /> Suite này đo một template đã lưu — tối ưu xong có thể lưu thành phiên bản mới của template.
+              </p>
+            )}
+
             {/* H3: bật cron — Vercel Cron chạy suite này hằng ngày, kết quả tự cộng vào lịch sử run. */}
             <label className="mb-4 flex cursor-pointer items-center gap-2 text-xs font-semibold text-muted">
               <input
@@ -171,7 +227,12 @@ export default function HealthPanel() {
 
             <div className="mb-2 flex items-center justify-between">
               <label className="text-xs font-bold text-muted">Bộ test ({active.testCases.length})</label>
-              <button onClick={addTest} className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"><Plus size={13} /> Thêm test</button>
+              <div className="flex items-center gap-3">
+                <button onClick={() => draftTestsFor(active)} disabled={drafting} className="flex items-center gap-1 text-xs font-semibold text-violet-600 hover:text-violet-700 disabled:opacity-50 dark:text-violet-400">
+                  {drafting ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />} {drafting ? 'AI đang soạn…' : 'Soạn test bằng AI'}
+                </button>
+                <button onClick={addTest} className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"><Plus size={13} /> Thêm test</button>
+              </div>
             </div>
             <div className="space-y-3">
               {active.testCases.map((t, i) => {
@@ -239,6 +300,18 @@ export default function HealthPanel() {
                   <span className="flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"><AlertTriangle size={12} /> Hồi quy</span>
                 )}
                 {cmp.modelChanged && <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">Đổi model</span>}
+                {needsOptimization(latest) && (
+                  <button
+                    onClick={() => {
+                      const { prompt, ...extras } = pickOptimizerSeedFromRun(active, latest);
+                      sendToLab('optimizer', prompt, extras);
+                    }}
+                    title="Gửi prompt sang Auto-Optimizer, kèm các test điểm thấp nhất và tiêu chí của chúng"
+                    className="ml-auto flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500"
+                  >
+                    <Sparkles size={14} /> Tối ưu với bộ test này
+                  </button>
+                )}
               </div>
 
               <div className="text-xs font-bold text-muted">Lịch sử ({active.runs.length})</div>

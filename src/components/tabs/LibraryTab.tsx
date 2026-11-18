@@ -29,6 +29,8 @@ import {
 import { loadRecentIds, recordRecentTemplate } from '../../utils/recentTemplates';
 import { loadLikedIds } from '../../utils/likedTemplates';
 import { toggleTemplateLike } from '../../services/metricsService';
+import { sendToLab } from '../../services/labSeed';
+import { blocksToText } from '../../utils/templateVersionUtils';
 
 interface LibraryTabProps {
   onSelectTemplate: (template: PromptTemplate) => void;
@@ -613,6 +615,10 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], com
           onShare={handleShare}
           liked={likedIds.has(selectedPrompt.id)}
           onToggleLike={selectedPrompt.isPublic ? () => handleToggleLike(selectedPrompt) : undefined}
+          onHealthCheck={user && selectedPrompt.userId === user.uid ? (t) => {
+            setSelectedPrompt(null);
+            sendToLab('health', blocksToText(t.blocks), { templateId: t.id, templateTitle: t.title });
+          } : undefined}
         />
       )}
 

@@ -1,7 +1,7 @@
 # Thiết kế: Vòng chất lượng Viết → Đo → Tối ưu → Lưu
 
 Ngày: 2026-11-18
-Trạng thái: bản nháp — chờ duyệt các câu hỏi ở mục "Cần chốt"
+Trạng thái: đã duyệt (theo cả 3 đề xuất ở "Cần chốt"), đã build
 
 ## Vấn đề
 
@@ -105,8 +105,14 @@ Không có `templateId` (người dùng dán prompt tay vào Optimizer) thì gi�
 - **Chia lại block không trung thực** (AI thêm hoặc bớt ý). Cách xử lý: luôn qua bước "Xem khác biệt" trước khi lưu, không bao giờ tự lưu.
 - **Quên thêm `templateId` vào `base`** của `saveHealthSuite` thì liên kết mất âm thầm sau lần tải lại. Cách xử lý: có test cho dữ liệu ghi đi (tách hàm thuần dựng `base`), và kiểm tra thủ công bằng cách tải lại trang.
 
-## Cần chốt
+## Đã chốt
 
-1. **Lưu bản tối ưu vào template nhiều block:** chia lại bằng AI, có diff để duyệt (đề xuất), hay luôn gộp 1 block cho đơn giản?
-2. **Optimizer với nhiều đầu vào thử:** sửa `api/optimize.ts` để chấm trên nhiều input (chính xác hơn, tốn hơn), hay đợt này chỉ dùng input của test tệ nhất (không đụng backend)? Đề xuất: đợt này dùng 1 input, ghi việc nâng backend thành bước sau.
-3. **Ngưỡng hiện nút "Tối ưu"** (mặc định trung bình dưới 70 hoặc có test dưới 60) có ổn không, hay luôn hiện nút?
+1. Lưu bản tối ưu vào template nhiều khối: **AI chia lại khối, giữ nguyên câu chữ** (`splitPromptIntoBlocks`), bắt buộc qua bước xem khác biệt. AI lỗi hoặc không chia được thì gộp thành 1 khối `task` và báo cho người dùng.
+2. Optimizer dùng **một** đầu vào thử (của test điểm thấp nhất); chưa sửa `api/optimize.ts`.
+3. Nút "Tối ưu với bộ test này" hiện khi điểm trung bình dưới 70 **hoặc** có test dưới 60.
+
+## Ghi chú khi build
+
+- Duyệt test do AI soạn diễn ra ngay trong danh sách test của HealthPanel (sửa/xoá rồi mới Lưu hoặc Chạy), không làm modal riêng.
+- Bước E đặt thành dải "Sức khoẻ prompt" trong `PromptDetailModal`, chỉ hiện với template của tôi; Studio có thêm nút "Kiểm thử chất lượng" sau khi lưu.
+- `customTemplates` trong App gộp cả template công khai của người khác, nên Lab chỉ nhận các template có `userId` là của mình.

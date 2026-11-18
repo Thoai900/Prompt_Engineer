@@ -3,6 +3,7 @@ import { db, handleFirestoreError } from '../firebase';
 import { HealthRun, HealthSuite, HealthTestResult } from '../types';
 import { runPromptOnModel, scoreOutputQuality } from './aiService';
 import { ALL_MODEL_OPTIONS } from '../config/models';
+import { suiteWriteFields } from '../utils/healthUtils';
 
 // Prompt Health/CI (Lab · Tầng 1 #2): suite = prompt + bộ test, chạy "khám sức khoẻ"
 // (run + chấm từng test) và lưu lịch sử để phát hiện hồi quy giữa các lần / khi đổi model.
@@ -70,6 +71,7 @@ export async function loadHealthSuites(user: { uid: string } | null | undefined)
         testCases: data.testCases || [],
         runs: data.runs || [],
         cronEnabled: data.cronEnabled === true,
+        templateId: data.templateId || undefined,
         userId: data.userId,
         workspaceId: data.workspaceId,
         createdAt: toIso(data.createdAt),
@@ -96,17 +98,7 @@ export async function saveHealthSuite(user: { uid: string } | null | undefined, 
   }
 
   const ref = doc(db, 'healthSuites', suite.id);
-  const base: any = {
-    userId: user.uid,
-    name: suite.name,
-    prompt: suite.prompt,
-    model: suite.model,
-    testCases: suite.testCases,
-    runs: trimmedRuns,
-    cronEnabled: suite.cronEnabled === true, // H3: cờ cho Vercel Cron quét
-    updatedAt: serverTimestamp(),
-  };
-  if (suite.workspaceId) base.workspaceId = suite.workspaceId;
+  const base: any = { ...suiteWriteFields(user.uid, suite, MAX_RUNS), updatedAt: serverTimestamp() };
 
   try {
     const exists = (await getDoc(ref)).exists();

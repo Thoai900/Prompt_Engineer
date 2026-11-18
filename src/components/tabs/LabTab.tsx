@@ -5,7 +5,7 @@ import BakeoffPanel from '../lab/BakeoffPanel';
 import OptimizerPanel from '../lab/OptimizerPanel';
 import HealthPanel from '../lab/HealthPanel';
 import TastePanel from '../lab/TastePanel';
-import { LAB_SEED_EVENT, takeLabSeed } from '../../services/labSeed';
+import { LAB_SEED_EVENT, takeLabSeed, type LabSeed } from '../../services/labSeed';
 
 type LabMode = 'bakeoff' | 'optimizer' | 'health' | 'taste';
 
@@ -23,24 +23,29 @@ const MODES: { id: LabMode; label: string; icon: React.ReactNode }[] = [
  * Linter đã thành Prompt Inspector dùng chung; Gia sư chuyển sang Learn; Chain → App sang Project Chain.
  */
 interface LabTabProps {
+  /** Template của tôi — để vòng chất lượng lưu bản tối ưu thành phiên bản của template gốc. */
+  myTemplates?: PromptTemplate[];
   /** Mở một template trong Builder (App.tsx điều hướng). */
   onApplyTemplate?: (t: PromptTemplate) => void;
-  /** Lưu một template vào thư viện (App.tsx xử lý Firestore). */
-  onSaveTemplate?: (t: PromptTemplate) => void;
+  /** Lưu một template vào thư viện (App.tsx xử lý Firestore + lịch sử phiên bản). */
+  onSaveTemplate?: (t: PromptTemplate) => Promise<void> | void;
 }
 
-export default function LabTab({ onApplyTemplate, onSaveTemplate }: LabTabProps) {
+export default function LabTab({ myTemplates = [], onApplyTemplate, onSaveTemplate }: LabTabProps) {
   const [mode, setMode] = useState<LabMode>('bakeoff');
-  // Prompt gửi từ tab khác (Prompt Inspector) → mồi sẵn Bake-off / Auto-Optimizer.
+  // Seed gửi từ tab khác (Prompt Inspector, Health, Library, Studio) → mồi sẵn từng chế độ.
+  // Giữ nguyên object seed để panel nhận lại cả khi gửi lặp cùng một prompt.
   const [bakeoffSeed, setBakeoffSeed] = useState('');
-  const [optimizerSeed, setOptimizerSeed] = useState('');
+  const [optimizerSeed, setOptimizerSeed] = useState<LabSeed | null>(null);
+  const [healthSeed, setHealthSeed] = useState<LabSeed | null>(null);
 
   useEffect(() => {
     const consume = () => {
       const seed = takeLabSeed();
       if (!seed) return;
       if (seed.mode === 'bakeoff') setBakeoffSeed(seed.prompt);
-      else setOptimizerSeed(seed.prompt);
+      else if (seed.mode === 'optimizer') setOptimizerSeed(seed);
+      else setHealthSeed(seed);
       setMode(seed.mode);
     };
     consume();
@@ -74,8 +79,8 @@ export default function LabTab({ onApplyTemplate, onSaveTemplate }: LabTabProps)
         </div>
 
         {mode === 'bakeoff' && <BakeoffPanel initialPrompt={bakeoffSeed} />}
-        {mode === 'optimizer' && <OptimizerPanel initialPrompt={optimizerSeed} onApplyTemplate={onApplyTemplate} onSaveTemplate={onSaveTemplate} />}
-        {mode === 'health' && <HealthPanel />}
+        {mode === 'optimizer' && <OptimizerPanel seed={optimizerSeed} myTemplates={myTemplates} onApplyTemplate={onApplyTemplate} onSaveTemplate={onSaveTemplate} />}
+        {mode === 'health' && <HealthPanel seed={healthSeed} />}
         {mode === 'taste' && <TastePanel />}
       </div>
     </div>

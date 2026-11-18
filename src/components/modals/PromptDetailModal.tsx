@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { PromptTemplate, TemplateVersion } from '../../types';
-import { X, Heart, Bookmark, Copy, Users, CheckCircle, MessageSquare, Share2, Star, Workflow, History, RotateCcw, ChevronDown, ChevronRight, Flag, ShieldX, FolderPlus, Network } from 'lucide-react';
+import { HealthSuite, PromptTemplate, TemplateVersion } from '../../types';
+import { X, Heart, Bookmark, Copy, Users, CheckCircle, MessageSquare, Share2, Star, Workflow, History, RotateCcw, ChevronDown, ChevronRight, Flag, ShieldX, FolderPlus, Network, Activity } from 'lucide-react';
 import InteractiveFewShotPanel from '../common/InteractiveFewShotPanel';
 import { computeUnifiedDiff } from '../../utils/chainUtils';
 import { blocksToText } from '../../utils/templateVersionUtils';
 import { REPORT_REASONS, adminRemoveTemplate, isCurrentUserAdmin, reportTemplate } from '../../services/reportService';
 import { toast } from '../common/Toaster';
 import { confirmDialog } from '../common/ConfirmDialog';
+import { useWorkspace } from '../../context/WorkspaceContext';
+import { loadHealthSuites } from '../../services/healthService';
+import { findSuiteForTemplate } from '../../utils/healthUtils';
 
 interface PromptDetailModalProps {
   template: PromptTemplate;
@@ -23,9 +26,22 @@ interface PromptDetailModalProps {
   liked?: boolean;
   /** H1: persist like lên Firestore. Không truyền = template không like được (demo/built-in). */
   onToggleLike?: () => Promise<boolean | null>;
+  /** Vòng chất lượng: mở Prompt Health cho template này. Chỉ truyền với template của tôi. */
+  onHealthCheck?: (template: PromptTemplate) => void;
 }
 
-export default function PromptDetailModal({ template, onClose, onRemix, onAddToProject, onAddToCollection, onOpenInGraph, isSaved = false, onToggleSave, onShare, liked = false, onToggleLike }: PromptDetailModalProps) {
+export default function PromptDetailModal({ template, onClose, onRemix, onAddToProject, onAddToCollection, onOpenInGraph, isSaved = false, onToggleSave, onShare, liked = false, onToggleLike, onHealthCheck }: PromptDetailModalProps) {
+  const { user } = useWorkspace();
+  // Vòng chất lượng: suite Health mới nhất gắn với template (undefined = đang tải, null = chưa có).
+  const [healthSuite, setHealthSuite] = useState<HealthSuite | null | undefined>(undefined);
+  useEffect(() => {
+    if (!onHealthCheck) return;
+    let cancelled = false;
+    loadHealthSuites(user).then((list) => { if (!cancelled) setHealthSuite(findSuiteForTemplate(list, template.id)); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [template.id, user]);
+
   const [isLiked, setIsLiked] = useState(liked);
   // Trạng thái ban đầu để hiệu chỉnh số đếm hiển thị (metrics là snapshot lúc mở modal).
   const [initialLiked] = useState(liked);
@@ -195,6 +211,28 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
                  </div>
               </div>
             </div>
+            {/* Vòng chất lượng: sức khoẻ prompt (Health suite gắn template) + lối vào kiểm thử/tối ưu. */}
+            {onHealthCheck && (
+              <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
+                <Activity className="w-4 h-4 text-emerald-500 shrink-0" />
+                <div className="flex-1 min-w-0 text-xs text-slate-600">
+                  <span className="font-bold text-slate-700">Sức khoẻ prompt: </span>
+                  {healthSuite === undefined ? 'đang tải…'
+                    : !healthSuite ? 'chưa có bộ kiểm thử.'
+                    : healthSuite.runs[0]
+                      ? <>điểm <b className={healthSuite.runs[0].avgScore >= 80 ? 'text-emerald-600' : healthSuite.runs[0].avgScore >= 60 ? 'text-amber-600' : 'text-rose-600'}>{healthSuite.runs[0].avgScore}</b> ({new Date(healthSuite.runs[0].at).toLocaleDateString('vi-VN')}) · {healthSuite.testCases.length} test</>
+                      : <>{healthSuite.testCases.length} test, chưa chạy lần nào.</>}
+                  {' '}· {versions.length} phiên bản trước
+                </div>
+                <button
+                  onClick={() => onHealthCheck(template)}
+                  className="shrink-0 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 transition-colors"
+                >
+                  {healthSuite ? 'Mở Prompt Health' : 'Tạo bộ test bằng AI'}
+                </button>
+              </div>
+            )}
+
             {/* H2: Lịch sử phiên bản — diff so với bản hiện tại + khôi phục. */}
             {versions.length > 0 && (
               <div className="mt-6 border border-slate-200 rounded-xl overflow-hidden bg-slate-50">

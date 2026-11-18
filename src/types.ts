@@ -349,6 +349,7 @@ export interface HealthSuite {
   testCases: HealthTest[];
   runs: HealthRun[];    // mới nhất ở đầu, giữ tối đa ~10 lần
   cronEnabled?: boolean; // H3: bật chạy tự động hằng ngày (Vercel Cron, cần đăng nhập)
+  templateId?: string;   // template gốc mà suite này đo (vòng chất lượng); undefined = suite độc lập
   userId?: string;
   workspaceId?: string;
   createdAt?: string;

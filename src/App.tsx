@@ -726,7 +726,7 @@ export default function App() {
             <ProjectChainTab theme={theme} user={user} customTemplates={visibleTemplates} onSaveTemplate={handleSaveTemplate} />
           </TabPanel>
           <TabPanel isActive={activeTab === 'lab'} mounted={visitedTabs.has('lab')}>
-            <LabTab onApplyTemplate={handleSelectTemplate} onSaveTemplate={handleSaveTemplate} />
+            <LabTab myTemplates={user ? customTemplates.filter((t) => t.userId === user.uid) : []} onApplyTemplate={handleSelectTemplate} onSaveTemplate={handleSaveTemplate} />
           </TabPanel>
           <TabPanel isActive={activeTab === 'studio'} mounted={visitedTabs.has('studio')}>
             <StudioTab
