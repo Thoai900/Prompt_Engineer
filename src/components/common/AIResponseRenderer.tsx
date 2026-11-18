@@ -1,10 +1,19 @@
 import React from 'react';
 import ReactMarkdown, { Components } from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Brain, Sparkles, Copy, Check } from 'lucide-react';
+
+// Nội dung AI có thể mang HTML từ web cào về / skill nhập từ GitHub → lọc theo schema
+// kiểu GitHub (bỏ script/iframe/form/style, thuộc tính on*, URL javascript:), chỉ mở
+// thêm 2 thẻ tuỳ biến <thinking>/<response> mà renderer hiển thị riêng.
+const sanitizeSchema = {
+  ...defaultSchema,
+  tagNames: [...(defaultSchema.tagNames ?? []), 'thinking', 'response'],
+};
 
 interface AIResponseRendererProps {
   content: string;
@@ -100,7 +109,7 @@ export default function AIResponseRenderer({ content, className = '' }: AIRespon
       prose-p:leading-relaxed prose-li:leading-relaxed dark:prose-invert ${className}`}>
       <ReactMarkdown 
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]} 
+        rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
         components={components}
       >
         {processedContent}

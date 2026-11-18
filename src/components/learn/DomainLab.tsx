@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { runPlaygroundChatStream, evaluateSandboxPrompt, SandboxEvaluationResult } from '../../services/aiService';
+import { GEMINI_FLASH } from '../../config/models';
 
 type DomainId = 'academic' | 'creative' | 'professional' | 'entertainment';
 
@@ -242,7 +243,7 @@ export default function DomainLab({ domainId, onBack, onEarnXP }: DomainLabProps
         'gemini',
         systemPrompt,
         chatPayload,
-        { model: 'gemini-2.5-flash', temperature: 0.7 },
+        { model: GEMINI_FLASH, temperature: 0.7 },
         (chunk) => {
           accumulatedText += chunk;
           setMessages(prev => {

@@ -2,6 +2,7 @@ import React from 'react';
 import { Sparkles, Loader2, Send } from 'lucide-react';
 import AIResponseRenderer from '../common/AIResponseRenderer';
 import StepNarrator from '../common/StepNarrator';
+import { GEMINI_FLASH, GEMINI_PRO, GPT_MINI } from '../../config/models';
 
 // Trần token đầu ra hiển thị cho người dùng — khớp mặc định proxy (AI_MAX_OUTPUT_TOKENS ở api/ai.ts).
 // Kẹp tại client để người dùng không đặt vượt trần rồi bị backend cắt cụt âm thầm.
@@ -91,7 +92,7 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
                 onChange={(e) => {
                   const val = e.target.value as 'gemini' | 'openai';
                   setPlaygroundProvider(val);
-                  setPlaygroundModel(val === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4o-mini');
+                  setPlaygroundModel(val === 'gemini' ? GEMINI_FLASH : GPT_MINI);
                 }}
                 className="text-xs px-2.5 py-1.5 border border-slate-200 dark:border-slate-880 bg-slate-50 dark:bg-slate-955 rounded-lg text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-500 font-semibold cursor-pointer"
               >
@@ -108,14 +109,14 @@ export const PlaygroundPanel: React.FC<PlaygroundPanelProps> = ({
               >
                 {playgroundProvider === 'gemini' ? (
                   <>
-                    <option value="gemini-2.5-flash">gemini-2.5-flash (Nhanh)</option>
-                    <option value="gemini-2.5-pro">gemini-2.5-pro (Pro)</option>
+                    <option value={GEMINI_FLASH}>gemini-2.5-flash (Nhanh)</option>
+                    <option value={GEMINI_PRO}>gemini-2.5-pro (Pro)</option>
                     <option value="gemini-1.5-flash">gemini-1.5-flash</option>
                     <option value="gemini-1.5-pro">gemini-1.5-pro</option>
                   </>
                 ) : (
                   <>
-                    <option value="gpt-4o-mini">gpt-4o-mini</option>
+                    <option value={GPT_MINI}>gpt-4o-mini</option>
                     <option value="gpt-4o">gpt-4o</option>
                     <option value="o1-mini">o1-mini (Lập luận)</option>
                   </>
