@@ -34,6 +34,7 @@ import { learnFromTemplate } from './services/suggestionStore';
 import { DEFAULT_REASONING_MODEL } from './config/models';
 import { buildSearchEntries, type SearchEntry } from './utils/globalSearch';
 import { loadLocalProjects } from './services/chainAppService';
+import { rulesStore, skillsStore, startCollectionStores } from './services/collectionStore';
 import { bumpTemplateUsage } from './services/metricsService';
 import { blocksChanged, pushVersion, snapshotVersion } from './utils/templateVersionUtils';
 import { PRESET_RULES, PRESET_SKILLS } from './presets';
@@ -67,6 +68,7 @@ export default function App() {
 
   useEffect(() => {
     const cleanup = initSuggestionSync();
+    startCollectionStores();
     return cleanup;
   }, []);
 
@@ -305,17 +307,11 @@ export default function App() {
     }
   };
 
-  // Tìm kiếm toàn cục (H4): gom template hiển thị + chain/rule/skill cục bộ.
-  // Gọi mỗi lần MỞ palette (không phải mỗi render) nên đọc localStorage tại chỗ là rẻ.
+  // Tìm kiếm toàn cục (H4): gom template hiển thị + chain/rule/skill.
+  // Gọi mỗi lần MỞ palette (không phải mỗi render); rule/skill lấy từ collectionStore.
   const getSearchEntries = (): SearchEntry[] => {
-    const readLs = <T,>(key: string): T[] => {
-      try {
-        const parsed = JSON.parse(localStorage.getItem(key) || '[]');
-        return Array.isArray(parsed) ? (parsed as T[]) : [];
-      } catch { return []; }
-    };
-    const localRules = readLs<AiRule>('custom_rules');
-    const localSkills = readLs<AiSkill>('custom_skills');
+    const localRules = rulesStore.getSnapshot().items;
+    const localSkills = skillsStore.getSnapshot().items;
     const dedupe = <T extends { id: string }>(preset: T[], custom: T[]): T[] => {
       const ids = new Set(custom.map((x) => x.id));
       return [...custom, ...preset.filter((p) => !ids.has(p.id))];

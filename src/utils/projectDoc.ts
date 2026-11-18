@@ -4,7 +4,7 @@ import { PromptProject } from '../types';
 // Firestore `projects/{id}` (createdAt/updatedAt là Timestamp do server đặt).
 
 /** Timestamp Firestore | ISO string | thiếu → ISO string. */
-function toIso(value: any): string {
+export function toIso(value: any): string {
   if (value && typeof value.toDate === 'function') return value.toDate().toISOString();
   if (typeof value === 'string' && value) return value;
   return new Date().toISOString();
