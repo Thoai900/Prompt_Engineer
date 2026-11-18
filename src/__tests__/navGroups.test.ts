@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { NAV_GROUPS, groupOfTab, targetTabForGroup } from '../utils/navGroups';
+import { NAV_GROUPS, groupOfTab, targetTabForGroup, resolveLegacyTab } from '../utils/navGroups';
 import type { TabType } from '../types';
 
-const ALL_TABS: TabType[] = ['studio', 'home', 'builder', 'projectchain', 'rulesskills', 'utilitybelt', 'library', 'enhancer', 'learn', 'lab', 'aifuture'];
+const ALL_TABS: TabType[] = ['studio', 'home', 'builder', 'projectchain', 'rulesskills', 'utilitybelt', 'library', 'learn', 'lab'];
 
 describe('navGroups', () => {
   it('mỗi tab (trừ home) thuộc đúng một nhóm', () => {
@@ -19,8 +19,8 @@ describe('navGroups', () => {
   it('groupOfTab trả về đúng nhóm', () => {
     expect(groupOfTab('builder')?.id).toBe('create');
     expect(groupOfTab('utilitybelt')?.id).toBe('library');
-    expect(groupOfTab('enhancer')?.id).toBe('experiment');
-    expect(groupOfTab('aifuture')?.id).toBe('learn');
+    expect(groupOfTab('lab')?.id).toBe('experiment');
+    expect(groupOfTab('learn')?.id).toBe('learn');
   });
 
   it('targetTabForGroup: mở tab gần nhất trong nhóm, nếu chưa có thì tab đầu', () => {
@@ -30,5 +30,12 @@ describe('navGroups', () => {
 
   it('targetTabForGroup bỏ qua tab ghi nhớ không thuộc nhóm', () => {
     expect(targetTabForGroup('library', { library: 'lab' })).toBe('library');
+  });
+
+  it('resolveLegacyTab: chuyển hướng tab đã gỡ, bỏ qua tab hợp lệ/lạ', () => {
+    expect(resolveLegacyTab('enhancer')).toEqual({ tab: 'studio', params: { studio: 'quick' } });
+    expect(resolveLegacyTab('aifuture')).toEqual({ tab: 'learn', params: { learn: 'news' } });
+    expect(resolveLegacyTab('builder')).toBeNull();
+    expect(resolveLegacyTab('toString')).toBeNull();
   });
 });

@@ -25,8 +25,8 @@ Dự án **Prompt Builder** là một môi trường phát triển tích hợp (
     *   **Simulator Panel**: Chạy mô phỏng toàn bộ quy trình từ nút bắt đầu đến nút cuối cùng, hiển thị luồng dữ liệu truyền qua từng node.
     *   **Test Cases Panel**: Chạy thử nghiệm đồng thời nhiều dữ liệu đầu vào. Tự động chấm điểm (Pass/Fail) dựa trên **Tiêu chí đánh giá chất lượng tự động** (AI-based Evaluation Criteria) do người dùng định nghĩa cho toàn bộ dự án.
 
-### 1.4. Trình Cải Tiến AI (EnhancerTab)
-*   **Chức năng**: Tối ưu hóa các prompt viết tay đơn giản thành prompt chuyên nghiệp, rõ ràng.
+### 1.4. Tăng cường nhanh (chế độ của Prompt Studio — trước là tab AI Enhancer)
+*   **Chức năng**: Tối ưu hóa các prompt viết tay đơn giản thành prompt chuyên nghiệp, rõ ràng. Mở bằng nút "Tăng cường nhanh" ở đầu Studio (không cần đăng nhập); link cũ `#enhancer` tự chuyển về đây.
 *   **Cấu hình**: Người dùng chọn các chế độ: Cấu trúc (Structure), Ngữ cảnh (Context), Độ rõ ràng (Clarity), và Giọng điệu (Tone) để AI tiến hành viết lại prompt.
 
 ### 1.5. Thư Viện Prompt (LibraryTab)
@@ -53,5 +53,5 @@ Dự án **Prompt Builder** là một môi trường phát triển tích hợp (
         *   **Stage 3**: Thực chiến (Chống Prompt Injection, tối ưu hóa).
         *   **Thử thách**: Chế độ sửa lỗi prompt bị hỏng (Debugging Challenge), Đấu đối kháng prompt tốt/xấu (Versus Challenge) và Phòng thí nghiệm theo tên miền chuyên ngành (Domain Labs).
 
-### 1.9. Tương Lai AI (AIFutureTab)
-*   **Chức năng**: Hiển thị mô hình 3D tương tác mô phỏng kiến trúc mạng nơ-ron Transformer và các Attention Layers. Cung cấp bảng tin công nghệ real-time để người dùng cập nhật xu hướng AI mới nhất.
+### 1.9. Bản tin AI (trong tab Learn — trước là tab AI Future)
+*   **Chức năng**: Bảng tin công nghệ để người dùng cập nhật xu hướng AI mới nhất. Mở từ thẻ "Bản tin AI" trên trang Học viện; link cũ `#aifuture` tự chuyển về đây. Mô hình 3D cũ đã gỡ.

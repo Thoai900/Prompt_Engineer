@@ -4,7 +4,7 @@
  */
 
 import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { Brain, Briefcase, Drama, FlaskConical, GraduationCap, Home, Library, LogIn, LogOut, Loader2, Moon, Sun, Zap, X, SquarePen, MoreHorizontal, ScrollText, PenTool, PencilLine, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Briefcase, Drama, FlaskConical, GraduationCap, Home, Library, LogIn, LogOut, Loader2, Moon, Sun, Zap, X, SquarePen, MoreHorizontal, ScrollText, PenTool, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, getDocFromServer, limit, onSnapshot, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
@@ -15,9 +15,7 @@ import PersonaManagerModal from './components/common/PersonaManagerModal';
 import HomeTab from './components/tabs/HomeTab'; // eager: là màn hình đầu tiên (landing)
 // Các tab còn lại tải lười (code-split) để giảm bundle khởi động — three.js/motion nặng
 // chỉ được tải khi người dùng thực sự mở tab tương ứng.
-const AIFutureTab = lazy(() => import('./components/tabs/AIFutureTab'));
 const BuilderTab = lazy(() => import('./components/tabs/BuilderTab'));
-const EnhancerTab = lazy(() => import('./components/tabs/EnhancerTab'));
 const LearnTab = lazy(() => import('./components/tabs/LearnTab'));
 const LibraryTab = lazy(() => import('./components/tabs/LibraryTab'));
 const UtilityBeltTab = lazy(() => import('./components/tabs/UtilityBeltTab'));
@@ -37,16 +35,25 @@ import { loadLocalProjects } from './services/chainAppService';
 import { bumpTemplateUsage } from './services/metricsService';
 import { blocksChanged, pushVersion, snapshotVersion } from './utils/templateVersionUtils';
 import { PRESET_RULES, PRESET_SKILLS } from './presets';
-import { NAV_GROUPS, groupOfTab, targetTabForGroup, type NavGroupId } from './utils/navGroups';
+import { NAV_GROUPS, groupOfTab, targetTabForGroup, resolveLegacyTab, type NavGroupId } from './utils/navGroups';
 import type { AiRule, AiSkill } from './types';
 
 // Deep-linking: đồng bộ tab hiện tại với URL hash (vd: #builder) để chia sẻ link
 // và dùng nút back/forward của trình duyệt. Không phụ thuộc thư viện router.
-const VALID_TABS: TabType[] = ['studio', 'home', 'builder', 'projectchain', 'rulesskills', 'utilitybelt', 'library', 'enhancer', 'learn', 'lab', 'aifuture'];
+const VALID_TABS: TabType[] = ['studio', 'home', 'builder', 'projectchain', 'rulesskills', 'utilitybelt', 'library', 'learn', 'lab'];
 
 // Hash rỗng → Studio (màn hình chính mới); #home vẫn mở landing page cũ.
+// Hash của tab đã gỡ (#enhancer, #aifuture) được chuyển hướng để link cũ không hỏng.
 function getTabFromHash(): TabType {
   const raw = window.location.hash.replace(/^#\/?/, '');
+  const legacy = resolveLegacyTab(raw);
+  if (legacy) {
+    const url = new URL(window.location.href);
+    for (const [k, v] of Object.entries(legacy.params ?? {})) url.searchParams.set(k, v);
+    url.hash = legacy.tab === 'studio' ? '' : legacy.tab;
+    window.history.replaceState(null, '', url);
+    return legacy.tab;
+  }
   return (VALID_TABS as string[]).includes(raw) ? (raw as TabType) : 'studio';
 }
 
@@ -141,10 +148,8 @@ export default function App() {
     { tab: 'rulesskills' as TabType, label: 'Rules & Skills', icon: <ScrollText size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
     { tab: 'utilitybelt' as TabType, label: 'LLM Config', icon: <Zap size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
     { tab: 'library' as TabType, label: 'Library', icon: <Library size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
-    { tab: 'enhancer' as TabType, label: 'AI Enhancer', icon: <PencilLine size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
     { tab: 'learn' as TabType, label: 'Learn', icon: <GraduationCap size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
     { tab: 'lab' as TabType, label: 'Lab', icon: <FlaskConical size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
-    { tab: 'aifuture' as TabType, label: 'AI Future', icon: <Brain size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
   ], []);
 
   const navItemByTab = useMemo(
@@ -708,14 +713,8 @@ export default function App() {
               activeWorkspaceId={activeWorkspaceId}
             />
           </TabPanel>
-          <TabPanel isActive={activeTab === 'enhancer'} mounted={visitedTabs.has('enhancer')}>
-            <EnhancerTab onApplyTemplate={handleSelectTemplate} />
-          </TabPanel>
           <TabPanel isActive={activeTab === 'learn'} mounted={visitedTabs.has('learn')}>
             <LearnTab libraryTemplates={visibleTemplates} />
-          </TabPanel>
-          <TabPanel isActive={activeTab === 'aifuture'} mounted={visitedTabs.has('aifuture')}>
-            <AIFutureTab theme={theme} />
           </TabPanel>
           <TabPanel isActive={activeTab === 'utilitybelt'} mounted={visitedTabs.has('utilitybelt')}>
             <UtilityBeltTab user={user} onSaveTemplate={handleSaveTemplate} />
