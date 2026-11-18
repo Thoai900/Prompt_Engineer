@@ -211,3 +211,20 @@ Hợp nhất 3 hệ version cũ; blame theo khối/node; tự động hoá hoàn
   có điều kiện trong Phần C2 — kết quả tương đương, ít bước hơn). Xuất bản lại Shared App để Đợt 3.
 - Lưu ý: Optimizer chấm bằng chuỗi model của backend, Health chấm bằng model của suite → điểm hai bên không so
   trực tiếp được; quyết định cuối luôn dựa trên lần chạy lại Health.
+
+## Ghi chú triển khai Đợt 3
+
+- **Sửa thiết kế B3**: Shared App ĐIỀN biến vào prompt rồi chạy với câu kích hoạt cố định, không gửi biến qua
+  user message. Vì vậy test tạo từ phản hồi mang `vars` (giá trị biến thực tế, ô trống = mặc định) và `input` trống;
+  Health/cron/Optimizer điền `{{biến}}` vào prompt mẫu trước khi chạy (`renderVars`, bản trong `api/` trùng có chủ đích).
+- Prompt mẫu của app = `compileAppTemplate` (compile graph nhưng GIỮ chỗ `{{biến}}`); hash của nó gắn vào phản hồi
+  (`revisionHash`) → hộp phản hồi ghi "bản hiện hành / bản cũ / không rõ". App legacy (cây v2) không tạo suite được.
+- Suite cho app: nút "Suite kiểm thử" ở Chain → App (chủ app, đã đăng nhập) → tạo/mở suite `source.kind='sharedApp'`
+  (model = model app dùng khi chạy), mở thẳng Prompt Health. "Đồng bộ từ app" lấy bản ĐÃ XUẤT BẢN (chưa xuất bản →
+  bản cục bộ). Theo quyết định (b): "Sao chép để sửa app" thay cho ghi đè graph.
+- Không làm nút "AI gợi ý tiêu chí" (tuỳ chọn trong spec): góp ý của người dùng đã là tiêu chí, chủ app sửa tay trước khi lưu.
+- "Chặn người gửi": lọc phía client, lưu localStorage theo chủ app.
+- Rule `appFeedback`: `hasOnly` các trường; người gửi phải đăng nhập, khác chủ app, `ownerId` khớp `sharedApps/{appId}.userId`;
+  update chỉ đổi `status`. CHƯA có test emulator → kiểm thủ công sau khi `firebase deploy --only firestore:rules`.
+- Đã kiểm trên trình duyệt với Firestore/đăng nhập/AI giả lập: gửi phản hồi (bắt buộc tích đồng ý), hộp phản hồi,
+  biến thành test, chạy test điền đúng biến.

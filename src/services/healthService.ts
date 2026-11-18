@@ -4,6 +4,7 @@ import { HealthRun, HealthSuite, HealthTestResult } from '../types';
 import { runPromptOnModel, scoreOutputQuality } from './aiService';
 import { ALL_MODEL_OPTIONS } from '../config/models';
 import { migrateSuite, trimRevisions } from '../utils/promptRevisions';
+import { renderVars } from '../utils/feedbackUtils';
 
 // Prompt Health/CI (Lab · Tầng 1 #2): suite = prompt + bộ test, chạy "khám sức khoẻ"
 // (run + chấm từng test) và lưu lịch sử để phát hiện hồi quy giữa các lần / khi đổi model.
@@ -155,7 +156,7 @@ export async function runHealthCheck(
       const { text } = await runPromptOnModel({
         model: suite.model,
         provider,
-        systemInstruction: suite.prompt,
+        systemInstruction: renderVars(suite.prompt, t.vars), // test từ Shared App mang giá trị biến
         userContent: t.input.trim() || 'Hãy thực hiện theo chỉ dẫn hệ thống ở trên.',
         apiKeys,
       });

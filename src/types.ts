@@ -326,6 +326,7 @@ export interface HealthTest {
   id: string;
   input: string;        // đầu vào thử
   criteria: string[];   // tiêu chí chấm cho test này
+  vars?: Record<string, string>; // giá trị {{biến}} điền vào prompt trước khi chạy (test từ phản hồi Shared App)
 }
 
 export interface HealthTestResult {
@@ -363,11 +364,26 @@ export interface HealthSuite {
   cronEnabled?: boolean; // H3: bật chạy tự động hằng ngày (Vercel Cron, cần đăng nhập)
   revisions?: PromptRevision[]; // Prompt Git: mới nhất ở đầu, tối đa 20
   headRevisionId?: string;      // revision đang là prompt hiện hành
-  source?: { kind: 'template'; id: string; title?: string }; // nguồn prompt (đợt sau: project/sharedApp)
+  source?: { kind: 'template' | 'sharedApp'; id: string; title?: string }; // nguồn prompt
   userId?: string;
   workspaceId?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+// Flywheel: phản hồi của người dùng Shared App gửi về chủ app (collection `appFeedback`).
+export interface AppFeedback {
+  id: string;
+  appId: string;
+  ownerId: string;      // userId của app — rule chỉ cho chủ app đọc
+  userId: string;       // người gửi
+  rating: 'up' | 'down';
+  comment?: string;
+  inputs: Record<string, string>; // giá trị biến thực tế của lần chạy
+  output: string;
+  revisionHash?: string; // hash prompt mẫu của app lúc chạy
+  status: 'new' | 'converted' | 'dismissed';
+  createdAt: string;    // ISO
 }
 
 // ── LLM Config (UtilityBeltTab) — dời khỏi component để dùng chung khi import ──

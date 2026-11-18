@@ -170,7 +170,7 @@ interface OptimizeBody {
   criteria?: string[];
   testInput?: string;
   /** Đợt 2 (Prompt Git): tối ưu theo NHIỀU test — điểm ứng viên = TB điểm các test. Tối đa 5. */
-  tests?: Array<{ input?: string; criteria?: string[] }>;
+  tests?: Array<{ input?: string; criteria?: string[]; vars?: Record<string, string> }>;
   populationN?: number;
   rounds?: number;
   /** M6: true → trả tiến trình từng vòng qua SSE thay vì im lặng tới khi xong. */
@@ -180,7 +180,14 @@ interface OptimizeBody {
 interface Candidate { prompt: string; score: number; feedback: string; output: string; }
 
 const MAX_TESTS = 5;
-export interface TestSpec { input: string; criteria: string[] }
+export interface TestSpec { input: string; criteria: string[]; vars?: Record<string, string> }
+
+/** Điền {{ten_bien}} theo vars — trùng CÓ CHỦ ĐÍCH với src/utils/feedbackUtils.ts (function tự chứa). */
+export function renderVars(text: string, vars?: Record<string, string>): string {
+  if (!vars) return text;
+  return text.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (m, name) =>
+    typeof vars[name] === 'string' && vars[name] !== '' ? vars[name] : m);
+}
 
 /**
  * Chuẩn hoá danh sách test từ body (thuần, export để unit-test). Mỗi test gộp tiêu chí
@@ -196,7 +203,15 @@ export function normalizeTests(raw: unknown, sharedCriteria: string[]): TestSpec
       .filter((c: unknown) => typeof c === 'string' && c.trim())
       .map((c: string) => c.slice(0, 500));
     const criteria = [...new Set([...sharedCriteria, ...own])].slice(0, MAX_CRITERIA);
-    return { input: input || TRIGGER, criteria };
+    const spec: TestSpec = { input: input || TRIGGER, criteria };
+    if (t?.vars && typeof t.vars === 'object' && !Array.isArray(t.vars)) {
+      const vars: Record<string, string> = {};
+      for (const [k, v] of Object.entries(t.vars).slice(0, 20)) {
+        if (typeof v === 'string') vars[k.slice(0, 64)] = v.slice(0, 2000);
+      }
+      spec.vars = vars;
+    }
+    return spec;
   });
 }
 
@@ -239,6 +254,7 @@ Mục tiêu là đạt các tiêu chí sau tốt hơn:
 ${criteriaText(criteria)}
 
 Mỗi biến thể là một prompt HOÀN CHỈNH, dùng được ngay. Đa dạng cách tiếp cận.
+Nếu prompt có chỗ biến dạng {{ten_bien}}, GIỮ NGUYÊN đúng các chỗ biến đó (không điền giá trị, không đổi tên).
 CHỈ trả về JSON, không markdown: {"variants": ["<prompt 1>", "<prompt 2>", ...]}`;
 
   const text = await callAny(system, user, 0.9, true);
@@ -311,7 +327,7 @@ export default async function handler(req: any, res: any) {
     // Biến thể sinh ra nhắm vào hợp các tiêu chí của mọi test.
     const allCriteria = [...new Set(tests.flatMap((t) => t.criteria))].slice(0, MAX_CRITERIA);
     const evaluateAll = async (prompt: string): Promise<Candidate> =>
-      combineEvals(prompt, await Promise.all(tests.map((t) => evaluate(prompt, t.input, t.criteria))));
+      combineEvals(prompt, await Promise.all(tests.map((t) => evaluate(renderVars(prompt, t.vars), t.input, t.criteria))));
 
     // M6: vòng tiến hoá có "emit" — chế độ SSE phát tiến trình sau baseline và
     // sau MỖI vòng (UI không còn câm lặng tới 60s); chế độ cũ giữ nguyên JSON.

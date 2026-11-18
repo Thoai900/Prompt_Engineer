@@ -85,7 +85,7 @@ export interface OptimizeRequest {
   criteria?: string[];
   testInput?: string;
   /** Tối ưu theo nhiều test (tối đa 5): điểm = TB các test. Bỏ trống = dùng testInput. */
-  tests?: Array<{ input: string; criteria?: string[] }>;
+  tests?: Array<{ input: string; criteria?: string[]; vars?: Record<string, string> }>;
   populationN?: number;
   rounds?: number;
 }

@@ -15,6 +15,9 @@ import {
 } from '../../utils/promptRevisions';
 import { blocksToText } from '../../utils/templateVersionUtils';
 import { promptToTemplate } from '../../utils/labUtils';
+import FeedbackInbox from './health/FeedbackInbox';
+import { compileAppTemplate } from '../../utils/feedbackUtils';
+import { loadSharedApp, loadLocalProjects } from '../../services/chainAppService';
 
 function scoreColor(score: number): string {
   if (score >= 80) return 'text-emerald-600 dark:text-emerald-400';
@@ -29,10 +32,12 @@ interface HealthPanelProps {
   libraryTemplates?: PromptTemplate[];
   /** Mở prompt trong Builder (App.tsx điều hướng). */
   onApplyTemplate?: (t: PromptTemplate) => void;
+  /** Mở thẳng suite này (vd từ "Suite kiểm thử" của Chain → App). */
+  initialSuiteId?: string;
 }
 
 /** Prompt Health/CI: suite có version + bộ test, chạy "khám sức khoẻ" và bắt hồi quy. */
-export default function HealthPanel({ libraryTemplates = [], onApplyTemplate }: HealthPanelProps) {
+export default function HealthPanel({ libraryTemplates = [], onApplyTemplate, initialSuiteId }: HealthPanelProps) {
   const { user, geminiApiKey, groqApiKey, openaiApiKey, useSystemGeminiKey, activeWorkspaceId } = useWorkspace();
 
   const [suites, setSuites] = useState<HealthSuite[]>([]);
@@ -47,7 +52,7 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate }: 
     loadHealthSuites(user).then((s) => {
       if (cancelled) return;
       setSuites(s);
-      setActiveId((prev) => prev || s[0]?.id || null);
+      setActiveId((prev) => prev || (initialSuiteId && s.some((x) => x.id === initialSuiteId) ? initialSuiteId : s[0]?.id) || null);
 
       // H3 (thông báo hồi quy): suite nào lần chạy MỚI NHẤT tụt ≥10 điểm so với lần
       // trước (kể cả run do cron chạy nền) → cảnh báo ngay khi mở panel.
@@ -158,7 +163,36 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate }: 
   };
 
   // Nguồn template: lấy prompt từ template trong thư viện (ghi thành revision 'source-sync').
-  const sourceTemplate = active?.source ? libraryTemplates.find((t) => t.id === active.source!.id) : undefined;
+  const sourceTemplate = active?.source?.kind === 'template' ? libraryTemplates.find((t) => t.id === active.source!.id) : undefined;
+  const sourceIsApp = active?.source?.kind === 'sharedApp';
+
+  // Nguồn Shared App: lấy prompt MẪU của bản ĐÃ XUẤT BẢN (khớp hash phản hồi); chưa xuất bản → bản cục bộ.
+  const syncFromApp = async () => {
+    if (!active?.source) return;
+    const appId = active.source.id;
+    const project = (await loadSharedApp(appId)) || loadLocalProjects().find((p) => p.id === appId) || null;
+    const template = project ? compileAppTemplate(project) : null;
+    if (!template) { toast.error('Không tìm thấy app (hoặc app không phải Prompt Graph).'); return; }
+    const next = commitRevision(active, template, 'source-sync', `Đồng bộ từ app "${project!.name}"`);
+    if (next === active) { toast('Prompt đã trùng với app — không có gì mới.'); return; }
+    await replaceAndSave(next);
+    toast.success('Đã đồng bộ prompt mới nhất từ app.');
+  };
+  // Quyết định (b): KHÔNG ghi đè graph của app bằng prompt phẳng — sao chép để chủ app tự sửa graph.
+  const copyForApp = async () => {
+    if (!active) return;
+    try {
+      await navigator.clipboard.writeText(headRevision(active)?.content || active.prompt);
+      toast.success('Đã sao chép. Sửa graph ở tab Project Chain rồi "Xuất bản dạng App" lại.');
+    } catch {
+      toast.error('Không sao chép được.');
+    }
+  };
+
+  const addTestFromFeedback = async (test: HealthTest) => {
+    if (!active) return;
+    await replaceAndSave({ ...active, testCases: [...active.testCases, test] });
+  };
   const linkTemplate = async (templateId: string) => {
     if (!active) return;
     if (!templateId) { await replaceAndSave({ ...active, source: undefined }); return; }
@@ -241,9 +275,22 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate }: 
               </span>
             </label>
 
-            {/* Prompt Git: nguồn prompt (template trong thư viện) */}
+            {/* Prompt Git: nguồn prompt (template trong thư viện, hoặc Shared App) */}
             <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
               <span className="font-bold text-muted">Nguồn:</span>
+              {sourceIsApp ? (
+                <>
+                  <span className="rounded-lg bg-hover px-2 py-1 font-semibold text-ink">App: {active.source!.title || active.source!.id}</span>
+                  <button onClick={syncFromApp} className="flex items-center gap-1 rounded-lg px-2 py-1 font-semibold text-emerald-600 hover:bg-hover dark:text-emerald-400" title="Lấy prompt mẫu mới nhất của app thành phiên bản mới">
+                    <RefreshCw size={12} /> Đồng bộ từ app
+                  </button>
+                  {active.prompt.trim() && (
+                    <button onClick={copyForApp} className="flex items-center gap-1 rounded-lg px-2 py-1 font-semibold text-muted hover:bg-hover" title="Sao chép phiên bản hiện hành để áp dụng vào graph của app">
+                      <ExternalLink size={12} /> Sao chép để sửa app
+                    </button>
+                  )}
+                </>
+              ) : (<>
               <select
                 value={active.source?.id || ''}
                 onChange={(e) => linkTemplate(e.target.value)}
@@ -263,6 +310,7 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate }: 
                   <ExternalLink size={12} /> Mở trong Builder
                 </button>
               )}
+              </>)}
             </div>
 
             <label className="mb-1.5 flex items-center gap-2 text-xs font-bold text-muted">
@@ -301,11 +349,19 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate }: 
                       </span>
                       <button onClick={() => removeTest(t.id)} className="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/30" aria-label="Xoá test"><Trash2 size={12} /></button>
                     </div>
+                    {t.vars && Object.keys(t.vars).length > 0 && (
+                      <div className="mb-2 flex flex-wrap gap-1 text-xs" title="Giá trị biến điền vào {{...}} của prompt khi chạy test này">
+                        <span className="text-faint">Biến:</span>
+                        {Object.entries(t.vars).map(([k, v]) => (
+                          <span key={k} className="max-w-full truncate rounded bg-panel px-1.5 py-0.5 text-muted" title={v}>{k}: {v || '—'}</span>
+                        ))}
+                      </div>
+                    )}
                     <textarea
                       value={t.input}
                       onChange={(e) => updateTest(t.id, { input: e.target.value })}
                       rows={2}
-                      placeholder="Đầu vào thử…"
+                      placeholder={t.vars ? 'Đầu vào thử (để trống = như app: câu kích hoạt cố định)…' : 'Đầu vào thử…'}
                       className="mb-2 w-full resize-y rounded-lg border border-line bg-panel px-2.5 py-1.5 text-xs text-ink placeholder:text-faint focus:border-emerald-500 focus:outline-none"
                     />
                     <textarea
@@ -353,6 +409,8 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate }: 
               </div>
             </div>
           )}
+
+          {sourceIsApp && user && <FeedbackInbox key={active.id} suite={active} user={user} onAddTest={addTestFromFeedback} />}
 
           <RevisionTimeline suite={active} onRestore={restore} />
 

@@ -357,6 +357,43 @@ service cloud.firestore {
         && ( !('completed' in incoming().keys()) || (incoming().completed is list && incoming().completed.size() <= 100) );
     }
 
+    // Flywheel (Đợt 3): phản hồi người dùng Shared App gửi chủ app. Người gửi chỉ TẠO được
+    // (không đọc lại — tránh lộ phản hồi của người khác); chủ app đọc / đổi status / xoá.
+    // Giới hạn kích thước khớp FEEDBACK_LIMITS trong src/utils/feedbackUtils.ts.
+    function isValidAppFeedback(data) {
+      return data.keys().hasOnly(['appId', 'ownerId', 'userId', 'rating', 'comment', 'inputs', 'output', 'revisionHash', 'status', 'createdAt'])
+        && data.keys().hasAll(['appId', 'ownerId', 'userId', 'rating', 'inputs', 'output', 'status', 'createdAt'])
+        && isValidId(data.appId)
+        && data.ownerId is string && data.ownerId.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.rating in ['up', 'down']
+        && ( !('comment' in data.keys()) || (data.comment is string && data.comment.size() <= 1000) )
+        && data.inputs is map && data.inputs.size() <= 20
+        && data.output is string && data.output.size() <= 8000
+        && ( !('revisionHash' in data.keys()) || (data.revisionHash is string && data.revisionHash.size() <= 16) )
+        && data.status in ['new', 'converted', 'dismissed']
+        && data.createdAt is timestamp;
+    }
+
+    match /appFeedback/{feedbackId} {
+      allow get: if isValidId(feedbackId) && isOwner(resource.data.ownerId);
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isValidId(feedbackId)
+        && isSignedIn()
+        && isValidAppFeedback(incoming())
+        && incoming().userId == request.auth.uid
+        && incoming().status == 'new'
+        && incoming().createdAt == request.time
+        && exists(/databases/$(database)/documents/sharedApps/$(incoming().appId))
+        && get(/databases/$(database)/documents/sharedApps/$(incoming().appId)).data.userId == incoming().ownerId
+        && incoming().ownerId != request.auth.uid;
+      allow update: if isValidId(feedbackId)
+        && isOwner(existing().ownerId)
+        && isValidAppFeedback(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status']);
+      allow delete: if isValidId(feedbackId) && isOwner(existing().ownerId);
+    }
+
     match /healthSuites/{suiteId} {
       allow get: if isValidId(suiteId) && isOwner(resource.data.userId);
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;

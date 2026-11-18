@@ -41,7 +41,7 @@ export default function OptimizeSuggestion({ suite, signedIn, onAccept }: Props)
         {
           // Tối ưu đúng bản đã chấm (head), không phải chỗ đang sửa dở chưa lưu.
           basePrompt: headRevision(suite)?.content || suite.prompt,
-          tests: failing.map(({ test }) => ({ input: test.input, criteria: test.criteria })),
+          tests: failing.map(({ test }) => ({ input: test.input, criteria: test.criteria, ...(test.vars ? { vars: test.vars } : {}) })),
         },
         (p) => {
           if (p.type === 'baseline') setProgress(`Điểm bản hiện tại trên các test trượt: ${p.score} · ~${p.estimatedCalls ?? '?'} lời gọi model`);
