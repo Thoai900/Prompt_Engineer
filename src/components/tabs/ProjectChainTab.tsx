@@ -1,13 +1,14 @@
 import { toast } from '../common/Toaster';
 import { confirmDialog } from '../common/ConfirmDialog';
 import React, { useEffect, useState } from 'react';
-import { Plus, Trash2, Layers, X } from 'lucide-react';
+import { Plus, Trash2, Layers, X, AppWindow, ArrowLeft } from 'lucide-react';
 import { collection, doc, getDocs, query, where, setDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { PromptProject, PromptTemplate } from '../../types';
 import { TEMPLATES } from '../../data';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { GraphWorkspace } from '../project-chain/GraphWorkspace';
+import AppPanel from '../project-chain/AppPanel';
 import { createEmptyGraphProject, isGraphProject, migrateProjectToGraph, parseRawPromptToGraph } from '../../utils/graphMigration';
 import { GRAPH_SAMPLE_PROJECTS } from '../../utils/graphSamples';
 
@@ -44,6 +45,8 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
   const [syncStatus, setSyncStatus] = useState<'synced' | 'saving' | 'local' | 'error'>('local');
 
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
+  // Chế độ "Chạy như App" (Chain → App, trước nằm trong Lab). Link chia sẻ ?app=<id> mở thẳng chế độ này.
+  const [appMode, setAppMode] = useState(() => new URLSearchParams(window.location.search).has('app'));
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDesc, setNewProjectDesc] = useState('');
   const [newProjectPaste, setNewProjectPaste] = useState('');
@@ -256,7 +259,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
             return (
               <div
                 key={proj.id}
-                onClick={() => setActiveProject(proj)}
+                onClick={() => { setActiveProject(proj); setAppMode(false); }}
                 className={`p-3.5 rounded-2xl border text-left cursor-pointer transition-all duration-200 group relative
                   ${isActive
                     ? 'bg-white dark:bg-slate-900 border-violet-500/40 shadow-md'
@@ -311,7 +314,16 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
 
       {/* 2. WORKSPACE CHÍNH */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
-        {!activeProject ? (
+        {appMode ? (
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 text-left">
+            <div className="mx-auto max-w-4xl">
+              <button onClick={() => setAppMode(false)} className="mb-4 flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink">
+                <ArrowLeft size={13} /> Về Prompt Graph
+              </button>
+              <AppPanel initialProjectId={activeProject?.id} />
+            </div>
+          </div>
+        ) : !activeProject ? (
           <div className="m-auto text-center flex flex-col items-center justify-center p-8 max-w-sm gap-4">
             <div className="w-16 h-16 rounded-2xl bg-violet-100 dark:bg-violet-950/30 flex items-center justify-center mx-auto">
               <Layers size={24} className="text-violet-500" />
@@ -333,6 +345,13 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
                   {activeProject.description || 'Cắm các node thuộc tính vào Prompt Gốc — xem prompt lắp ráp realtime ở tab "Prompt".'}
                 </p>
               </div>
+              <button
+                onClick={() => setAppMode(true)}
+                title="Chạy dự án như một app (form biến → kết quả) và chia sẻ bằng link"
+                className="ml-auto shrink-0 flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs font-bold text-muted hover:text-ink hover:bg-hover cursor-pointer transition-colors"
+              >
+                <AppWindow size={13} /> Chạy như App
+              </button>
             </div>
 
             <GraphWorkspace

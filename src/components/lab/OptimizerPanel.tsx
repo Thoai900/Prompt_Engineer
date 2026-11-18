@@ -4,6 +4,7 @@ import { optimizePrompt, type OptimizeResult } from '../../services/aiProxy';
 import { PromptTemplate } from '../../types';
 import { promptToTemplate } from '../../utils/labUtils';
 import { toast } from '../common/Toaster';
+import PromptInspector from '../common/PromptInspector';
 
 interface OptimizerPanelProps {
   /** Prompt mồi (vd gửi sang từ Linter) — điền sẵn vào ô prompt gốc. */
@@ -27,7 +28,7 @@ function scoreColor(score: number): string {
 export default function OptimizerPanel({ initialPrompt, onApplyTemplate, onSaveTemplate }: OptimizerPanelProps) {
   const [basePrompt, setBasePrompt] = useState(initialPrompt || '');
 
-  // Prompt mồi thay đổi (gửi lại từ Linter) → cập nhật ô nhập.
+  // Prompt mồi thay đổi (gửi từ tab khác qua labSeed) → cập nhật ô nhập.
   useEffect(() => {
     if (initialPrompt) setBasePrompt(initialPrompt);
   }, [initialPrompt]);
@@ -102,8 +103,12 @@ export default function OptimizerPanel({ initialPrompt, onApplyTemplate, onSaveT
           onChange={(e) => setBasePrompt(e.target.value)}
           rows={4}
           placeholder="Vd: Bạn là trợ lý viết email. Viết email cho người dùng."
-          className="mb-4 w-full resize-y rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+          className="mb-2 w-full resize-y rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
         />
+        {/* Linter (trước là chế độ riêng trong Lab) — soi prompt gốc trước khi tối ưu */}
+        <div className="mb-4">
+          <PromptInspector text={basePrompt} labActions={false} />
+        </div>
 
         <label className="mb-1.5 block text-xs font-bold text-muted">Đầu vào thử (tuỳ chọn)</label>
         <textarea

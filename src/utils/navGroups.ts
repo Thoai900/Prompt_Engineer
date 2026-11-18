@@ -47,6 +47,8 @@ const LEGACY_TABS: Record<string, { tab: TabType; params?: Record<string, string
   aifuture: { tab: 'learn', params: { learn: 'news' } },
 };
 
-export function resolveLegacyTab(raw: string): { tab: TabType; params?: Record<string, string> } | null {
+export function resolveLegacyTab(raw: string, search = ''): { tab: TabType; params?: Record<string, string> } | null {
+  // Link chia sẻ app cũ (?app=<id>#lab) — Chain → App đã chuyển từ Lab sang Project Chain.
+  if (raw === 'lab' && new URLSearchParams(search).has('app')) return { tab: 'projectchain' };
   return Object.prototype.hasOwnProperty.call(LEGACY_TABS, raw) ? LEGACY_TABS[raw] : null;
 }

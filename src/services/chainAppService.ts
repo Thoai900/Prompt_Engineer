@@ -201,7 +201,7 @@ export async function unpublishApp(appId: string): Promise<void> {
   try { await deleteDoc(doc(db, 'sharedApps', appId)); } catch { /* non-fatal */ }
 }
 
-/** URL chia sẻ tới app (mở thẳng chế độ App trong Lab). */
+/** URL chia sẻ tới app (mở thẳng chế độ App trong Project Chain; link cũ `#lab` được App chuyển hướng). */
 export function buildAppUrl(appId: string): string {
-  return `${window.location.origin}${window.location.pathname}?app=${encodeURIComponent(appId)}#lab`;
+  return `${window.location.origin}${window.location.pathname}?app=${encodeURIComponent(appId)}#projectchain`;
 }

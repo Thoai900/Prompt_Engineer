@@ -37,5 +37,7 @@ describe('navGroups', () => {
     expect(resolveLegacyTab('aifuture')).toEqual({ tab: 'learn', params: { learn: 'news' } });
     expect(resolveLegacyTab('builder')).toBeNull();
     expect(resolveLegacyTab('toString')).toBeNull();
+    expect(resolveLegacyTab('lab', '?app=abc')).toEqual({ tab: 'projectchain' });
+    expect(resolveLegacyTab('lab', '')).toBeNull();
   });
 });

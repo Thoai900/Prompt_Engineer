@@ -7,14 +7,20 @@ import {
 } from '../../services/chainAppService';
 import { toast } from '../common/Toaster';
 
-/** Chain → App: chạy một Project Chain như một app (form biến → output), chia sẻ qua link. */
-export default function AppPanel() {
+/**
+ * Chain → App: chạy một Project Chain như một app (form biến → output), chia sẻ qua link.
+ * Hiển thị trong Project Chain (nút "Chạy như App"); trước đây là chế độ trong Lab.
+ */
+export default function AppPanel({ initialProjectId }: { initialProjectId?: string }) {
   const { user, geminiApiKey, groqApiKey, openaiApiKey, useSystemGeminiKey } = useWorkspace();
 
   const [localProjects] = useState<PromptProject[]>(() => loadLocalProjects());
   const [sharedApp, setSharedApp] = useState<PromptProject | null>(null);
   const [sharedLoading, setSharedLoading] = useState(false);
-  const [selectedId, setSelectedId] = useState<string>(() => loadLocalProjects()[0]?.id || '');
+  const [selectedId, setSelectedId] = useState<string>(() => {
+    const list = loadLocalProjects();
+    return list.find((p) => p.id === initialProjectId)?.id || list[0]?.id || '';
+  });
   const [values, setValues] = useState<Record<string, string>>({});
   const [running, setRunning] = useState(false);
   const [steps, setSteps] = useState<ChainStep[] | null>(null);
@@ -31,7 +37,7 @@ export default function AppPanel() {
     loadSharedApp(id)
       .then((p) => { setSharedApp(p); if (!p) setError('Không tìm thấy app được chia sẻ (có thể đã gỡ).'); })
       .finally(() => setSharedLoading(false));
-    window.history.replaceState(null, '', `${window.location.pathname}${window.location.hash || '#lab'}`);
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.hash || '#projectchain'}`);
   }, []);
 
   const activeProject = sharedApp || localProjects.find((p) => p.id === selectedId) || null;
@@ -94,7 +100,7 @@ export default function AppPanel() {
         <div className="flex items-center gap-2 rounded-2xl border border-line bg-panel p-6 text-sm text-muted"><Loader2 size={16} className="animate-spin" /> Đang tải app được chia sẻ…</div>
       ) : !activeProject ? (
         <div className="rounded-2xl border border-dashed border-line bg-panel p-8 text-center text-sm text-muted">
-          Chưa có Project Chain nào ở máy này. Hãy tạo/mở một chuỗi ở tab <span className="font-semibold text-ink">Project Chain</span> trước, rồi quay lại đây.
+          Chưa có dự án nào ở máy này. Hãy tạo một dự án ở danh sách bên trái trước.
         </div>
       ) : (
         <div className="space-y-4">

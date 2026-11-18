@@ -15,7 +15,7 @@ import { usePromptBlocks } from '../../hooks/usePromptBlocks';
 import { usePlaygroundSession } from '../../hooks/usePlaygroundSession';
 import { BuilderSidebar } from '../builder/BuilderSidebar';
 import { OpenInAiBar } from '../builder/OpenInAiBar';
-import { PromptMeter } from '../builder/PromptMeter';
+import PromptInspector from '../common/PromptInspector';
 import { PromptBlockList } from '../builder/PromptBlockList';
 import { EmptyStateGenerator } from '../builder/EmptyStateGenerator';
 import { PlaygroundPanel } from '../builder/PlaygroundPanel';
@@ -1111,7 +1111,7 @@ export default function BuilderTab({
                  </div>
 
                  {blocks.length > 0 && (
-                   <PromptMeter text={generatePreviewContent(false, 'combined')} />
+                   <PromptInspector text={generatePreviewContent(false, 'combined')} />
                  )}
 
                  {blocks.length > 0 && (

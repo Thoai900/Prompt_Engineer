@@ -46,7 +46,7 @@ const VALID_TABS: TabType[] = ['studio', 'home', 'builder', 'projectchain', 'rul
 // Hash của tab đã gỡ (#enhancer, #aifuture) được chuyển hướng để link cũ không hỏng.
 function getTabFromHash(): TabType {
   const raw = window.location.hash.replace(/^#\/?/, '');
-  const legacy = resolveLegacyTab(raw);
+  const legacy = resolveLegacyTab(raw, window.location.search);
   if (legacy) {
     const url = new URL(window.location.href);
     for (const [k, v] of Object.entries(legacy.params ?? {})) url.searchParams.set(k, v);
@@ -726,7 +726,7 @@ export default function App() {
             <ProjectChainTab theme={theme} user={user} customTemplates={visibleTemplates} onSaveTemplate={handleSaveTemplate} />
           </TabPanel>
           <TabPanel isActive={activeTab === 'lab'} mounted={visitedTabs.has('lab')}>
-            <LabTab libraryTemplates={visibleTemplates} onApplyTemplate={handleSelectTemplate} onSaveTemplate={handleSaveTemplate} />
+            <LabTab onApplyTemplate={handleSelectTemplate} onSaveTemplate={handleSaveTemplate} />
           </TabPanel>
           <TabPanel isActive={activeTab === 'studio'} mounted={visitedTabs.has('studio')}>
             <StudioTab

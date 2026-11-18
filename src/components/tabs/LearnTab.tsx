@@ -22,9 +22,11 @@ import VersusChallenge from '../learn/VersusChallenge';
 import DomainLab from '../learn/DomainLab';
 import PersonalGuide from '../learn/PersonalGuide';
 import AiNewsSection from '../aifuture/AiNewsSection';
+import TutorPanel from '../learn/TutorPanel';
 
 // 'news' = bản tin AI (trước đây ở tab AI Future). Deep-link `?learn=news` mở thẳng.
-type ViewState = 'dashboard' | 'news' | LearnModuleId;
+// 'tutor' = Gia sư chi tiết (trước đây là chế độ trong Lab).
+type ViewState = 'dashboard' | 'news' | 'tutor' | LearnModuleId;
 type LabDomainId = 'academic' | 'creative' | 'professional' | 'entertainment';
 
 const BADGE_DEFS = [
@@ -138,6 +140,17 @@ export default function LearnTab({ libraryTemplates = [] }: LearnTabProps) {
       case 'lab-creative': return renderLab('creative');
       case 'lab-professional': return renderLab('professional');
       case 'lab-entertainment': return renderLab('entertainment');
+      case 'tutor': return (
+        <div className="flex-1 overflow-y-auto bg-surface p-4 md:p-8">
+          <div className="mx-auto max-w-5xl">
+            <button onClick={goDashboard} className="mb-4 flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink">
+              <ArrowLeft size={13} /> Về Học viện
+            </button>
+            <h3 className="mb-2 text-lg font-bold text-ink">Gia sư cá nhân hoá</h3>
+            <TutorPanel libraryTemplates={libraryTemplates} />
+          </div>
+        </div>
+      );
       case 'news': return (
         <div className="flex-1 overflow-y-auto bg-surface p-4 md:p-8">
           <button onClick={goDashboard} className="mb-4 flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink">
@@ -223,7 +236,7 @@ export default function LearnTab({ libraryTemplates = [] }: LearnTabProps) {
       </section>
 
       {/* Gợi ý cá nhân hóa từ chẩn đoán kỹ năng thật */}
-      <PersonalGuide libraryTemplates={libraryTemplates} onNavigate={(view) => setActiveView(view)} />
+      <PersonalGuide libraryTemplates={libraryTemplates} onNavigate={(view) => setActiveView(view)} onOpenTutor={() => setActiveView('tutor')} />
 
       {/* Hành trình cơ bản (Complexity Tiers) */}
       <section>
