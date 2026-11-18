@@ -136,6 +136,15 @@ html.dark {
   }
 }
 
+/* Cho phép người dùng phóng to (đã bỏ maximum-scale/user-scalable trong index.html).
+   iOS Safari tự zoom khi focus ô nhập có chữ < 16px → trên mobile ép ô nhập 16px.
+   Rule không nằm trong @layer nên thắng các utility text-xs/text-sm của Tailwind. */
+@media (max-width: 767px) {
+  input, textarea, select {
+    font-size: 16px;
+  }
+}
+
 html, body, #root {
     height: 100%;
     margin: 0;
