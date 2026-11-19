@@ -28,6 +28,8 @@ export default function LabTab({ libraryTemplates = [], onApplyTemplate, onSaveT
   const [mode, setMode] = useState<LabMode>('bakeoff');
   // Prompt gửi từ Linter sang Auto-Optimizer (mồi sẵn ô prompt gốc).
   const [optimizerSeed, setOptimizerSeed] = useState('');
+  // Chain → App "Suite kiểm thử" → mở Prompt Health ở đúng suite.
+  const [healthSuiteId, setHealthSuiteId] = useState<string | undefined>();
 
   const sendToOptimizer = (prompt: string) => {
     setOptimizerSeed(prompt);
@@ -99,11 +101,11 @@ export default function LabTab({ libraryTemplates = [], onApplyTemplate, onSaveT
 
         {mode === 'bakeoff' && <BakeoffPanel />}
         {mode === 'optimizer' && <OptimizerPanel initialPrompt={optimizerSeed} onApplyTemplate={onApplyTemplate} onSaveTemplate={onSaveTemplate} />}
-        {mode === 'health' && <HealthPanel />}
+        {mode === 'health' && <HealthPanel key={healthSuiteId} libraryTemplates={libraryTemplates} onApplyTemplate={onApplyTemplate} initialSuiteId={healthSuiteId} />}
         {mode === 'linter' && <LinterPanel onOptimize={sendToOptimizer} />}
         {mode === 'taste' && <TastePanel />}
         {mode === 'tutor' && <TutorPanel libraryTemplates={libraryTemplates} />}
-        {mode === 'app' && <AppPanel />}
+        {mode === 'app' && <AppPanel onOpenHealth={(id) => { setHealthSuiteId(id); setMode('health'); }} />}
       </div>
     </div>
   );

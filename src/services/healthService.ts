@@ -1,8 +1,10 @@
-import { collection, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
+import { collection, deleteDoc, deleteField, doc, getDoc, getDocs, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
 import { db, handleFirestoreError } from '../firebase';
 import { HealthRun, HealthSuite, HealthTestResult } from '../types';
 import { runPromptOnModel, scoreOutputQuality } from './aiService';
 import { ALL_MODEL_OPTIONS } from '../config/models';
+import { migrateSuite, trimRevisions } from '../utils/promptRevisions';
+import { renderVars } from '../utils/feedbackUtils';
 
 // Prompt Health/CI (Lab · Tầng 1 #2): suite = prompt + bộ test, chạy "khám sức khoẻ"
 // (run + chấm từng test) và lưu lịch sử để phát hiện hồi quy giữa các lần / khi đổi model.
@@ -57,7 +59,7 @@ async function migrateLocalSuites(user: { uid: string }, cloud: HealthSuite[]): 
 }
 
 export async function loadHealthSuites(user: { uid: string } | null | undefined): Promise<HealthSuite[]> {
-  if (!user) return readLocal();
+  if (!user) return readLocal().map((s) => migrateSuite(s));
   try {
     const snap = await getDocs(query(collection(db, 'healthSuites'), where('userId', '==', user.uid)));
     const cloud = snap.docs.map((d) => {
@@ -70,6 +72,9 @@ export async function loadHealthSuites(user: { uid: string } | null | undefined)
         testCases: data.testCases || [],
         runs: data.runs || [],
         cronEnabled: data.cronEnabled === true,
+        revisions: Array.isArray(data.revisions) ? data.revisions : undefined,
+        headRevisionId: data.headRevisionId || undefined,
+        source: data.source || undefined,
         userId: data.userId,
         workspaceId: data.workspaceId,
         createdAt: toIso(data.createdAt),
@@ -77,19 +82,20 @@ export async function loadHealthSuites(user: { uid: string } | null | undefined)
       } as HealthSuite;
     });
     const migrated = await migrateLocalSuites(user, cloud);
-    return [...cloud, ...migrated].sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+    return [...cloud, ...migrated].map((s) => migrateSuite(s)).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
   } catch (err) {
     try { handleFirestoreError(err, 'list'); } catch (e: any) { console.error('Load health suites failed:', e.message); }
-    return readLocal();
+    return readLocal().map((s) => migrateSuite(s));
   }
 }
 
 export async function saveHealthSuite(user: { uid: string } | null | undefined, suite: HealthSuite): Promise<void> {
   const trimmedRuns = suite.runs.slice(0, MAX_RUNS);
+  const revisions = trimRevisions(suite.revisions || [], trimmedRuns, suite.headRevisionId);
   if (!user) {
     const all = readLocal();
     const i = all.findIndex((s) => s.id === suite.id);
-    const next = { ...suite, runs: trimmedRuns };
+    const next = { ...suite, runs: trimmedRuns, revisions };
     if (i === -1) all.push(next); else all[i] = next;
     writeLocal(all);
     return;
@@ -107,10 +113,17 @@ export async function saveHealthSuite(user: { uid: string } | null | undefined, 
     updatedAt: serverTimestamp(),
   };
   if (suite.workspaceId) base.workspaceId = suite.workspaceId;
+  // Prompt Git: chỉ ghi khi có (Firestore từ chối giá trị undefined).
+  if (revisions.length > 0) base.revisions = revisions;
+  if (suite.headRevisionId) base.headRevisionId = suite.headRevisionId;
+  if (suite.source) {
+    base.source = { kind: suite.source.kind, id: suite.source.id, ...(suite.source.title ? { title: suite.source.title } : {}) };
+  }
 
   try {
     const exists = (await getDoc(ref)).exists();
     if (exists) {
+      if (!suite.source) base.source = deleteField(); // bỏ liên kết nguồn (merge không tự xoá field)
       await setDoc(ref, base, { merge: true }); // giữ createdAt bất biến
     } else {
       await setDoc(ref, { ...base, createdAt: serverTimestamp() });
@@ -143,7 +156,7 @@ export async function runHealthCheck(
       const { text } = await runPromptOnModel({
         model: suite.model,
         provider,
-        systemInstruction: suite.prompt,
+        systemInstruction: renderVars(suite.prompt, t.vars), // test từ Shared App mang giá trị biến
         userContent: t.input.trim() || 'Hãy thực hiện theo chỉ dẫn hệ thống ở trên.',
         apiKeys,
       });
@@ -155,7 +168,9 @@ export async function runHealthCheck(
   }));
 
   const avgScore = results.length ? Math.round(results.reduce((s, r) => s + r.score, 0) / results.length) : 0;
-  return { at: new Date().toISOString(), model: suite.model, avgScore, results };
+  const run: HealthRun = { at: new Date().toISOString(), model: suite.model, avgScore, results };
+  if (suite.headRevisionId) run.revisionId = suite.headRevisionId;
+  return run;
 }
 
 /** So sánh run mới nhất với run trước đó: chênh lệch trung bình + theo từng test. */

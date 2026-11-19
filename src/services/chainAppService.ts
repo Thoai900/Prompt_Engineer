@@ -177,6 +177,7 @@ export async function loadSharedApp(appId: string): Promise<PromptProject | null
       schemaVersion: data.schemaVersion || undefined,
       graphNodes: data.graphNodes || undefined,
       edges: data.edges || undefined,
+      userId: data.userId, // chủ app — để ẩn form phản hồi với chính chủ & gắn ownerId cho phản hồi
       globalEvalCriteria: [],
       createdAt: '',
       updatedAt: '',

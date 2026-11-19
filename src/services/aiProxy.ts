@@ -84,6 +84,8 @@ export interface OptimizeRequest {
   basePrompt: string;
   criteria?: string[];
   testInput?: string;
+  /** Tối ưu theo nhiều test (tối đa 5): điểm = TB các test. Bỏ trống = dùng testInput. */
+  tests?: Array<{ input: string; criteria?: string[]; vars?: Record<string, string> }>;
   populationN?: number;
   rounds?: number;
 }
@@ -100,6 +102,8 @@ export interface OptimizeResult {
   bestScore: number;
   baselineScore: number;
   improvement: number;
+  testCount?: number;      // số test đã dùng để chấm
+  estimatedCalls?: number; // ước tính số lời gọi model của lần tối ưu
   history: { round: number; best: OptimizeCandidate; candidates: OptimizeCandidate[] }[];
 }
 
@@ -111,6 +115,7 @@ export interface OptimizeProgress {
   score?: number;      // điểm baseline (type: 'baseline')
   bestScore?: number;  // điểm tốt nhất tới hiện tại (type: 'round')
   scores?: number[];   // điểm từng biến thể của vòng vừa xong
+  estimatedCalls?: number; // (type: 'baseline') ước tính tổng lời gọi model
 }
 
 /**
