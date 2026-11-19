@@ -69,7 +69,7 @@ describe('usePromptBlocks hook', () => {
   });
 
   it('nạp lại khi mở template mới, kể cả CÙNG id (khôi phục phiên bản cũ); re-render không ghi đè bản nháp', () => {
-    const mk = (content: string) => ({ id: 't1', title: 'T', blocks: [{ id: 'b1', type: 'task' as const, title: 'Task', content }] });
+    const mk = (content: string) => ({ id: 't1', title: 'T', description: '', blocks: [{ id: 'b1', type: 'task' as const, title: 'Task', content }] });
     const v2 = mk('bản mới');
     const { result, rerender } = renderHook(({ t }) => usePromptBlocks(t), { initialProps: { t: v2 } });
     expect(result.current.blocks[0].content).toBe('bản mới');
