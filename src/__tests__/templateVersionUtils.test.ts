@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  MAX_TEMPLATE_VERSIONS, blocksChanged, blocksToText, pushVersion, snapshotVersion,
+  MAX_TEMPLATE_VERSIONS, blocksChanged, blocksToText, pushVersion, snapshotVersion, canUpdateTemplate,
 } from '../utils/templateVersionUtils';
 import { PromptBlock, TemplateVersion } from '../types';
 
@@ -56,3 +56,15 @@ describe('pushVersion', () => {
     expect(versions[0].blocks[0].content).toBe(`bản ${MAX_TEMPLATE_VERSIONS + 4}`);
   });
 });
+
+describe('canUpdateTemplate', () => {
+  it('chỉ true với template đã lưu của chính người dùng (userId hoặc authorId)', () => {
+    expect(canUpdateTemplate({ id: 't1', userId: 'u1' }, 'u1')).toBe(true);
+    expect(canUpdateTemplate({ id: 't1', authorId: 'u1' }, 'u1')).toBe(true);
+    expect(canUpdateTemplate({ id: 't1', userId: 'u2' }, 'u1')).toBe(false);
+    expect(canUpdateTemplate({ id: 't1' }, 'u1')).toBe(false);          // built-in / bản fork chưa lưu
+    expect(canUpdateTemplate({ id: 't1', userId: 'u1' }, null)).toBe(false);
+    expect(canUpdateTemplate(null, 'u1')).toBe(false);
+  });
+});
+

@@ -3,8 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useInView } from 'motion/react';
 import {
   Search, Copy, Check, ArrowRight, Bookmark, Loader2,
-  Briefcase, CheckCircle, Compass, Info, Edit3, Zap, Layers,
-  Workflow, Library, ScrollText, GraduationCap, Brain, Moon, Sun
+  Briefcase, CheckCircle, Compass, Info, Edit3, Layers,
+  Workflow, Library, GraduationCap, Moon, Sun
 } from 'lucide-react';
 // aiService kéo theo @google/genai (~280KB). Import động khi người dùng thực sự
 // bấm "Tạo prompt" để không nặng tải khởi động của trang chủ.
@@ -35,12 +35,9 @@ const FEATURES: {
 }[] = [
   { tab: 'builder', title: 'Prompt Builder', desc: 'Dựng prompt theo khung Multi-block trực quan: vai trò, ràng buộc, định dạng — kéo thả, thêm biến số, kiểm soát từng khối tư duy.', icon: <Briefcase className="w-5 h-5" />, span: 'md:col-span-3', featured: true },
   { tab: 'projectchain', title: 'Project Chain', desc: 'Nối nhiều prompt thành một quy trình, trực quan hoá trên canvas và lan truyền thay đổi tự động.', icon: <Workflow className="w-5 h-5" />, span: 'md:col-span-3', featured: true },
-  { tab: 'enhancer', title: 'AI Enhancer', desc: 'Dán prompt thô, nhận lại bản tinh chỉnh rõ ràng hơn.', icon: <Edit3 className="w-5 h-5" />, span: 'md:col-span-2' },
-  { tab: 'library', title: 'Thư viện mẫu', desc: 'Kho prompt cộng đồng và của riêng bạn, đồng bộ đám mây.', icon: <Library className="w-5 h-5" />, span: 'md:col-span-2' },
-  { tab: 'rulesskills', title: 'Rules & Skills', desc: 'Bộ luật và kỹ năng tái sử dụng cho mọi prompt.', icon: <ScrollText className="w-5 h-5" />, span: 'md:col-span-2' },
-  { tab: 'utilitybelt', title: 'LLM Config', desc: 'Tinh chỉnh model, nhiệt độ và tham số cho từng tác vụ.', icon: <Zap className="w-5 h-5" />, span: 'md:col-span-3' },
-  { tab: 'learn', title: 'Learn', desc: 'Lộ trình học prompt engineering từ nền tảng tới nâng cao.', icon: <GraduationCap className="w-5 h-5" />, span: 'md:col-span-3' },
-  { tab: 'aifuture', title: 'AI Future', desc: 'Cập nhật tin tức và xu hướng AI mới nhất ngay trong app.', icon: <Brain className="w-5 h-5" />, span: 'md:col-span-6' },
+  { tab: 'studio', title: 'Prompt Studio', desc: 'Đi từ ý tưởng đến prompt hoàn chỉnh, hoặc dán prompt thô để tăng cường nhanh.', icon: <Edit3 className="w-5 h-5" />, span: 'md:col-span-3' },
+  { tab: 'library', title: 'Thư viện', desc: 'Mẫu prompt, rule, skill và cấu hình LLM tái sử dụng — kho cộng đồng và của riêng bạn, đồng bộ đám mây.', icon: <Library className="w-5 h-5" />, span: 'md:col-span-3' },
+  { tab: 'learn', title: 'Learn', desc: 'Lộ trình học prompt engineering từ nền tảng tới nâng cao.', icon: <GraduationCap className="w-5 h-5" />, span: 'md:col-span-6' },
 ];
 
 /** Small count-up that animates once when scrolled into view. */
