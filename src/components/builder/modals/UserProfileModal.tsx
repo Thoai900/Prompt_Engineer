@@ -20,7 +20,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-slate-955/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 rounded-2xl w-full max-w-md shadow-2xl p-6 flex flex-col animate-in fade-in zoom-in-95 duration-200 text-slate-900 dark:text-slate-100">
+      <div className="glass-3 border border-glass-edge rounded-2xl w-full max-w-md p-6 flex flex-col animate-in fade-in zoom-in-95 duration-200 text-slate-900 dark:text-slate-100">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 bg-violet-500/10 text-violet-655 dark:text-violet-405 border border-violet-500/20 rounded-full flex items-center justify-center">
             <User size={20} />

@@ -37,12 +37,12 @@ export default function PromptCard({ template, onSelect, onRemix, onPreview, isS
   const isCode = showcase.outputType === 'code';
 
   return (
-    <div className="group bg-white rounded-3xl border border-slate-200 shadow-sm hover:border-indigo-300 hover:shadow-lg transition-all relative flex flex-col min-h-[400px] overflow-hidden">
+    <div className="group glass-1 rounded-3xl border border-glass-edge hover:border-indigo-300 hover:shadow-lg transition-all relative flex flex-col min-h-[400px] overflow-hidden">
       {/* Vùng kết quả — Phương án A: Bạn nhập → Kết quả mẫu (thật) */}
       {showcase.hasResult ? (
         <div
           onClick={() => onPreview?.(template)}
-          className="border-b border-slate-100 bg-slate-50 p-4 cursor-pointer flex flex-col gap-2 shrink-0"
+          className="border-b border-glass-edge bg-glass/40 p-4 cursor-pointer flex flex-col gap-2 shrink-0"
           title="Xem kết quả mẫu đầy đủ"
         >
           <div className="flex items-center justify-between">

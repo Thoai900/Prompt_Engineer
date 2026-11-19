@@ -49,7 +49,7 @@ export default function TutorPanel({ libraryTemplates = [] }: TutorPanelProps) {
     <>
       <p className="mb-4 text-sm text-muted">Gia sư cá nhân hoá: chẩn đoán kỹ năng viết prompt từ <span className="font-semibold text-ink">chính thư viện của bạn</span>, rồi soạn bài học &amp; bài tập nhắm đúng điểm yếu.</p>
 
-      <div className="mb-6 rounded-2xl border border-line bg-panel p-5">
+      <div className="mb-6 rounded-2xl border border-glass-edge glass-1 p-5">
         {libraryPrompts.length > 0 ? (
           <button onClick={runLibrary} disabled={running} className="mb-4 flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-500 disabled:opacity-60">
             {running ? <Loader2 size={16} className="animate-spin" /> : <GraduationCap size={16} />}
@@ -83,7 +83,7 @@ export default function TutorPanel({ libraryTemplates = [] }: TutorPanelProps) {
         <div className="space-y-5">
           {/* Chẩn đoán kỹ năng */}
           {result.skills.length > 0 && (
-            <div className="rounded-2xl border border-line bg-panel p-5">
+            <div className="rounded-2xl border border-glass-edge glass-1 p-5">
               <h3 className="mb-4 flex items-center gap-2 text-sm font-bold text-ink"><BookOpen size={15} className="text-emerald-500" /> Chẩn đoán kỹ năng</h3>
               <div className="space-y-3">
                 {result.skills.map((s, i) => {
@@ -110,7 +110,7 @@ export default function TutorPanel({ libraryTemplates = [] }: TutorPanelProps) {
             <div className="space-y-3">
               <h3 className="flex items-center gap-2 text-sm font-bold text-ink"><Lightbulb size={15} className="text-emerald-500" /> Bài học cho bạn</h3>
               {result.lessons.map((l, i) => (
-                <div key={i} className="rounded-2xl border border-line bg-panel p-4">
+                <div key={i} className="rounded-2xl border border-glass-edge glass-1 p-4">
                   <h4 className="mb-1 text-sm font-bold text-emerald-700 dark:text-emerald-400">{l.title}</h4>
                   {l.why && <p className="mb-2 text-xs text-muted">{l.why}</p>}
                   {l.tip && <p className="mb-2 rounded-lg bg-surface p-2.5 text-xs leading-relaxed text-ink"><span className="font-bold text-emerald-600 dark:text-emerald-400">Mẹo: </span>{l.tip}</p>}

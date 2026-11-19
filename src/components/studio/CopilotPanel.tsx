@@ -62,7 +62,7 @@ export default function CopilotPanel({ draft, quality, onGoToStep }: CopilotPane
   return (
     <div className="flex max-h-[calc(100vh-7rem)] flex-col gap-3">
       {/* Hành động kế tiếp (tất định, miễn phí) */}
-      <div className="rounded-2xl border border-line bg-panel/80 p-4">
+      <div className="rounded-2xl border border-glass-edge glass-1 p-4">
         <div className="flex items-center gap-1.5 text-xs font-bold text-faint">
           <Sparkles size={11} className="text-violet-500" /> Hành động kế tiếp
         </div>
@@ -78,7 +78,7 @@ export default function CopilotPanel({ draft, quality, onGoToStep }: CopilotPane
 
       {/* Điểm chất lượng tổng hợp */}
       {quality && (
-        <div className="rounded-2xl border border-line bg-panel/80 p-4">
+        <div className="rounded-2xl border border-glass-edge glass-1 p-4">
           <div className="text-xs font-bold text-faint">Điểm chất lượng</div>
           <div className="mt-1 flex items-baseline gap-1.5">
             <span className={`text-2xl font-bold tracking-tight ${quality.score >= 80 ? 'text-emerald-500' : quality.score >= 60 ? 'text-amber-500' : 'text-rose-500'}`}>

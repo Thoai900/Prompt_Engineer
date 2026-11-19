@@ -36,7 +36,7 @@ export const SaveTemplateModal: React.FC<SaveTemplateModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/50 rounded-2xl w-full max-w-md shadow-2xl p-6 flex flex-col animate-in fade-in zoom-in-95 duration-200 text-slate-900 dark:text-slate-100">
+      <div className="glass-3 border border-glass-edge rounded-2xl w-full max-w-md p-6 flex flex-col animate-in fade-in zoom-in-95 duration-200 text-slate-900 dark:text-slate-100">
         <h3 className="text-xl font-bold mb-1 text-slate-800 dark:text-slate-100">Lưu Template Mới</h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
           Template của bạn sẽ được lưu vào Thư viện riêng và có thể tái sử dụng bất cứ lúc nào.

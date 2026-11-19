@@ -117,7 +117,7 @@ export default function StepCheck({ draft, assembledText, onPatch }: StepCheckPr
             {issues.length} vấn đề tìm thấy
           </div>
           {issues.map((issue, i) => (
-            <div key={i} className="rounded-2xl border border-line bg-panel/80 p-4">
+            <div key={i} className="rounded-2xl border border-glass-edge glass-1 p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${SEVERITY_STYLES[issue.severity]}`}>
                   {SEVERITY_LABELS[issue.severity]}

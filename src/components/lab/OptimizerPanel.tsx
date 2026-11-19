@@ -95,7 +95,7 @@ export default function OptimizerPanel({ initialPrompt, onApplyTemplate, onSaveT
     <>
       <p className="mb-4 text-sm text-muted">Bạn không viết prompt — bạn mô tả <span className="font-semibold text-ink">thế nào là tốt</span>. Hệ thống tự sinh biến thể, chấm điểm và tiến hoá để tìm prompt tối ưu. <span className="text-faint">(Chạy trên server, cần đăng nhập.)</span></p>
 
-      <div className="mb-6 rounded-2xl border border-line bg-panel p-5">
+      <div className="mb-6 rounded-2xl border border-glass-edge glass-1 p-5">
         <label className="mb-1.5 block text-xs font-bold text-muted">Prompt gốc</label>
         <textarea
           value={basePrompt}
@@ -191,7 +191,7 @@ export default function OptimizerPanel({ initialPrompt, onApplyTemplate, onSaveT
           </div>
 
           {/* Prompt tốt nhất */}
-          <div className="rounded-2xl border border-line bg-panel p-5">
+          <div className="rounded-2xl border border-glass-edge glass-1 p-5">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-bold text-ink">Prompt tốt nhất</h3>
               <div className="flex flex-wrap items-center gap-2">
@@ -220,7 +220,7 @@ export default function OptimizerPanel({ initialPrompt, onApplyTemplate, onSaveT
           </div>
 
           {/* Lịch sử tiến hoá */}
-          <div className="rounded-2xl border border-line bg-panel p-5">
+          <div className="rounded-2xl border border-glass-edge glass-1 p-5">
             <h3 className="mb-3 text-sm font-bold text-ink">Lịch sử tiến hoá</h3>
             <div className="space-y-3">
               {result.history.map((h) => (

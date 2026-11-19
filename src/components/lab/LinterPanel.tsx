@@ -46,7 +46,7 @@ export default function LinterPanel({ onOptimize }: LinterPanelProps) {
     <>
       <p className="mb-4 text-sm text-muted">Phân tích <span className="font-semibold text-ink">tĩnh</span> một prompt — bắt mâu thuẫn, mơ hồ, thiếu ngữ cảnh, ràng buộc thừa <span className="font-semibold text-ink">trước khi chạy</span>, kèm gợi ý sửa.</p>
 
-      <div className="mb-6 rounded-2xl border border-line bg-panel p-5">
+      <div className="mb-6 rounded-2xl border border-glass-edge glass-1 p-5">
         <label className="mb-1.5 block text-xs font-bold text-muted">Prompt cần kiểm tra</label>
         <textarea
           value={prompt}

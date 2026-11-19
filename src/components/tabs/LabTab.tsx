@@ -42,7 +42,7 @@ export default function LabTab({ libraryTemplates = [], onApplyTemplate, onSaveT
   }, []);
 
   return (
-    <div className="flex-1 overflow-y-auto bg-surface p-4 md:p-6">
+    <div className="flex-1 overflow-y-auto p-4 md:p-6">
       <div className="mx-auto max-w-5xl">
         <div className="mb-5 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">

@@ -28,7 +28,7 @@ export default function StepIdea({ draft, personas, onPatch, onNext }: StepIdeaP
         placeholder="Ví dụ: Viết kịch bản video TikTok 60 giây về mẹo học từ vựng tiếng Anh cho học sinh cấp 3…"
         rows={4}
         autoFocus
-        className="w-full resize-y rounded-2xl border border-line bg-panel/80 p-4 text-sm leading-relaxed text-ink placeholder:text-faint focus:border-violet-400/60 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+        className="w-full resize-y rounded-2xl border border-glass-edge glass-1 p-4 text-sm leading-relaxed text-ink placeholder:text-faint focus:border-violet-400/60 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
       />
 
       <div>

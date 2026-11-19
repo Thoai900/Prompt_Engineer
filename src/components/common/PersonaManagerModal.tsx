@@ -72,7 +72,7 @@ export const PersonaManagerModal: React.FC<PersonaManagerModalProps> = ({ isOpen
         aria-modal="true"
         aria-labelledby="persona-modal-title"
         tabIndex={-1}
-        className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl border border-slate-200/50 bg-white/90 p-6 text-slate-900 shadow-2xl backdrop-blur-md outline-none dark:border-slate-800/50 dark:bg-slate-900/90 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-200"
+        className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl border border-glass-edge glass-3 p-6 text-ink outline-none animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-1 flex items-center justify-between">

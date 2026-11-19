@@ -270,7 +270,7 @@ Output Format:
 ${outputFormat || '(Chưa điền)'}`;
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#FAFAFA] dark:bg-slate-950 overflow-hidden">
+    <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Header bar */}
       <div className="flex-none p-5 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900 flex items-center justify-between z-10">
         <div className="flex items-center gap-3">

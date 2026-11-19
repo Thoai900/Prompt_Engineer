@@ -30,7 +30,7 @@ export default function SuggestionCard({
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.97 }}
-      className="flex gap-3 rounded-2xl border border-line bg-panel/80 p-4 backdrop-blur-sm"
+      className="flex gap-3 rounded-2xl border border-glass-edge glass-1 p-4"
     >
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600/10 text-emerald-700 dark:text-emerald-400">
         {icon}

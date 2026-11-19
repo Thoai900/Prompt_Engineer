@@ -19,7 +19,7 @@ export default function FeedbackForm({ draft }: Props) {
 
   if (sent) {
     return (
-      <div className="flex items-center gap-2 rounded-2xl border border-line bg-panel p-4 text-sm text-muted">
+      <div className="flex items-center gap-2 rounded-2xl border border-glass-edge glass-1 p-4 text-sm text-muted">
         <Check size={15} className="text-emerald-500" /> Đã gửi phản hồi cho chủ app. Cảm ơn bạn!
       </div>
     );
@@ -45,7 +45,7 @@ export default function FeedbackForm({ draft }: Props) {
       : 'border-line bg-surface text-muted hover:bg-hover'}`;
 
   return (
-    <div className="rounded-2xl border border-line bg-panel p-4">
+    <div className="rounded-2xl border border-glass-edge glass-1 p-4">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <span className="text-sm font-semibold text-ink">Kết quả này có tốt không?</span>
         <button onClick={() => setRating('up')} className={pill('up')} aria-pressed={rating === 'up'}><ThumbsUp size={14} /> Tốt</button>

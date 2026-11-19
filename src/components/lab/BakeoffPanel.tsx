@@ -147,7 +147,7 @@ export default function BakeoffPanel() {
     <>
       <p className="mb-4 text-sm text-muted">Chạy cùng một prompt trên nhiều model — đo chất lượng × chi phí × tốc độ để chọn model đáng tiền nhất.</p>
 
-      <div className="mb-6 rounded-2xl border border-line bg-panel p-5">
+      <div className="mb-6 rounded-2xl border border-glass-edge glass-1 p-5">
         <label className="mb-1.5 block text-xs font-bold text-muted">Prompt / chỉ dẫn hệ thống</label>
         <textarea
           value={promptText}
@@ -273,7 +273,7 @@ export default function BakeoffPanel() {
 
       {/* Phase 4: lịch sử các lần so tài + xuất CSV */}
       {history.length > 0 && (
-        <div className="mt-8 rounded-2xl border border-line bg-panel p-5">
+        <div className="mt-8 rounded-2xl border border-glass-edge glass-1 p-5">
           <div className="mb-3 flex items-center justify-between">
             <span className="flex items-center gap-2 text-sm font-bold text-ink">
               <History size={15} className="text-emerald-500" /> Lịch sử so tài ({history.length})

@@ -46,7 +46,7 @@ export default function RevisionTimeline({ suite, onRestore }: Props) {
   const testIndex = (testId: string) => suite.testCases.findIndex((t) => t.id === testId) + 1;
 
   return (
-    <div className="rounded-2xl border border-line bg-panel p-5">
+    <div className="rounded-2xl border border-glass-edge glass-1 p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-xs font-bold text-muted">
           <GitCommitVertical size={14} /> Phiên bản prompt ({scores.length})

@@ -138,7 +138,7 @@ export default function AppPanel({ onOpenHealth }: AppPanelProps) {
       ) : (
         <div className="space-y-4">
           {/* Chọn / thông tin app */}
-          <div className="rounded-2xl border border-line bg-panel p-5">
+          <div className="rounded-2xl border border-glass-edge glass-1 p-5">
             {sharedApp ? (
               <div className="mb-3 flex items-center gap-2 text-sm">
                 <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">App chia sẻ</span>

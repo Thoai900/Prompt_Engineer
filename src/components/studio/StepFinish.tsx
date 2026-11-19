@@ -68,7 +68,7 @@ export default function StepFinish({ finalText, mergedTemplate, personaName, onS
         </p>
       </header>
 
-      <div className="max-h-96 overflow-y-auto custom-scrollbar rounded-2xl border border-line bg-panel/80 p-4">
+      <div className="max-h-96 overflow-y-auto custom-scrollbar rounded-2xl border border-glass-edge glass-1 p-4">
         <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-ink/90">{finalText}</pre>
       </div>
 
