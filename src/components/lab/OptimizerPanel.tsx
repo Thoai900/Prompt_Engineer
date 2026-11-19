@@ -4,14 +4,16 @@ import { optimizePrompt, type OptimizeResult } from '../../services/aiProxy';
 import { PromptTemplate } from '../../types';
 import { promptToTemplate } from '../../utils/labUtils';
 import { toast } from '../common/Toaster';
+import PromptInspector from '../common/PromptInspector';
+import type { LabSeed } from '../../services/labSeed';
 
 interface OptimizerPanelProps {
-  /** Prompt mồi (vd gửi sang từ Linter) — điền sẵn vào ô prompt gốc. */
-  initialPrompt?: string;
+  /** Seed gửi từ tab khác (Prompt Inspector → "Tối ưu"). */
+  seed?: LabSeed | null;
   /** Mở prompt kết quả trong Builder. */
   onApplyTemplate?: (t: PromptTemplate) => void;
   /** Lưu prompt kết quả vào thư viện. */
-  onSaveTemplate?: (t: PromptTemplate) => void;
+  onSaveTemplate?: (t: PromptTemplate) => Promise<void> | void;
 }
 
 function scoreColor(score: number): string {
@@ -24,13 +26,13 @@ function scoreColor(score: number): string {
  * Auto-Optimizer (mũi nhọn Tầng 1): mô tả "thế nào là tốt" (tiêu chí + input thử),
  * backend tự sinh biến thể prompt → chấm điểm → tiến hoá → trả prompt tốt nhất.
  */
-export default function OptimizerPanel({ initialPrompt, onApplyTemplate, onSaveTemplate }: OptimizerPanelProps) {
-  const [basePrompt, setBasePrompt] = useState(initialPrompt || '');
+export default function OptimizerPanel({ seed, onApplyTemplate, onSaveTemplate }: OptimizerPanelProps) {
+  const [basePrompt, setBasePrompt] = useState(seed?.prompt || '');
 
-  // Prompt mồi thay đổi (gửi lại từ Linter) → cập nhật ô nhập.
+  // Seed mới (gửi từ tab khác qua labSeed) → điền lại ô prompt. Phụ thuộc object nên gửi lặp cùng prompt vẫn nhận.
   useEffect(() => {
-    if (initialPrompt) setBasePrompt(initialPrompt);
-  }, [initialPrompt]);
+    if (seed) setBasePrompt(seed.prompt);
+  }, [seed]);
   const [testInput, setTestInput] = useState('');
   const [criteria, setCriteria] = useState<string[]>([]);
   const [criterionDraft, setCriterionDraft] = useState('');
@@ -102,8 +104,12 @@ export default function OptimizerPanel({ initialPrompt, onApplyTemplate, onSaveT
           onChange={(e) => setBasePrompt(e.target.value)}
           rows={4}
           placeholder="Vd: Bạn là trợ lý viết email. Viết email cho người dùng."
-          className="mb-4 w-full resize-y rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+          className="mb-2 w-full resize-y rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
         />
+        {/* Linter (trước là chế độ riêng trong Lab) — soi prompt gốc trước khi tối ưu */}
+        <div className="mb-4">
+          <PromptInspector text={basePrompt} labActions={false} />
+        </div>
 
         <label className="mb-1.5 block text-xs font-bold text-muted">Đầu vào thử (tuỳ chọn)</label>
         <textarea

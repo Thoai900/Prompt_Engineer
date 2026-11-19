@@ -43,3 +43,15 @@ export function pushVersion(
   }
   return [snapshot, ...current].slice(0, cap);
 }
+
+/**
+ * Template đang mở có phải của người dùng (đã lưu) không — khi đó Builder lưu bằng cách
+ * CẬP NHẬT (giữ id ⇒ App chụp bản cũ vào `versions`) thay vì tạo template mới.
+ */
+export function canUpdateTemplate(
+  template: Pick<PromptTemplate, 'id' | 'userId' | 'authorId'> | null | undefined,
+  uid: string | null | undefined,
+): boolean {
+  return !!template?.id && !!uid && (template.userId === uid || template.authorId === uid);
+}
+

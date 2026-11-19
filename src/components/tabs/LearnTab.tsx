@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Puzzle, PenTool, CheckCircle2, Eye, BookOpen,
-  Sparkles, Target, Zap, Users, Trophy, Dices, Bug, Award
+  Sparkles, Target, Zap, Users, Trophy, Dices, Bug, Award, ArrowLeft, ArrowRight, Newspaper
 } from 'lucide-react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
@@ -21,8 +21,12 @@ import DebuggingChallenge from '../learn/DebuggingChallenge';
 import VersusChallenge from '../learn/VersusChallenge';
 import DomainLab from '../learn/DomainLab';
 import PersonalGuide from '../learn/PersonalGuide';
+import AiNewsSection from '../aifuture/AiNewsSection';
+import TutorPanel from '../learn/TutorPanel';
 
-type ViewState = 'dashboard' | LearnModuleId;
+// 'news' = bản tin AI (trước đây ở tab AI Future). Deep-link `?learn=news` mở thẳng.
+// 'tutor' = Gia sư chi tiết (trước đây là chế độ trong Lab).
+type ViewState = 'dashboard' | 'news' | 'tutor' | LearnModuleId;
 type LabDomainId = 'academic' | 'creative' | 'professional' | 'entertainment';
 
 const BADGE_DEFS = [
@@ -56,7 +60,8 @@ interface LearnTabProps {
 
 export default function LearnTab({ libraryTemplates = [] }: LearnTabProps) {
   const { user, authReady } = useWorkspace();
-  const [activeView, setActiveView] = useState<ViewState>('dashboard');
+  const [activeView, setActiveView] = useState<ViewState>(() =>
+    new URLSearchParams(window.location.search).get('learn') === 'news' ? 'news' : 'dashboard');
   const [progress, setProgress] = useState<LearnProgress>(EMPTY_PROGRESS);
   const [loaded, setLoaded] = useState(false);
 
@@ -135,6 +140,25 @@ export default function LearnTab({ libraryTemplates = [] }: LearnTabProps) {
       case 'lab-creative': return renderLab('creative');
       case 'lab-professional': return renderLab('professional');
       case 'lab-entertainment': return renderLab('entertainment');
+      case 'tutor': return (
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+          <div className="mx-auto max-w-5xl">
+            <button onClick={goDashboard} className="mb-4 flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink">
+              <ArrowLeft size={13} /> Về Học viện
+            </button>
+            <h3 className="mb-2 text-lg font-bold text-ink">Gia sư cá nhân hoá</h3>
+            <TutorPanel libraryTemplates={libraryTemplates} />
+          </div>
+        </div>
+      );
+      case 'news': return (
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+          <button onClick={goDashboard} className="mb-4 flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink">
+            <ArrowLeft size={13} /> Về Học viện
+          </button>
+          <AiNewsSection />
+        </div>
+      );
       default: return renderDashboard();
     }
   };
@@ -212,7 +236,7 @@ export default function LearnTab({ libraryTemplates = [] }: LearnTabProps) {
       </section>
 
       {/* Gợi ý cá nhân hóa từ chẩn đoán kỹ năng thật */}
-      <PersonalGuide libraryTemplates={libraryTemplates} onNavigate={(view) => setActiveView(view)} />
+      <PersonalGuide libraryTemplates={libraryTemplates} onNavigate={(view) => setActiveView(view)} onOpenTutor={() => setActiveView('tutor')} />
 
       {/* Hành trình cơ bản (Complexity Tiers) */}
       <section>
@@ -288,6 +312,23 @@ export default function LearnTab({ libraryTemplates = [] }: LearnTabProps) {
              onClick={() => setActiveView('versus')}
            />
         </div>
+      </section>
+
+      {/* Bản tin AI (chuyển từ tab AI Future) — chỉ tải khi mở để không gọi AI mỗi lần vào Learn */}
+      <section>
+        <button
+          onClick={() => setActiveView('news')}
+          className="flex w-full cursor-pointer items-center justify-between gap-4 rounded-3xl border border-line bg-panel p-5 text-left shadow-sm transition-colors hover:bg-hover"
+        >
+          <div className="flex items-center gap-3">
+            <Newspaper className="shrink-0 text-indigo-600" />
+            <div>
+              <h3 className="text-sm font-bold text-ink">Bản tin AI</h3>
+              <p className="mt-0.5 text-xs text-muted">Tin tức và xu hướng AI mới nhất, tóm tắt kèm mức độ ảnh hưởng.</p>
+            </div>
+          </div>
+          <ArrowRight size={16} className="shrink-0 text-faint" />
+        </button>
       </section>
 
       {/* Cộng đồng (Social) */}

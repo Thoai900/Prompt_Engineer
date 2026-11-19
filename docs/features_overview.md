@@ -25,19 +25,21 @@ Dự án **Prompt Builder** là một môi trường phát triển tích hợp (
     *   **Simulator Panel**: Chạy mô phỏng toàn bộ quy trình từ nút bắt đầu đến nút cuối cùng, hiển thị luồng dữ liệu truyền qua từng node.
     *   **Test Cases Panel**: Chạy thử nghiệm đồng thời nhiều dữ liệu đầu vào. Tự động chấm điểm (Pass/Fail) dựa trên **Tiêu chí đánh giá chất lượng tự động** (AI-based Evaluation Criteria) do người dùng định nghĩa cho toàn bộ dự án.
 
-### 1.4. Trình Cải Tiến AI (EnhancerTab)
-*   **Chức năng**: Tối ưu hóa các prompt viết tay đơn giản thành prompt chuyên nghiệp, rõ ràng.
+### 1.4. Tăng cường nhanh (chế độ của Prompt Studio — trước là tab AI Enhancer)
+*   **Chức năng**: Tối ưu hóa các prompt viết tay đơn giản thành prompt chuyên nghiệp, rõ ràng. Mở bằng nút "Tăng cường nhanh" ở đầu Studio (không cần đăng nhập); link cũ `#enhancer` tự chuyển về đây.
 *   **Cấu hình**: Người dùng chọn các chế độ: Cấu trúc (Structure), Ngữ cảnh (Context), Độ rõ ràng (Clarity), và Giọng điệu (Tone) để AI tiến hành viết lại prompt.
 
-### 1.5. Thư Viện Prompt (LibraryTab)
+### 1.5. Thư Viện — Mẫu prompt (`library/TemplatesView`)
+*   **Vị trí**: tab **Thư viện** (gộp Library · Rules & Skills · LLM Config), loại "Mẫu prompt". Ô tìm chung ở đầu tab tìm mọi loại.
 *   **Chức năng**: Bộ sưu tập các mẫu prompt được sắp xếp và phân loại theo nhiều danh mục (Học thuật, Viết lách, Lập trình, Sáng tạo, v.v.).
 *   **Hành động**: Hỗ trợ xem trước (Preview), sao chép (Copy), Remix (chuyển thẳng prompt sang tab Builder để chỉnh sửa), và Thêm vào dự án hiện có (Add to project modal).
 
-### 1.6. Vành Đai Tiện Ích (UtilityBeltTab)
-*   **Chức năng**: Quản lý cài đặt cấu hình nâng cao của hệ thống.
+### 1.6. Thư Viện — LLM Config (`library/ConfigsView`)
+*   **Chức năng**: Quản lý cấu hình Custom Instructions cho Gemini/ChatGPT/Claude (loại "LLM Config" trong tab Thư viện; link `#utilitybelt` cũ tự chuyển về đây). Gợi ý gõ nhanh, sao lưu và thống kê sử dụng nằm ở modal **Cài đặt** (chân sidebar).
 *   **Cơ chế**: Cho phép thiết lập các System Instruction chung, cấu hình Profile lập trình viên để định hướng cách AI phản hồi.
 
-### 1.7. Quy Tắc & Kỹ Năng (RulesSkillsTab)
+### 1.7. Thư Viện — Rule & Skill (`library/RulesSkillsView`)
+*   **Vị trí**: loại "Rule" và "Skill" trong tab Thư viện; link `#rulesskills` cũ tự chuyển về đây.
 *   **Chức năng**: Tạo các Quy tắc ứng xử (AI Rules) và Kỹ năng đặc thù (AI Skills) để đính kèm vào các Prompt Blocks.
 *   **Ý nghĩa**: Giúp tái sử dụng các đoạn hướng dẫn hành vi phức tạp (ví dụ: quy tắc định dạng LaTeX, quy tắc không giải hộ bài tập) trên nhiều prompt khác nhau.
 
@@ -53,5 +55,5 @@ Dự án **Prompt Builder** là một môi trường phát triển tích hợp (
         *   **Stage 3**: Thực chiến (Chống Prompt Injection, tối ưu hóa).
         *   **Thử thách**: Chế độ sửa lỗi prompt bị hỏng (Debugging Challenge), Đấu đối kháng prompt tốt/xấu (Versus Challenge) và Phòng thí nghiệm theo tên miền chuyên ngành (Domain Labs).
 
-### 1.9. Tương Lai AI (AIFutureTab)
-*   **Chức năng**: Hiển thị mô hình 3D tương tác mô phỏng kiến trúc mạng nơ-ron Transformer và các Attention Layers. Cung cấp bảng tin công nghệ real-time để người dùng cập nhật xu hướng AI mới nhất.
+### 1.9. Bản tin AI (trong tab Learn — trước là tab AI Future)
+*   **Chức năng**: Bảng tin công nghệ để người dùng cập nhật xu hướng AI mới nhất. Mở từ thẻ "Bản tin AI" trên trang Học viện; link cũ `#aifuture` tự chuyển về đây. Mô hình 3D cũ đã gỡ.

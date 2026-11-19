@@ -1,31 +1,31 @@
 import { toast } from '../common/Toaster';
 import { confirmDialog } from '../common/ConfirmDialog';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Zap, Brain, Settings, Sliders, Copy, Check, RotateCcw,
   Sparkles, Plus, Trash2, HelpCircle, ArrowRight, BookOpen, Info,
-  CheckCircle, MessageSquare, Save, Terminal, Globe, Cpu, Compass
+  CheckCircle, MessageSquare, Save, Terminal, Globe, Cpu
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { optimizeCustomInstructions } from '../../services/aiService';
-import { useWorkspace } from '../../context/WorkspaceContext';
-import BackupPanel from '../common/BackupPanel';
-import UsageStatsPanel from '../common/UsageStatsPanel';
-import LibraryExplorer from '../library-explorer/LibraryExplorer';
-import AuthoringWizard from '../authoring/AuthoringWizard';
+import { LIBRARY_CHANGED_EVENT, type LibraryChangedKind } from '../../services/libraryNav';
 import { CustomProfile } from '../../types';
-import { DEFAULT_MODEL } from '../../config/models';
 import { LLM_CONFIG_PRESETS as PRESETS } from '../../data/llmConfigPresets';
 import DomainChips from '../common/DomainChips';
 import { filterByDomain } from '../../utils/presetFilter';
 
-interface UtilityBeltTabProps {
+interface ConfigsViewProps {
   user: User | null;
   onSaveTemplate?: (template: any) => Promise<void>;
+  /** Mở sẵn một cấu hình (từ kết quả tìm kiếm / deep-link). */
+  focus?: { id: string; nonce: number } | null;
 }
 
-export default function UtilityBeltTab({ user, onSaveTemplate }: UtilityBeltTabProps) {
-  const { ghostTextEnabled, setGhostTextEnabled } = useWorkspace();
+/**
+ * LLM Config trong tab Thư viện (trước là tab LLM Config riêng). Gợi ý gõ nhanh,
+ * sao lưu và thống kê sử dụng đã chuyển sang modal Cài đặt.
+ */
+export default function ConfigsView({ user, onSaveTemplate, focus }: ConfigsViewProps) {
   // Load profiles from localStorage or initialize with presets
   const [profiles, setProfiles] = useState<CustomProfile[]>(() => {
     try {
@@ -57,8 +57,31 @@ export default function UtilityBeltTab({ user, onSaveTemplate }: UtilityBeltTabP
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [history, setHistory] = useState<Omit<CustomProfile, 'id' | 'name'> | null>(null);
   const [copyStates, setCopyStates] = useState<Record<string, boolean>>({});
-  const [explorerOpen, setExplorerOpen] = useState(false);
-  const [wizardOpen, setWizardOpen] = useState(false);
+
+  // Nhập từ GitHub / tạo bằng AI ở LibraryHub → nạp cấu hình mới nhất và chọn nó.
+  useEffect(() => {
+    const onChanged = (e: Event) => {
+      if ((e as CustomEvent<LibraryChangedKind>).detail !== 'config') return;
+      try {
+        const stored = localStorage.getItem('llm_custom_profiles');
+        const list: CustomProfile[] = stored ? JSON.parse(stored) : [];
+        const added = list[list.length - 1];
+        if (added) {
+          setProfiles(prev => (prev.some(p => p.id === added.id) ? prev : [...prev, added]));
+          setActiveProfileId(added.id);
+        }
+      } catch { /* bỏ qua */ }
+    };
+    window.addEventListener(LIBRARY_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(LIBRARY_CHANGED_EVENT, onChanged);
+  }, []);
+
+  // Mở sẵn cấu hình được chọn từ kết quả tìm kiếm.
+  const handledFocus = useRef<number | null>(null);
+  useEffect(() => {
+    if (!focus || handledFocus.current === focus.nonce) return;
+    if (profiles.some(p => p.id === focus.id)) { handledFocus.current = focus.nonce; setActiveProfileId(focus.id); }
+  }, [focus, profiles]);
   const [profileDomain, setProfileDomain] = useState<string | null>(null);
 
   // Sync editor fields with the active profile
@@ -289,37 +312,6 @@ ${outputFormat || '(Chưa điền)'}`;
         
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setGhostTextEnabled(!ghostTextEnabled)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer border ${
-              ghostTextEnabled
-                ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700'
-                : 'bg-transparent text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700 hover:border-violet-400'
-            }`}
-            title="Bật/tắt gợi ý gõ nhanh (ghost-text). Nhấn Tab để điền."
-          >
-            <Sparkles size={14} />
-            Gợi ý gõ nhanh: {ghostTextEnabled ? 'BẬT' : 'TẮT'}
-          </button>
-
-          <button
-            onClick={() => setExplorerOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/50 rounded-xl transition-all cursor-pointer active:scale-95"
-            title="Khám phá & nhập persona/system-prompt từ GitHub"
-          >
-            <Compass size={14} />
-            Khám phá GitHub
-          </button>
-
-          <button
-            onClick={() => setWizardOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all cursor-pointer active:scale-95 shadow-sm"
-            title="Tạo cấu hình bằng AI từ 1 câu mô tả"
-          >
-            <Sparkles size={14} />
-            Tạo bằng AI
-          </button>
-
-          <button
             onClick={handleCreateNewProfile}
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-black text-white dark:text-slate-900 bg-slate-900 dark:bg-white hover:bg-indigo-600 dark:hover:bg-indigo-100 rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer"
           >
@@ -452,10 +444,6 @@ ${outputFormat || '(Chưa điền)'}`;
                 className="w-full min-h-[90px] px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-orange-500 text-xs text-slate-600 font-medium leading-relaxed shadow-sm bg-white"
               />
             </div>
-
-            {/* Công cụ dữ liệu: sao lưu/khôi phục (H6) + thống kê sử dụng AI (M2) */}
-            <BackupPanel />
-            <UsageStatsPanel />
           </div>
 
           {/* Action Row Editor */}
@@ -957,50 +945,6 @@ ${outputFormat || '(Chưa điền)'}`;
         </div>
       </div>
 
-      <LibraryExplorer
-        open={explorerOpen}
-        onClose={() => setExplorerOpen(false)}
-        user={user}
-        defaultCategory="config"
-        categories={['config']}
-        onImported={(target) => {
-          if (target === 'config') {
-            try {
-              const stored = localStorage.getItem('llm_custom_profiles');
-              const list: CustomProfile[] = stored ? JSON.parse(stored) : [];
-              const imported = list[list.length - 1];
-              if (imported) {
-                setProfiles(prev => {
-                  const merged = prev.some(p => p.id === imported.id) ? prev : [...prev, imported];
-                  saveToLocalStorage(merged);
-                  return merged;
-                });
-                setActiveProfileId(imported.id);
-              }
-            } catch { /* bỏ qua */ }
-          }
-          setExplorerOpen(false);
-        }}
-      />
-
-      <AuthoringWizard
-        open={wizardOpen}
-        onClose={() => setWizardOpen(false)}
-        user={user}
-        defaultKind="config"
-        model={DEFAULT_MODEL}
-        onCreated={() => {
-          try {
-            const stored = localStorage.getItem('llm_custom_profiles');
-            const list: CustomProfile[] = stored ? JSON.parse(stored) : [];
-            const created = list[list.length - 1];
-            if (created) {
-              setProfiles(prev => (prev.some(p => p.id === created.id) ? prev : [...prev, created]));
-              setActiveProfileId(created.id);
-            }
-          } catch { /* bỏ qua */ }
-        }}
-      />
     </div>
   );
 }

@@ -6,7 +6,7 @@ import {
   ChevronDown, ChevronRight, AlignLeft, Minimize2, Briefcase, 
   Menu, User, Pin, Send, Clock, Undo, Redo, Shield, AlertCircle, Brain,
   Download, FileText, FileJson, Printer, ScrollText, Workflow,
-  Wrench, Settings, Loader2, Eye
+  Wrench, Settings, Loader2, Eye, History
 } from 'lucide-react';
 import { AVAILABLE_BLOCKS, BLOCK_SUGGESTIONS } from '../../data';
 import { PromptBlock, PromptTemplate, AiRule, AiSkill, TabType, PromptVariable, BlockType } from '../../types';
@@ -15,7 +15,7 @@ import { usePromptBlocks } from '../../hooks/usePromptBlocks';
 import { usePlaygroundSession } from '../../hooks/usePlaygroundSession';
 import { BuilderSidebar } from '../builder/BuilderSidebar';
 import { OpenInAiBar } from '../builder/OpenInAiBar';
-import { PromptMeter } from '../builder/PromptMeter';
+import PromptInspector from '../common/PromptInspector';
 import { PromptBlockList } from '../builder/PromptBlockList';
 import { EmptyStateGenerator } from '../builder/EmptyStateGenerator';
 import { PlaygroundPanel } from '../builder/PlaygroundPanel';
@@ -23,6 +23,8 @@ import { SaveTemplateModal } from '../builder/modals/SaveTemplateModal';
 import { QuickPromptModal } from '../builder/modals/QuickPromptModal';
 import { UserProfileModal } from '../builder/modals/UserProfileModal';
 import AddToProjectModal from '../modals/AddToProjectModal';
+import VersionHistoryList from '../common/VersionHistoryList';
+import { canUpdateTemplate } from '../../utils/templateVersionUtils';
 import { autoFillVariables, generateStructuredTemplateFromTopic, type AiActionType } from '../../services/aiService';
 import { routeQuickFill, routeAutoBlock } from '../../services/promptRouter';
 import StepNarrator from '../common/StepNarrator';
@@ -123,6 +125,27 @@ export default function BuilderTab({
   const [templateLanguage, setTemplateLanguage] = useState('vi');
   const [isPublicTemplate, setIsPublicTemplate] = useState(false);
   const [isSavedAsFramework, setIsSavedAsFramework] = useState(false);
+  // H2 cho Builder: template của tôi đang mở → mặc định CẬP NHẬT (giữ id ⇒ App chụp bản cũ vào versions).
+  const canUpdate = canUpdateTemplate(initialTemplate, user?.uid);
+  const [saveMode, setSaveMode] = useState<'update' | 'new'>('new');
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const templateVersions = canUpdate ? (initialTemplate?.versions || []) : [];
+
+  /** Mở modal lưu: với template của tôi thì điền sẵn thông tin để cập nhật. */
+  const openSaveModal = () => {
+    if (canUpdate && initialTemplate) {
+      setSaveMode('update');
+      setTemplateTitle(initialTemplate.title || '');
+      setTemplateDesc(initialTemplate.description || '');
+      setTemplateTags((initialTemplate.tags || []).join(', '));
+      setTemplateLanguage(initialTemplate.language || 'vi');
+      setIsPublicTemplate(!!initialTemplate.isPublic);
+      if (initialTemplate.category) setTemplateCategory(initialTemplate.category);
+    } else {
+      setSaveMode('new');
+    }
+    setIsModalOpen(true);
+  };
   
   // Custom states for options
   const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState<boolean>(false);
@@ -498,20 +521,26 @@ export default function BuilderTab({
       options: v.options
     }));
 
-    const newTemplate: PromptTemplate = {
-      id: `custom-${Date.now()}`,
+    const fields = {
       title: templateTitle,
       description: templateDesc || 'Custom template created by you.',
       category: templateCategory,
       tags: templateTags.split(',').map(t => t.trim()).filter(Boolean),
       language: templateLanguage,
       isPublic: isPublicTemplate,
-      version: 'v1.0',
-      status: 'Published',
-      metrics: { usageCount: 0, upvotes: 0 },
       variables: parsedVars,
-      blocks: [...blocks]
+      blocks: [...blocks],
     };
+    // Cập nhật template của tôi: giữ id + các trường khác (App chụp bản cũ vào versions).
+    const newTemplate: PromptTemplate = canUpdate && saveMode === 'update' && initialTemplate
+      ? { ...initialTemplate, ...fields }
+      : {
+          id: `custom-${Date.now()}`,
+          ...fields,
+          version: 'v1.0',
+          status: 'Published',
+          metrics: { usageCount: 0, upvotes: 0 },
+        };
     onSaveTemplate(newTemplate);
 
     if (isSavedAsFramework) {
@@ -1102,7 +1131,7 @@ export default function BuilderTab({
                  </div>
 
                  {blocks.length > 0 && (
-                   <PromptMeter text={generatePreviewContent(false, 'combined')} />
+                   <PromptInspector text={generatePreviewContent(false, 'combined')} />
                  )}
 
                  {blocks.length > 0 && (
@@ -1111,12 +1140,22 @@ export default function BuilderTab({
 
                  <div className="flex gap-2 relative">
                     <button
-                       onClick={() => setIsModalOpen(true)}
+                       onClick={openSaveModal}
                        className="flex-1 touch-manipulation py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 h-10"
                     >
                        <Save size={14} />
-                       Lưu Template
+                       {canUpdate ? 'Lưu / Cập nhật' : 'Lưu Template'}
                     </button>
+
+                    {templateVersions.length > 0 && (
+                      <button
+                        onClick={() => setIsHistoryOpen(true)}
+                        title={`Lịch sử phiên bản (${templateVersions.length}) — xem khác biệt, đưa bản cũ vào trình soạn`}
+                        className="touch-manipulation py-2.5 px-3 bg-panel border border-line text-muted hover:text-ink font-bold text-xs rounded-xl transition-colors cursor-pointer active:scale-95 flex items-center justify-center gap-1 h-10 shadow-sm"
+                      >
+                        <History size={14} /> {templateVersions.length}
+                      </button>
+                    )}
 
                     <div className="relative">
                       <button 
@@ -1215,7 +1254,34 @@ export default function BuilderTab({
         setTemplateTags={setTemplateTags}
         isPublicTemplate={isPublicTemplate}
         setIsPublicTemplate={setIsPublicTemplate}
+        updateTarget={canUpdate && initialTemplate ? { title: initialTemplate.title, versionCount: templateVersions.length } : null}
+        saveMode={saveMode}
+        setSaveMode={setSaveMode}
       />
+
+      {isHistoryOpen && initialTemplate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4" onClick={() => setIsHistoryOpen(false)}>
+          <div role="dialog" aria-modal="true" aria-label="Lịch sử phiên bản" onClick={(e) => e.stopPropagation()} className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl">
+            <div className="flex items-center justify-between border-b border-line px-5 py-3">
+              <h3 className="text-sm font-bold text-ink">“{initialTemplate.title}” — lịch sử phiên bản</h3>
+              <button onClick={() => setIsHistoryOpen(false)} aria-label="Đóng" className="rounded-lg p-1.5 text-muted hover:bg-hover hover:text-ink"><X size={16} /></button>
+            </div>
+            <div className="overflow-y-auto p-4">
+              <VersionHistoryList
+                versions={templateVersions}
+                currentBlocks={blocks}
+                currentLabel="trình soạn"
+                restoreHint={'"Khôi phục" đưa bản cũ vào trình soạn; bấm Lưu / Cập nhật để chốt (bản đang có vẫn được giữ trong lịch sử).'}
+                onRestore={(v) => {
+                  loadBlocksFromTemplate({ ...initialTemplate, blocks: (v.blocks || []).map((b) => ({ ...b })) });
+                  setIsHistoryOpen(false);
+                  toast.success('Đã đưa bản cũ vào trình soạn — bấm Lưu / Cập nhật để chốt.');
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <QuickPromptModal
         isOpen={isQuickPromptModalOpen}

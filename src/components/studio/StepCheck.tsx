@@ -6,10 +6,10 @@
 import React, { useState } from 'react';
 import { CheckCircle2, Loader2, Stethoscope, Wand2 } from 'lucide-react';
 import { toast } from '../common/Toaster';
-import type { LintIssue } from '../../services/aiService';
 import { PromptBlock } from '../../types';
 import { StudioDraft, buildFixRequest, normalizeBlockType } from '../../utils/studioFlow';
 import SuggestionCard from './SuggestionCard';
+import LintIssueList from '../common/LintIssueList';
 
 interface StepCheckProps {
   draft: StudioDraft;
@@ -17,16 +17,6 @@ interface StepCheckProps {
   assembledText: string;
   onPatch: (patch: Partial<StudioDraft>) => void;
 }
-
-const SEVERITY_STYLES: Record<LintIssue['severity'], string> = {
-  high: 'border-rose-300/50 bg-rose-500/10 text-rose-500 dark:border-rose-800/50',
-  medium: 'border-amber-300/50 bg-amber-500/10 text-amber-600 dark:border-amber-800/50 dark:text-amber-400',
-  low: 'border-sky-300/50 bg-sky-500/10 text-sky-600 dark:border-sky-800/50 dark:text-sky-400',
-};
-
-const SEVERITY_LABELS: Record<LintIssue['severity'], string> = {
-  high: 'Nghiêm trọng', medium: 'Trung bình', low: 'Nhẹ',
-};
 
 export default function StepCheck({ draft, assembledText, onPatch }: StepCheckProps) {
   const [isLinting, setIsLinting] = useState(false);
@@ -116,22 +106,7 @@ export default function StepCheck({ draft, assembledText, onPatch }: StepCheckPr
           <div className="text-xs font-bold text-faint">
             {issues.length} vấn đề tìm thấy
           </div>
-          {issues.map((issue, i) => (
-            <div key={i} className="rounded-2xl border border-glass-edge glass-1 p-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${SEVERITY_STYLES[issue.severity]}`}>
-                  {SEVERITY_LABELS[issue.severity]}
-                </span>
-                <span className="text-xs font-semibold text-faint">{issue.category}</span>
-              </div>
-              <p className="mt-2 text-sm leading-relaxed text-ink">{issue.message}</p>
-              {issue.suggestion && (
-                <p className="mt-1.5 text-xs leading-relaxed text-muted">
-                  <span className="font-semibold text-violet-500">Gợi ý:</span> {issue.suggestion}
-                </p>
-              )}
-            </div>
-          ))}
+          <LintIssueList issues={issues} />
 
           {pendingFix ? (
             <SuggestionCard

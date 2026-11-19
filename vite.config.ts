@@ -28,9 +28,6 @@ export default defineConfig(() => {
               }
               // Thư viện nặng & chỉ dùng ở một số nơi → tách riêng để không kéo
               // theo bundle khởi động. Chúng chỉ được tải khi tab/component dùng tới.
-              if (id.includes('/three/') || id.includes('\\three\\')) {
-                return 'three';
-              }
               if (
                 id.includes('react-syntax-highlighter') ||
                 id.includes('refractor') ||

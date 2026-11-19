@@ -1,6 +1,6 @@
 import { toast } from '../common/Toaster';
 import { confirmDialog } from '../common/ConfirmDialog';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Sparkles, Plus, Trash, Copy, Check, FileDown,
   RefreshCw, Sliders, ChevronUp, ChevronDown,
@@ -14,9 +14,7 @@ import { skillsStore, useSkills } from '../../services/collectionStore';
 import { GEMINI_MODEL_OPTIONS } from '../../config/models';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import LibraryExplorer from '../library-explorer/LibraryExplorer';
-import { ExternalLink, Compass } from 'lucide-react';
-import AuthoringWizard from '../authoring/AuthoringWizard';
+import { ExternalLink } from 'lucide-react';
 import DomainChips from '../common/DomainChips';
 import { filterByDomain } from '../../utils/presetFilter';
 
@@ -39,9 +37,11 @@ interface SkillsPanelProps {
   onApplyTemplate?: (template: PromptTemplate) => void;
   selectedModel: string;
   onSelectModel: (model: string) => void;
+  /** Mở sẵn một skill (từ kết quả tìm kiếm / deep-link). */
+  focus?: { id: string; nonce: number } | null;
 }
 
-export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSelectModel }: SkillsPanelProps) {
+export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSelectModel, focus }: SkillsPanelProps) {
   // --- skills state ---
   // Bước 3 (một nguồn dữ liệu): skill custom đến từ skillsStore (Firestore khi đăng
   // nhập, localStorage khi là khách).
@@ -89,8 +89,6 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
 
   const [syncError, setSyncError] = useState<string | null>(null);
   const [skillKind, setSkillKind] = useState<'structured' | 'document'>('structured');
-  const [explorerOpen, setExplorerOpen] = useState(false);
-  const [wizardOpen, setWizardOpen] = useState(false);
   const [skillDomain, setSkillDomain] = useState<string | null>(null);
 
   // Chọn preset đầu tiên khi mở panel.
@@ -115,6 +113,16 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
     const records = safeParseArray<SkillRunRecord>(localStorage.getItem(`skill_runs_${skillId}`));
     return records.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   };
+
+  // Mở sẵn skill được chọn từ kết quả tìm kiếm (mỗi nonce một lần, chờ kho nạp xong).
+  // Nhập từ GitHub / tạo bằng AI không cần đọc lại: skillsStore tự cập nhật danh sách.
+  const handledFocus = useRef<number | null>(null);
+  useEffect(() => {
+    if (!focus || handledFocus.current === focus.nonce) return;
+    const skill = skills.find(sk => sk.id === focus.id);
+    if (skill) { handledFocus.current = focus.nonce; selectSkill(skill); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus, skills]);
 
   const selectSkill = (skill: AiSkill) => {
     setSelectedSkillId(skill.id);
@@ -527,20 +535,6 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-xs font-bold text-slate-400">Kỹ năng AI</h3>
             <div className="flex items-center gap-1">
-              <button
-                onClick={() => setWizardOpen(true)}
-                className="p-1.5 hover:bg-violet-50 dark:hover:bg-violet-950/30 text-violet-500 hover:text-violet-600 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-violet-200/50"
-                title="Tạo kỹ năng bằng AI từ 1 câu mô tả"
-              >
-                <Sparkles size={16} />
-              </button>
-              <button
-                onClick={() => setExplorerOpen(true)}
-                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-indigo-500 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-slate-200/50"
-                title="Khám phá & nhập skill từ GitHub"
-              >
-                <Compass size={16} />
-              </button>
               <button
                 onClick={handleCreateNewSkill}
                 className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-emerald-500 hover:text-emerald-600 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-slate-200/50"
@@ -1111,23 +1105,6 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
         </div>
       </div>
 
-      <LibraryExplorer
-        open={explorerOpen}
-        onClose={() => setExplorerOpen(false)}
-        user={user}
-        defaultCategory="skill"
-        categories={['skill']}
-        onImported={() => setExplorerOpen(false)}
-      />
-
-      <AuthoringWizard
-        open={wizardOpen}
-        onClose={() => setWizardOpen(false)}
-        user={user}
-        defaultKind="skill"
-        model={selectedModel}
-        onCreated={() => { /* skillsStore tự cập nhật danh sách */ }}
-      />
     </>
   );
 }

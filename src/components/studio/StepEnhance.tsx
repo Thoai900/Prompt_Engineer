@@ -6,19 +6,19 @@
 import React, { useMemo, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { ChevronDown, ExternalLink, ScrollText, Wrench, X } from 'lucide-react';
-import { AiRule, AiSkill, TabType } from '../../types';
+import { AiRule, AiSkill } from '../../types';
 import { StudioDraft, suggestRules, suggestSkills, toggleId } from '../../utils/studioFlow';
 import SuggestionCard from './SuggestionCard';
+import { openLibrary } from '../../services/libraryNav';
 
 interface StepEnhanceProps {
   draft: StudioDraft;
   rules: AiRule[];
   skills: AiSkill[];
   onPatch: (patch: Partial<StudioDraft>) => void;
-  onNavigateToTab: (tab: TabType) => void;
 }
 
-export default function StepEnhance({ draft, rules, skills, onPatch, onNavigateToTab }: StepEnhanceProps) {
+export default function StepEnhance({ draft, rules, skills, onPatch }: StepEnhanceProps) {
   const [showAll, setShowAll] = useState(false);
 
   const ruleSuggestions = useMemo(() => suggestRules(draft, rules), [draft, rules]);
@@ -160,10 +160,10 @@ export default function StepEnhance({ draft, rules, skills, onPatch, onNavigateT
           </div>
         )}
         <button
-          onClick={() => onNavigateToTab('rulesskills')}
+          onClick={() => openLibrary('rules')}
           className="mt-3 flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-violet-500 transition-colors hover:text-violet-400"
         >
-          <ExternalLink size={11} /> Quản lý Rules & Skills đầy đủ
+          <ExternalLink size={11} /> Quản lý Rules & Skills trong Thư viện
         </button>
       </div>
     </section>

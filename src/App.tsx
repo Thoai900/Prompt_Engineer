@@ -4,7 +4,7 @@
  */
 
 import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { Brain, Briefcase, Drama, FlaskConical, GraduationCap, Home, Library, LogIn, LogOut, Loader2, Moon, Sun, Zap, X, SquarePen, MoreHorizontal, ScrollText, PenTool, PencilLine, Workflow, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Briefcase, Drama, FlaskConical, GraduationCap, Home, Library, LogIn, LogOut, Loader2, Moon, Sun, Zap, X, SquarePen, MoreHorizontal, ScrollText, PenTool, Workflow, ChevronLeft, ChevronRight, Settings, Wrench } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, getDocFromServer, limit, onSnapshot, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
@@ -12,16 +12,14 @@ import { PromptTemplate, TabType } from './types';
 import { useWorkspace } from './context/WorkspaceContext';
 import WorkspaceSwitcher from './components/common/WorkspaceSwitcher';
 import PersonaManagerModal from './components/common/PersonaManagerModal';
+import SettingsModal from './components/common/SettingsModal';
 import HomeTab from './components/tabs/HomeTab'; // eager: là màn hình đầu tiên (landing)
 // Các tab còn lại tải lười (code-split) để giảm bundle khởi động — three.js/motion nặng
 // chỉ được tải khi người dùng thực sự mở tab tương ứng.
-const AIFutureTab = lazy(() => import('./components/tabs/AIFutureTab'));
 const BuilderTab = lazy(() => import('./components/tabs/BuilderTab'));
-const EnhancerTab = lazy(() => import('./components/tabs/EnhancerTab'));
 const LearnTab = lazy(() => import('./components/tabs/LearnTab'));
-const LibraryTab = lazy(() => import('./components/tabs/LibraryTab'));
-const UtilityBeltTab = lazy(() => import('./components/tabs/UtilityBeltTab'));
-const RulesSkillsTab = lazy(() => import('./components/tabs/RulesSkillsTab'));
+// Thư viện: gộp Library · Rules & Skills · LLM Config (spec 2026-11-18-unified-library-design).
+const LibraryHub = lazy(() => import('./components/library/LibraryHub'));
 const ProjectChainTab = lazy(() => import('./components/tabs/ProjectChainTab'));
 const LabTab = lazy(() => import('./components/tabs/LabTab'));
 const StudioTab = lazy(() => import('./components/tabs/StudioTab'));
@@ -38,16 +36,27 @@ import { rulesStore, skillsStore, startCollectionStores } from './services/colle
 import { bumpTemplateUsage } from './services/metricsService';
 import { blocksChanged, pushVersion, snapshotVersion } from './utils/templateVersionUtils';
 import { PRESET_RULES, PRESET_SKILLS } from './presets';
-import { NAV_GROUPS, groupOfTab, targetTabForGroup, type NavGroupId } from './utils/navGroups';
-import type { AiRule, AiSkill } from './types';
+import { LLM_CONFIG_PRESETS } from './data/llmConfigPresets';
+import { openLibrary } from './services/libraryNav';
+import { NAV_GROUPS, groupOfTab, targetTabForGroup, resolveLegacyTab, type NavGroupId } from './utils/navGroups';
+import type { AiRule, AiSkill, CustomProfile } from './types';
 
 // Deep-linking: đồng bộ tab hiện tại với URL hash (vd: #builder) để chia sẻ link
 // và dùng nút back/forward của trình duyệt. Không phụ thuộc thư viện router.
-const VALID_TABS: TabType[] = ['studio', 'home', 'builder', 'projectchain', 'rulesskills', 'utilitybelt', 'library', 'enhancer', 'learn', 'lab', 'aifuture'];
+const VALID_TABS: TabType[] = ['studio', 'home', 'builder', 'projectchain', 'library', 'learn', 'lab'];
 
 // Hash rỗng → Studio (màn hình chính mới); #home vẫn mở landing page cũ.
+// Hash của tab đã gỡ (#enhancer, #aifuture) được chuyển hướng để link cũ không hỏng.
 function getTabFromHash(): TabType {
   const raw = window.location.hash.replace(/^#\/?/, '');
+  const legacy = resolveLegacyTab(raw, window.location.search);
+  if (legacy) {
+    const url = new URL(window.location.href);
+    for (const [k, v] of Object.entries(legacy.params ?? {})) url.searchParams.set(k, v);
+    url.hash = legacy.tab === 'studio' ? '' : legacy.tab;
+    window.history.replaceState(null, '', url);
+    return legacy.tab;
+  }
   return (VALID_TABS as string[]).includes(raw) ? (raw as TabType) : 'studio';
 }
 
@@ -118,6 +127,7 @@ export default function App() {
     activePersona, isInActiveWorkspace,
   } = useWorkspace();
   const [isPersonaModalOpen, setIsPersonaModalOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Template hiển thị theo workspace đang chọn (lọc client-side, không migrate).
   const visibleTemplates = useMemo(
@@ -140,13 +150,17 @@ export default function App() {
     { tab: 'home' as TabType, label: 'Home', icon: <Home size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
     { tab: 'builder' as TabType, label: 'Prompt Builder', icon: <Briefcase size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
     { tab: 'projectchain' as TabType, label: 'Project Chain', icon: <Workflow size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
-    { tab: 'rulesskills' as TabType, label: 'Rules & Skills', icon: <ScrollText size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
-    { tab: 'utilitybelt' as TabType, label: 'LLM Config', icon: <Zap size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
-    { tab: 'library' as TabType, label: 'Library', icon: <Library size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
-    { tab: 'enhancer' as TabType, label: 'AI Enhancer', icon: <PencilLine size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
+    { tab: 'library' as TabType, label: 'Thư viện', icon: <Library size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
     { tab: 'learn' as TabType, label: 'Learn', icon: <GraduationCap size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
     { tab: 'lab' as TabType, label: 'Lab', icon: <FlaskConical size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
-    { tab: 'aifuture' as TabType, label: 'AI Future', icon: <Brain size={18} />, active: NAV_ACTIVE, iconColor: NAV_ICON },
+  ], []);
+
+  // Lệnh palette mở thẳng từng loại trong Thư viện (thay cho tab Rules & Skills / LLM Config cũ).
+  const libraryCommands = useMemo(() => [
+    { id: 'lib-rules', label: 'Thư viện › Rule', icon: <ScrollText size={16} />, run: () => openLibrary('rules') },
+    { id: 'lib-skills', label: 'Thư viện › Skill', icon: <Wrench size={16} />, run: () => openLibrary('skills') },
+    { id: 'lib-configs', label: 'Thư viện › LLM Config', icon: <Zap size={16} />, run: () => openLibrary('configs') },
+    { id: 'settings', label: 'Mở Cài đặt', icon: <Settings size={16} />, run: () => setIsSettingsOpen(true) },
   ], []);
 
   const navItemByTab = useMemo(
@@ -290,6 +304,8 @@ export default function App() {
     return () => unsubs.forEach((u) => u());
   }, [user, authReady]);
 
+  const saveTemplateAndStay = (template: PromptTemplate) => handleSaveTemplate(template, { stay: true });
+
   const handleSelectTemplate = (template: PromptTemplate) => {
     setLoadedTemplate(template);
     setActiveTab('builder');
@@ -312,6 +328,13 @@ export default function App() {
   const getSearchEntries = (): SearchEntry[] => {
     const localRules = rulesStore.getSnapshot().items;
     const localSkills = skillsStore.getSnapshot().items;
+    // LLM Config (chưa vào collectionStore): localStorage thay toàn bộ preset khi đã có (giống ConfigsView).
+    let storedConfigs: CustomProfile[] = LLM_CONFIG_PRESETS;
+    try {
+      const raw = localStorage.getItem('llm_custom_profiles');
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(parsed)) storedConfigs = parsed;
+    } catch { /* dữ liệu hỏng → dùng preset */ }
     const dedupe = <T extends { id: string }>(preset: T[], custom: T[]): T[] => {
       const ids = new Set(custom.map((x) => x.id));
       return [...custom, ...preset.filter((p) => !ids.has(p.id))];
@@ -321,15 +344,21 @@ export default function App() {
       projects: loadLocalProjects(),
       rules: dedupe(PRESET_RULES, localRules),
       skills: dedupe(PRESET_SKILLS, localSkills),
+      configs: storedConfigs,
     });
   };
 
   const handleSelectSearchEntry = (entry: SearchEntry) => {
     if (entry.kind === 'template' && entry.template) handleSelectTemplate(entry.template);
+    else if (entry.kind === 'rule') openLibrary('rules', entry.itemId);
+    else if (entry.kind === 'skill') openLibrary('skills', entry.itemId);
+    else if (entry.kind === 'config') openLibrary('configs', entry.itemId);
     else setActiveTab(entry.tab);
   };
 
-  const handleSaveTemplate = async (template: PromptTemplate) => {
+  // `stay`: lưu xong ở lại tab hiện tại (Lab — vòng chất lượng còn chạy lại Health;
+  // Studio — bước Hoàn tất còn nút "Kiểm thử chất lượng"). Mặc định chuyển sang Library như cũ.
+  const handleSaveTemplate = async (template: PromptTemplate, opts?: { stay?: boolean }) => {
     if (!user) {
       toast('Please login to save templates.');
       return;
@@ -411,7 +440,7 @@ export default function App() {
         next[idx] = stampedTemplate;
         return next;
       });
-      setActiveTab('library');
+      if (!opts?.stay) setActiveTab('library');
     } catch (err) {
       try {
         handleFirestoreError(err, isUpdate ? 'update' : 'create', `templates/${template.id}`);
@@ -430,6 +459,7 @@ export default function App() {
       <ConfirmDialogHost />
       <CommandPalette
         items={navigationItems.map((it) => ({ tab: it.tab, label: it.label, icon: it.icon }))}
+        commands={libraryCommands}
         onNavigate={setActiveTab}
         theme={theme}
         onToggleTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')}
@@ -524,6 +554,12 @@ export default function App() {
                 >
                   <span className="flex items-center gap-2"><Drama size={14} className="text-faint" /> Persona</span>
                   <span className="truncate text-xs text-slate-400">{activePersona?.name || 'Không dùng'}</span>
+                </button>
+                <button
+                  onClick={() => { setIsSettingsOpen(true); setIsMobileMenuOpen(false); }}
+                  className="flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900"
+                >
+                  <Settings size={14} className="text-faint" /> Cài đặt
                 </button>
               </div>
 
@@ -629,6 +665,16 @@ export default function App() {
 
         <div className="mt-auto w-full border-t border-slate-100 px-2 pt-4 dark:border-slate-900">
           <button
+            onClick={() => setIsSettingsOpen(true)}
+            title="Cài đặt: gợi ý gõ nhanh, sao lưu, thống kê sử dụng"
+            className={`mb-2 flex cursor-pointer items-center gap-2 rounded-xl text-xs font-semibold text-muted transition-colors hover:bg-hover hover:text-ink ${
+              isSidebarCollapsed ? 'h-9 w-9 justify-center px-0 mx-auto' : 'w-full px-3.5 py-2'
+            }`}
+          >
+            <Settings size={15} />
+            {!isSidebarCollapsed && <span>Cài đặt</span>}
+          </button>
+          <button
             onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
             title={theme === 'light' ? 'Chuyển sang Giao diện tối' : 'Chuyển sang Giao diện sáng'}
             className={`mb-3 flex cursor-pointer items-center rounded-xl border border-slate-200/50 bg-slate-50/50 text-xs font-semibold text-slate-650 shadow-sm transition-all duration-200 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100 ${
@@ -699,41 +745,31 @@ export default function App() {
             />
           </TabPanel>
           <TabPanel isActive={activeTab === 'library'} mounted={visitedTabs.has('library')}>
-            <LibraryTab
-              onSelectTemplate={handleSelectTemplate}
+            <LibraryHub
+              user={user}
               customTemplates={visibleTemplates}
               communityTemplates={communityTemplates}
-              user={user}
-              onNavigateToTab={setActiveTab}
               activeWorkspaceId={activeWorkspaceId}
+              onSelectTemplate={handleSelectTemplate}
+              onSaveTemplate={handleSaveTemplate}
+              onNavigateToTab={setActiveTab}
+              getSearchEntries={getSearchEntries}
             />
-          </TabPanel>
-          <TabPanel isActive={activeTab === 'enhancer'} mounted={visitedTabs.has('enhancer')}>
-            <EnhancerTab onApplyTemplate={handleSelectTemplate} />
           </TabPanel>
           <TabPanel isActive={activeTab === 'learn'} mounted={visitedTabs.has('learn')}>
             <LearnTab libraryTemplates={visibleTemplates} />
-          </TabPanel>
-          <TabPanel isActive={activeTab === 'aifuture'} mounted={visitedTabs.has('aifuture')}>
-            <AIFutureTab theme={theme} />
-          </TabPanel>
-          <TabPanel isActive={activeTab === 'utilitybelt'} mounted={visitedTabs.has('utilitybelt')}>
-            <UtilityBeltTab user={user} onSaveTemplate={handleSaveTemplate} />
-          </TabPanel>
-          <TabPanel isActive={activeTab === 'rulesskills'} mounted={visitedTabs.has('rulesskills')}>
-            <RulesSkillsTab user={user} onApplyTemplate={handleSelectTemplate} />
           </TabPanel>
           <TabPanel isActive={activeTab === 'projectchain'} mounted={visitedTabs.has('projectchain')}>
             <ProjectChainTab theme={theme} user={user} customTemplates={visibleTemplates} onSaveTemplate={handleSaveTemplate} />
           </TabPanel>
           <TabPanel isActive={activeTab === 'lab'} mounted={visitedTabs.has('lab')}>
-            <LabTab libraryTemplates={visibleTemplates} onApplyTemplate={handleSelectTemplate} onSaveTemplate={handleSaveTemplate} />
+            <LabTab libraryTemplates={visibleTemplates} onApplyTemplate={handleSelectTemplate} onSaveTemplate={saveTemplateAndStay} />
           </TabPanel>
           <TabPanel isActive={activeTab === 'studio'} mounted={visitedTabs.has('studio')}>
             <StudioTab
               user={user}
               authReady={authReady}
-              onSaveTemplate={handleSaveTemplate}
+              onSaveTemplate={saveTemplateAndStay}
               onOpenInBuilder={handleSelectTemplate}
               onNavigateToTab={setActiveTab}
               onLogin={loginWithGoogle}
@@ -775,6 +811,7 @@ export default function App() {
       )}
 
       <PersonaManagerModal isOpen={isPersonaModalOpen} onClose={() => setIsPersonaModalOpen(false)} />
+      <SettingsModal open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
 }

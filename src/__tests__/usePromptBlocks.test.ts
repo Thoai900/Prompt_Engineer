@@ -67,4 +67,21 @@ describe('usePromptBlocks hook', () => {
     
     expect(injected).toBe('Subject is Chemistry and Grade is 10 or {{topic}}');
   });
+
+  it('nạp lại khi mở template mới, kể cả CÙNG id (khôi phục phiên bản cũ); re-render không ghi đè bản nháp', () => {
+    const mk = (content: string) => ({ id: 't1', title: 'T', description: '', blocks: [{ id: 'b1', type: 'task' as const, title: 'Task', content }] });
+    const v2 = mk('bản mới');
+    const { result, rerender } = renderHook(({ t }) => usePromptBlocks(t), { initialProps: { t: v2 } });
+    expect(result.current.blocks[0].content).toBe('bản mới');
+
+    // Người dùng sửa bản nháp; re-render với CÙNG object không được ghi đè.
+    act(() => { result.current.updateBlockContent('b1', 'đang sửa'); });
+    rerender({ t: v2 });
+    expect(result.current.blocks[0].content).toBe('đang sửa');
+
+    // "Khôi phục" mở bản cũ của chính template này (cùng id, object mới) → nạp lại.
+    rerender({ t: mk('bản cũ') });
+    expect(result.current.blocks[0].content).toBe('bản cũ');
+  });
 });
+

@@ -21,18 +21,3 @@ Sử dụng thư viện **Motion** (tên mới của Framer Motion, imported t�
 *   **Hộp thoại Modals**: Cửa sổ Modal hiện lên với hiệu ứng co giãn đàn hồi nhẹ (`scale` animation) kết hợp với lớp nền mờ tối dần (`overlay fade`).
 *   **Kéo thả Blocks (Drag & Drop Layout)**: Tích hợp hiệu ứng sắp xếp vị trí mượt mà nhờ layout animation của thư viện kéo thả, giúp các khối Prompt tự động trượt về vị trí mới mà không bị giật lag.
 *   **Micro-interactions**: Các nút bấm có hiệu ứng phóng to nhẹ khi di chuột qua (`whileHover={{ scale: 1.02 }}`) và thu nhỏ khi nhấn giữ (`whileTap={{ scale: 0.98 }}`).
-
----
-
-## 3. Đồ Họa 3D Tương Tác (Three.js 3D Visualizer)
-
-Tại thẻ **AI Future (AIFutureTab.tsx)**, ứng dụng tích hợp một không gian đồ họa 3D tương tác thời gian thực:
-
-*   **Công nghệ**: Sử dụng thư viện đồ họa **Three.js** (`three`) kết hợp với `OrbitControls` để điều khiển góc nhìn camera.
-*   **Nội dung hiển thị**:
-    *   **Neural Network Mode**: Vẽ một mạng lưới nơ-ron thần kinh 3D bao gồm hàng trăm điểm nút (Nodes) phát sáng kết nối với nhau bằng các đường liên kết (Lines). Các điểm nút chuyển động nhịp nhàng theo hàm toán học sóng sine.
-    *   **Attention Vector Mode**: Mô phỏng không gian vector nơi các điểm dữ liệu bay lơ lửng, thể hiện cách các Attention Layers trong kiến trúc Transformer hoạt động để tập trung vào các cụm từ ngữ cảnh.
-*   **Tương tác người dùng**:
-    *   **Xoay 3D (Rotate)**: Kéo chuột trái để xoay toàn bộ mạng lưới 3D theo mọi góc độ.
-    *   **Thu phóng (Zoom)**: Sử dụng con lăn chuột hoặc cử chỉ thu phóng để tiến sát hoặc lùi xa mạng lưới.
-    *   **Di chuyển (Pan)**: Giữ chuột phải để dịch chuyển vị trí trung tâm của mô hình.

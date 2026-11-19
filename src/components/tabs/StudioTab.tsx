@@ -7,7 +7,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { User } from 'firebase/auth';
-import { ArrowLeft, ArrowRight, Bot, Home, ListOrdered, Loader2, LogIn, RotateCcw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Bot, Home, ListOrdered, Loader2, LogIn, RotateCcw, Zap } from 'lucide-react';
 import { AiRule, AiSkill, PromptTemplate, TabType } from '../../types';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { confirmDialog } from '../common/ConfirmDialog';
@@ -29,6 +29,7 @@ import StepEnhance from '../studio/StepEnhance';
 import StepCheck from '../studio/StepCheck';
 import StepPolish from '../studio/StepPolish';
 import StepFinish from '../studio/StepFinish';
+import QuickEnhance from '../studio/QuickEnhance';
 
 interface StudioTabProps {
   user: User | null;
@@ -53,6 +54,13 @@ const STUDIO_REQUIRE_LOGIN: boolean = true;
 type StudioUiMode = 'rail' | 'copilot';
 const UI_MODE_KEY = 'studio_ui_mode';
 
+/**
+ * Chế độ Studio: dây chuyền nhiều bước, hoặc "Tăng cường nhanh" một bước (thay tab AI Enhancer cũ).
+ * Deep-link `?studio=quick` mở thẳng chế độ nhanh (App chuyển hướng #enhancer cũ về đây).
+ */
+type StudioMode = 'flow' | 'quick';
+const STUDIO_MODE_PARAM = 'studio';
+
 export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBuilder, onNavigateToTab, onLogin }: StudioTabProps) {
   const { personas, activeWorkspaceId } = useWorkspace();
   const [draft, setDraft] = useState<StudioDraft>(() => createEmptyDraft());
@@ -64,6 +72,17 @@ export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBui
   }), [customRules, customSkills]);
   const [uiMode, setUiMode] = useState<StudioUiMode>(() =>
     localStorage.getItem(UI_MODE_KEY) === 'copilot' ? 'copilot' : 'rail');
+
+  const [studioMode, setStudioMode] = useState<StudioMode>(() =>
+    new URLSearchParams(window.location.search).get(STUDIO_MODE_PARAM) === 'quick' ? 'quick' : 'flow');
+
+  const switchStudioMode = (mode: StudioMode) => {
+    setStudioMode(mode);
+    const url = new URL(window.location.href);
+    if (mode === 'quick') url.searchParams.set(STUDIO_MODE_PARAM, 'quick');
+    else url.searchParams.delete(STUDIO_MODE_PARAM);
+    window.history.replaceState(window.history.state, '', url);
+  };
 
   const switchUiMode = (mode: StudioUiMode) => {
     setUiMode(mode);
@@ -131,6 +150,39 @@ export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBui
     if (ok) setDraft(createEmptyDraft());
   };
 
+  const modeToggle = (
+    <div className="flex items-center rounded-lg border border-line bg-panel/60 p-0.5">
+      {([['flow', 'Dây chuyền', <ListOrdered key="i" size={12} />], ['quick', 'Tăng cường nhanh', <Zap key="i" size={12} />]] as const).map(
+        ([mode, label, icon]) => (
+          <button
+            key={mode}
+            onClick={() => switchStudioMode(mode)}
+            className={`flex cursor-pointer items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
+              studioMode === mode ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm' : 'text-muted hover:text-ink'
+            }`}
+          >
+            {icon} {label}
+          </button>
+        ),
+      )}
+    </div>
+  );
+
+  // ── Tăng cường nhanh: một bước, không cần đăng nhập ──
+  if (studioMode === 'quick') {
+    return (
+      <div className="custom-scrollbar h-full w-full overflow-y-auto">
+        <div className="sticky top-0 z-20 border-b border-line/60 bg-glass/70 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 lg:px-8">
+            <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400">Prompt Studio</div>
+            {modeToggle}
+          </div>
+        </div>
+        <QuickEnhance onApplyTemplate={onOpenInBuilder} />
+      </div>
+    );
+  }
+
   // ── Cổng đăng nhập (Studio yêu cầu tài khoản — kho Rules/Library gắn với uid) ──
   if (STUDIO_REQUIRE_LOGIN && !authReady) {
     return (
@@ -169,6 +221,12 @@ export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBui
             <LogIn size={16} /> Đăng nhập Google để bắt đầu
           </button>
           <button
+            onClick={() => switchStudioMode('quick')}
+            className="mt-3 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-line px-4 py-2.5 text-xs font-semibold text-ink transition-colors hover:bg-hover"
+          >
+            <Zap size={13} /> Tăng cường nhanh — không cần đăng nhập
+          </button>
+          <button
             onClick={() => onNavigateToTab('home')}
             className="mt-3 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-semibold text-muted transition-colors hover:bg-hover hover:text-ink"
           >
@@ -197,6 +255,7 @@ export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBui
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {modeToggle}
             {/* Đợt 3: toggle thanh bước ↔ copilot (chỉ đổi cột trái, draft giữ nguyên) */}
             <div className="hidden items-center rounded-lg border border-line bg-panel/60 p-0.5 md:flex">
               <button
@@ -257,7 +316,7 @@ export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBui
               )}
               {stepKey === 'draft' && <StepDraft draft={draft} onPatch={patch} />}
               {stepKey === 'enhance' && (
-                <StepEnhance draft={draft} rules={store.rules} skills={store.skills} onPatch={patch} onNavigateToTab={onNavigateToTab} />
+                <StepEnhance draft={draft} rules={store.rules} skills={store.skills} onPatch={patch} />
               )}
               {stepKey === 'check' && (
                 <StepCheck draft={draft} assembledText={assembledNoPersona} onPatch={patch} />

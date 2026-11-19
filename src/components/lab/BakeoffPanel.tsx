@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Play, Loader2, Plus, X, Gauge, Trophy, BadgeCheck, AlertCircle, Coins, History, Download, Trash2 } from 'lucide-react';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { ALL_MODEL_OPTIONS, estimateCostUSD } from '../../config/models';
@@ -35,10 +35,14 @@ function fmtCostPer1k(costUSD: number): string {
 }
 
 /** So tài cùng một prompt trên nhiều model: chất lượng × chi phí × tốc độ. */
-export default function BakeoffPanel() {
+export default function BakeoffPanel({ initialPrompt }: { initialPrompt?: string }) {
   const { geminiApiKey, groqApiKey, openaiApiKey, useSystemGeminiKey } = useWorkspace();
 
-  const [promptText, setPromptText] = useState('');
+  const [promptText, setPromptText] = useState(initialPrompt || '');
+  // Prompt gửi từ tab khác (Prompt Inspector → "So tài model") → cập nhật ô nhập.
+  useEffect(() => {
+    if (initialPrompt) setPromptText(initialPrompt);
+  }, [initialPrompt]);
   const [userInput, setUserInput] = useState('');
   const [criteria, setCriteria] = useState<string[]>([]);
   const [criterionDraft, setCriterionDraft] = useState('');
