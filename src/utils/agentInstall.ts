@@ -11,13 +11,17 @@ export interface AgentCommand {
 
 /** Tên skill → slug kebab-case an toàn cho đường dẫn thư mục. */
 export function slugifySkill(title: string): string {
-  return title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'skill';
+  return title
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // bỏ dấu tiếng Việt: "Viết thơ" → "viet-tho"
+    .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+    .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'skill';
 }
 
-interface DownloadTarget { label: string; dir: string; note?: string; }
+export interface DownloadTarget { label: string; dir: string; note?: string; }
 
 // Bảng đích tải theo agent — dễ sửa. Đường dẫn Codex cần người dùng xác nhận.
-const DOWNLOAD_TARGETS: DownloadTarget[] = [
+// Dùng chung cho skill từ GitHub (buildInstallCommands) và skill xuất từ Prompt Graph (exporters.ts).
+export const DOWNLOAD_TARGETS: DownloadTarget[] = [
   { label: 'Claude Code (user)', dir: '~/.claude/skills' },
   { label: 'Claude Code (project)', dir: '.claude/skills' },
   { label: 'Codex', dir: '~/.codex/skills', note: 'Xác nhận đường dẫn skills của Codex.' },

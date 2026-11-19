@@ -1,5 +1,5 @@
 import React from 'react';
-import { Copy, FileText, History } from 'lucide-react';
+import { Copy, FileText, History, Package } from 'lucide-react';
 import { toast } from '../common/Toaster';
 import { CompiledGraph, SLOT_COLORS } from '../../utils/graphCompile';
 import { estimateTokens } from '../../config/models';
@@ -8,13 +8,15 @@ interface CompiledPreviewPanelProps {
   compiled: CompiledGraph;
   onSaveVersion: () => void;
   onOpenVersionDrawer: () => void;
+  /** Mở modal xuất Agent Skill (bỏ trống = ẩn nút). */
+  onExportSkill?: () => void;
 }
 
 /**
  * "Nguồn hiểu" chính của Prompt Graph: prompt cuối được lắp ráp REALTIME,
  * mỗi section tô màu theo node nguồn — cắm/rút/bật/tắt node là thấy đổi ngay.
  */
-export function CompiledPreviewPanel({ compiled, onSaveVersion, onOpenVersionDrawer }: CompiledPreviewPanelProps) {
+export function CompiledPreviewPanel({ compiled, onSaveVersion, onOpenVersionDrawer, onExportSkill }: CompiledPreviewPanelProps) {
   const { finalPrompt, sections } = compiled;
 
   const handleCopy = () => {
@@ -45,6 +47,15 @@ export function CompiledPreviewPanel({ compiled, onSaveVersion, onOpenVersionDra
         >
           <FileText size={11} /> Lưu phiên bản
         </button>
+        {onExportSkill && (
+          <button
+            onClick={onExportSkill}
+            title="Xuất thành Agent Skill (SKILL.md) cho Claude Code, Codex…"
+            className="flex items-center gap-1 py-1.5 px-2.5 rounded-lg border border-line/70 text-xs font-bold text-muted hover:text-ink cursor-pointer transition-colors"
+          >
+            <Package size={11} /> Xuất skill
+          </button>
+        )}
         <button
           onClick={handleCopy}
           className="flex items-center gap-1 py-1.5 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer transition-colors"

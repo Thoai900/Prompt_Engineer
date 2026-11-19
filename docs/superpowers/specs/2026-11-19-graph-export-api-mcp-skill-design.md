@@ -1,7 +1,7 @@
 # Thiết kế: Xuất Prompt Graph thành Agent Skill · HTTP API · MCP server (#4)
 
 Ngày: 2026-11-19
-Trạng thái: NHÁP — chờ duyệt (xem "Câu hỏi mở" trước khi build)
+Trạng thái: ĐÃ DUYỆT (2026-11-19, chấp nhận cả 4 đề xuất ở "Câu hỏi mở": (c) · tất cả app · (a) · SDK) · Đợt 1 đang build
 
 ## Mục tiêu
 
@@ -153,7 +153,7 @@ Thuần (vitest):
 Streaming qua API; app legacy nhiều bước; giấu prompt khỏi người xem; thanh toán/thu phí; webhook; OAuth cho MCP
 (dùng API key tĩnh); dashboard thống kê chi tiết; gọi trực tiếp từ trình duyệt bên thứ ba.
 
-## Câu hỏi mở (cần chốt trước khi build Đợt 2)
+## Câu hỏi mở — ĐÃ CHỐT theo đề xuất
 
 1. **Ai trả tiền gọi model?** (a) Key server của app + quota/ngày cho mỗi API key (đề xuất mặc định 100 lượt/ngày,
    chủ hạ được, KHÔNG tự nâng quá trần env `RUN_MAX_DAILY_QUOTA`); (b) bắt buộc người gọi gửi key Gemini/Groq của họ
@@ -167,3 +167,16 @@ Streaming qua API; app legacy nhiều bước; giấu prompt khỏi người xem
 4. **MCP SDK hay tự viết JSON-RPC?** SDK chính thức đúng giao thức hơn nhưng thêm dependency và cần thử chạy trên
    Vercel; tự viết chỉ cần `initialize`/`tools/list`/`tools/call`. Đề xuất **SDK**, rơi về tự viết nếu không chạy ổn
    ở chế độ stateless trên Vercel.
+
+## Ghi chú triển khai Đợt 1
+
+- `graphToSkillMd` / `graphSkillInstallCommands` ở `src/utils/exporters.ts`; tái dùng `compileAppTemplate`
+  (giữ `{{biến}}`, KHÔNG điền mặc định — mặc định ghi trong mục Inputs) và `collectGraphVariables`.
+- `description` frontmatter đặt trong nháy kép (chuỗi JSON) để không vỡ YAML khi có dấu ":".
+- Lệnh cài dùng heredoc với delimiter trong nháy đơn (`<<'PB_SKILL_EOF'`) → shell không khai triển `$`, backtick;
+  nội dung có dòng trùng delimiter thì tự đổi sang `PB_SKILL_EOF_2`… Đã chạy thật lệnh sinh ra trong bash: file tạo
+  ra giống hệt SKILL.md. Chỉ hỗ trợ macOS/Linux/WSL; Windows thuần dùng nút "Tải SKILL.md".
+- `slugifySkill` bỏ dấu tiếng Việt ("Viết thơ" → `viet-tho`); `DOWNLOAD_TARGETS` export dùng chung với
+  `buildInstallCommands`.
+- UI: nút "Xuất skill" trên thanh công cụ panel xem trước prompt của Prompt Graph → `ExportSkillModal`
+  (xem trước, sao chép, tải, lệnh cài theo agent). Mục "Bật API / MCP…" để Đợt 2.

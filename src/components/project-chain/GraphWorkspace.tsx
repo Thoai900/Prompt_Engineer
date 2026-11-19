@@ -16,6 +16,7 @@ import { CompiledPreviewPanel } from './CompiledPreviewPanel';
 import { TestRunPanel } from './TestRunPanel';
 import { ImportTemplateModal } from './ImportTemplateModal';
 import { VersionDrawer } from './VersionDrawer';
+import { ExportSkillModal } from './modals/ExportSkillModal';
 
 interface GraphWorkspaceProps {
   activeProject: PromptProject; // đã migrate sang v3 ở shell
@@ -44,6 +45,7 @@ export function GraphWorkspace({
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [searchTemplateQuery, setSearchTemplateQuery] = useState('');
   const [showVersionDrawer, setShowVersionDrawer] = useState(false);
+  const [showExportSkill, setShowExportSkill] = useState(false);
   const [versionToCompare, setVersionToCompare] = useState<PromptVersion | null>(null);
 
   const compiled = useMemo(() => compileGraph(activeProject, testInputs), [activeProject, testInputs]);
@@ -400,6 +402,7 @@ export function GraphWorkspace({
             compiled={compiled}
             onSaveVersion={handleSaveVersion}
             onOpenVersionDrawer={() => setShowVersionDrawer(true)}
+            onExportSkill={() => setShowExportSkill(true)}
           />
         )}
         {rightTab === 'test' && (
@@ -422,6 +425,8 @@ export function GraphWorkspace({
         templates={filteredTemplates}
         onSelectTemplate={handleImportTemplate}
       />
+
+      <ExportSkillModal isOpen={showExportSkill} onClose={() => setShowExportSkill(false)} project={activeProject} />
 
       <VersionDrawer
         isOpen={showVersionDrawer}

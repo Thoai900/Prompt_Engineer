@@ -92,3 +92,9 @@ describe('buildRepoCommands', () => {
     expect(agy!.prompt).toContain('anthropics/skills');
   });
 });
+
+describe('slugifySkill — tiếng Việt', () => {
+  it('bỏ dấu và đ', () => {
+    expect(slugifySkill('Viết thơ Đường luật')).toBe('viet-tho-duong-luat');
+  });
+});
