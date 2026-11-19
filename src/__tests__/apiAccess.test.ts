@@ -61,3 +61,19 @@ describe('buildCurlExample', () => {
     expect(c).toContain(`-d '{"app":"a1","inputs":{"chude":"it'\\''s","lop":"<lop>"}}'`);
   });
 });
+
+import { buildMcpSetup } from '../utils/apiAccess';
+
+describe('buildMcpSetup', () => {
+  it('lệnh Claude Code đúng thứ tự tài liệu + JSON có type http', () => {
+    const [cmd, cfg] = buildMcpSetup('https://x/api/mcp', 'pb_live_abc');
+    expect(cmd.text).toBe('claude mcp add --transport http promptbuilder https://x/api/mcp \\\n  --header "Authorization: Bearer pb_live_abc"');
+    expect(JSON.parse(cfg.text)).toEqual({
+      mcpServers: { promptbuilder: { type: 'http', url: 'https://x/api/mcp', headers: { Authorization: 'Bearer pb_live_abc' } } },
+    });
+  });
+
+  it('mặc định chỗ giữ $PB_API_KEY', () => {
+    expect(buildMcpSetup('u')[0].text).toContain('Bearer $PB_API_KEY');
+  });
+});

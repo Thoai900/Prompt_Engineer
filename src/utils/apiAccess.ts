@@ -88,3 +88,35 @@ export function buildCurlExample(
 export function quotaToday(now: Date = new Date()): string {
   return now.toISOString().slice(0, 10);
 }
+
+export interface McpSetupSnippet {
+  label: string;
+  kind: 'command' | 'json';
+  text: string;
+  note?: string;
+}
+
+/**
+ * Cách kết nối MCP server (`/api/mcp`) cho agent. Cú pháp Claude Code đối chiếu tài liệu chính thức
+ * (`claude mcp add --transport http <name> <url> --header ...`; JSON `mcpServers` cần `"type": "http"`).
+ */
+export function buildMcpSetup(mcpUrl: string, key = '$PB_API_KEY'): McpSetupSnippet[] {
+  const json = JSON.stringify(
+    { mcpServers: { promptbuilder: { type: 'http', url: mcpUrl, headers: { Authorization: `Bearer ${key}` } } } },
+    null,
+    2,
+  );
+  return [
+    {
+      label: 'Claude Code',
+      kind: 'command',
+      text: `claude mcp add --transport http promptbuilder ${mcpUrl} \\\n  --header "Authorization: Bearer ${key}"`,
+    },
+    {
+      label: 'File cấu hình (.mcp.json / mcpServers)',
+      kind: 'json',
+      text: json,
+      note: 'Agent khác hỗ trợ MCP qua HTTP thường dùng cùng dạng; tên trường có thể khác — xem tài liệu của agent.',
+    },
+  ];
+}

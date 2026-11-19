@@ -1,9 +1,13 @@
 import { createHash } from 'crypto';
 import { GoogleGenAI } from '@google/genai';
 import { SignJWT, importPKCS8 } from 'jose';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HTTP API cho Prompt Graph (Đợt 2 — spec 2026-11-19-graph-export-api-mcp-skill-design.md).
+// HTTP API + MCP server cho Prompt Graph (Đợt 2–3 — spec 2026-11-19-graph-export-api-mcp-skill-design.md).
+// MCP: /api/mcp được rewrite về /api/run?mode=mcp (vercel.json) — dùng chung xác thực/quota/chạy app.
 // TỰ CHỨA (không import file cục bộ) — trùng CÓ CHỦ ĐÍCH với api/health-cron.ts (service account,
 // Firestore REST) và api/optimize.ts (chuỗi model, renderVars).
 //
@@ -65,7 +69,7 @@ export function renderVars(text: string, vars: Record<string, string>): string {
     typeof vars[name] === 'string' && vars[name] !== '' ? vars[name] : m);
 }
 
-export interface SnapshotVariable { name: string; required?: boolean; defaultValue?: string }
+export interface SnapshotVariable { name: string; required?: boolean; description?: string; defaultValue?: string }
 
 /**
  * Kiểm & chuẩn hoá inputs theo biến của app: chỉ nhận chuỗi của biến đã khai báo, áp mặc định,
@@ -263,60 +267,206 @@ function checkRateLimit(id: string): boolean {
 
 // ── Handler ──────────────────────────────────────────────────────────────────
 
+// ── Lõi dùng chung cho HTTP API và MCP ───────────────────────────────────────
+
+interface KeyCtx { keyHash: string; key: Record<string, any> }
+interface AppDoc { id: string; data: Record<string, any> }
+
+/** Bearer → key hợp lệ (chưa thu hồi) + rate-limit theo key. Ném HttpError 401/429. */
+async function authenticate(req: any, res: any): Promise<KeyCtx> {
+  const apiKey = parseBearer(req.headers?.authorization);
+  if (!apiKey) throw new HttpError(401, 'Thiếu hoặc sai API key (Authorization: Bearer pb_live_…).');
+  const keyHash = hashKey(apiKey);
+  if (!checkRateLimit(keyHash)) {
+    res.setHeader('Retry-After', '60');
+    throw new HttpError(429, `Quá ${RL_PER_MIN} yêu cầu/phút cho key này.`);
+  }
+  const keyDoc = await getDocument(`apiKeys/${keyHash}`);
+  if (!keyDoc || keyDoc.data.revokedAt) throw new HttpError(401, 'API key không hợp lệ hoặc đã thu hồi.');
+  return { keyHash, key: keyDoc.data };
+}
+
+/** App gọi được bằng key: đã bật API, có snapshot, cùng chủ với key. */
+function isCallableApp(data: Record<string, any> | undefined, ownerId: unknown): boolean {
+  return !!data && data.apiEnabled === true && typeof data.promptTemplate === 'string' && data.userId === ownerId;
+}
+
+// Không phân biệt "không tồn tại" / "chưa bật API" / "ngoài phạm vi" — tránh dò app của người khác.
+const NOT_FOUND_MSG = 'Không tìm thấy app, hoặc app chưa bật API cho key này.';
+
+async function loadCallableApp(ctx: KeyCtx, appId: string): Promise<AppDoc> {
+  if (!keyAllowsApp(ctx.key.appIds, appId)) throw new HttpError(404, NOT_FOUND_MSG);
+  const app = await getDocument(`sharedApps/${appId}`);
+  if (!app || !isCallableApp(app.data, ctx.key.ownerId)) throw new HttpError(404, NOT_FOUND_MSG);
+  return { id: appId, data: app.data };
+}
+
+/** Kiểm inputs → điền biến → gọi model (BYOK hoặc key server + quota). */
+async function runApp(ctx: KeyCtx, app: AppDoc, rawInputs: unknown, headers: any): Promise<{ output: string; model: string; usage: { today: number; quota: number } | null }> {
+  const variables: SnapshotVariable[] = Array.isArray(app.data.variables) ? app.data.variables : [];
+  const vars = validateInputs(variables, rawInputs);
+  const system = renderVars(app.data.promptTemplate, vars);
+
+  const byokGemini = typeof headers?.['x-gemini-api-key'] === 'string' ? headers['x-gemini-api-key'] : '';
+  const byokGroq = typeof headers?.['x-groq-api-key'] === 'string' ? headers['x-groq-api-key'] : '';
+  if (byokGemini || byokGroq) {
+    // BYOK: gọi đúng nhà cung cấp người gọi chọn, không rơi về key server, không tính quota.
+    const preferred = pickModel(app.data.model);
+    const useGemini = !!byokGemini;
+    const model = useGemini ? (preferred.startsWith('gemini') ? preferred : DEFAULT_GEMINI) : DEFAULT_GROQ;
+    try {
+      const output = useGemini ? await callGemini(byokGemini, model, system) : await callGroq(byokGroq, model, system);
+      return { output, model, usage: null };
+    } catch (e) {
+      throw new HttpError(502, 'Gọi model bằng key của bạn thất bại.', { detail: e instanceof Error ? e.message : undefined });
+    }
+  }
+
+  const cap = Math.max(1, Number(process.env.RUN_MAX_DAILY_QUOTA) || 100);
+  const quota = effectiveQuota(ctx.key.dailyQuota, cap);
+  const today = await consumeQuota(ctx.keyHash, quota); // đếm cả lượt gọi model thất bại (chặn dò lỗi tốn tiền)
+  const { output, model } = await runWithServerKeys(pickModel(app.data.model), system);
+  return { output, model, usage: { today, quota } };
+}
+
+// ── MCP (Đợt 3): /api/mcp → rewrite /api/run?mode=mcp (vercel.json) ─────────────
+
+/** Tên tool MCP từ tên app: bỏ dấu, kebab-case, ≤ 48 ký tự (chừa chỗ hậu tố chống trùng). */
+export function slugifyToolName(name: string): string {
+  return String(name || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+    .slice(0, 48).replace(/-+$/, '') || 'app';
+}
+
+/** JSON Schema cho inputSchema của tool từ biến của app. */
+export function variablesToJsonSchema(variables: SnapshotVariable[]): Record<string, unknown> {
+  const properties: Record<string, unknown> = {};
+  for (const v of variables) {
+    properties[v.name] = {
+      type: 'string',
+      ...(v.description ? { description: v.description } : {}),
+      ...(v.defaultValue ? { default: v.defaultValue } : {}),
+    };
+  }
+  const required = variables.filter((v) => v.required && !v.defaultValue).map((v) => v.name);
+  return { type: 'object', properties, ...(required.length ? { required } : {}) };
+}
+
+export interface McpTool { name: string; appId: string; description: string; inputSchema: Record<string, unknown> }
+
+/**
+ * App → danh sách tool. Sắp theo appId để tên ổn định giữa các lần gọi (server stateless: tools/call
+ * dựng lại danh sách để tìm app theo tên). Trùng tên → thêm hậu tố 6 ký tự đầu của appId.
+ */
+export function buildToolList(apps: AppDoc[]): McpTool[] {
+  const sorted = [...apps].sort((a, b) => a.id.localeCompare(b.id));
+  const used = new Set<string>();
+  return sorted.map((a) => {
+    let name = slugifyToolName(a.data.name);
+    if (used.has(name)) name = `${name}-${a.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toLowerCase()}`;
+    used.add(name);
+    const desc = [a.data.name, a.data.description].filter((x) => typeof x === 'string' && x.trim()).join(' — ');
+    return {
+      name,
+      appId: a.id,
+      description: `${desc || 'App PromptBuilder'}. Trả về văn bản do prompt của app sinh ra.`,
+      inputSchema: variablesToJsonSchema(Array.isArray(a.data.variables) ? a.data.variables : []),
+    };
+  });
+}
+
+/** Các app key gọi được: phạm vi '*' → query app đã bật API của chủ; ngược lại đọc từng app. */
+async function listCallableApps(ctx: KeyCtx): Promise<AppDoc[]> {
+  const appIds: unknown = ctx.key.appIds;
+  if (Array.isArray(appIds) && appIds.includes('*')) {
+    const token = await getAccessToken();
+    const r = await fetch(`${FIRESTORE}/${DOCS}:runQuery`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: 'sharedApps' }],
+          where: { compositeFilter: { op: 'AND', filters: [
+            { fieldFilter: { field: { fieldPath: 'userId' }, op: 'EQUAL', value: { stringValue: String(ctx.key.ownerId) } } },
+            { fieldFilter: { field: { fieldPath: 'apiEnabled' }, op: 'EQUAL', value: { booleanValue: true } } },
+          ] } },
+          limit: 50,
+        },
+      }),
+    });
+    if (!r.ok) throw new Error(`Firestore query ${r.status}`);
+    const rows: any[] = await r.json();
+    return rows
+      .filter((x) => x.document)
+      .map((x) => ({ id: String(x.document.name).split('/').pop() as string, data: fromFsFields(x.document.fields || {}) }))
+      .filter((a) => isCallableApp(a.data, ctx.key.ownerId));
+  }
+  const ids = (Array.isArray(appIds) ? appIds : []).filter((id): id is string => typeof id === 'string').slice(0, 50);
+  const docs = await Promise.all(ids.map(async (id) => ({ id, doc: await getDocument(`sharedApps/${id}`) })));
+  return docs.filter((d) => d.doc && isCallableApp(d.doc.data, ctx.key.ownerId)).map((d) => ({ id: d.id, data: d.doc!.data }));
+}
+
+async function handleMcp(req: any, res: any, ctx: KeyCtx): Promise<void> {
+  const server = new Server({ name: 'promptbuilder', version: '1.0.0' }, { capabilities: { tools: {} } });
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({
+    tools: buildToolList(await listCallableApps(ctx)).map(({ name, description, inputSchema }) => ({ name, description, inputSchema: inputSchema as any })),
+  }));
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const tool = buildToolList(await listCallableApps(ctx)).find((t) => t.name === request.params.name);
+    try {
+      if (!tool) throw new HttpError(404, `Không có tool "${request.params.name}".`);
+      const app = await loadCallableApp(ctx, tool.appId);
+      const result = await runApp(ctx, app, request.params.arguments ?? {}, req.headers);
+      const usage = result.usage ? `\n\n— ${result.usage.today}/${result.usage.quota} lượt hôm nay` : '';
+      return { content: [{ type: 'text' as const, text: result.output + usage }] };
+    } catch (e) {
+      // Lỗi nghiệp vụ (thiếu biến, hết quota…) trả cho agent đọc được, không phải lỗi giao thức.
+      const msg = e instanceof HttpError
+        ? `${e.message}${e.extra ? ' ' + JSON.stringify(e.extra) : ''}`
+        : 'Lỗi máy chủ.';
+      if (!(e instanceof HttpError)) console.error('api/run mcp:', (e as Error)?.message);
+      return { content: [{ type: 'text' as const, text: msg }], isError: true };
+    }
+  });
+
+  // Stateless + trả JSON (không SSE): hợp serverless, mỗi POST một phiên ngắn.
+  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
+  res.on?.('close', () => { transport.close(); server.close(); });
+  await server.connect(transport);
+  let body = req.body;
+  if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = undefined; } }
+  await transport.handleRequest(req, res, body);
+}
+
+function isMcpRequest(req: any): boolean {
+  if (req.query?.mode === 'mcp') return true;
+  try { return new URL(req.url || '', 'http://x').searchParams.get('mode') === 'mcp'; } catch { return false; }
+}
+
+// ── Handler ──────────────────────────────────────────────────────────────────
+
 export default async function handler(req: any, res: any) {
   try {
-    if (req.method !== 'POST') throw new HttpError(405, 'Chỉ hỗ trợ POST.');
-
-    const apiKey = parseBearer(req.headers?.authorization);
-    if (!apiKey) throw new HttpError(401, 'Thiếu hoặc sai API key (Authorization: Bearer pb_live_…).');
-    const keyHash = hashKey(apiKey);
-    if (!checkRateLimit(keyHash)) {
-      res.setHeader('Retry-After', '60');
-      throw new HttpError(429, `Quá ${RL_PER_MIN} yêu cầu/phút cho key này.`);
+    if (isMcpRequest(req)) {
+      const ctx = await authenticate(req, res);
+      await handleMcp(req, res, ctx);
+      return;
     }
+
+    if (req.method !== 'POST') throw new HttpError(405, 'Chỉ hỗ trợ POST.');
+    const ctx = await authenticate(req, res);
 
     let body = req.body;
     if (typeof body === 'string') { try { body = JSON.parse(body); } catch { throw new HttpError(400, 'Body JSON không hợp lệ.'); } }
     const appId = body?.app;
     if (typeof appId !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(appId)) throw new HttpError(400, 'Thiếu hoặc sai `app` (id app).');
 
-    const keyDoc = await getDocument(`apiKeys/${keyHash}`);
-    if (!keyDoc || keyDoc.data.revokedAt) throw new HttpError(401, 'API key không hợp lệ hoặc đã thu hồi.');
-
-    // Không phân biệt "không tồn tại" / "chưa bật API" / "ngoài phạm vi" — tránh dò app của người khác.
-    const notFound = new HttpError(404, 'Không tìm thấy app, hoặc app chưa bật API cho key này.');
-    if (!keyAllowsApp(keyDoc.data.appIds, appId)) throw notFound;
-    const app = await getDocument(`sharedApps/${appId}`);
-    if (!app || app.data.apiEnabled !== true || typeof app.data.promptTemplate !== 'string' || app.data.userId !== keyDoc.data.ownerId) throw notFound;
-
-    const variables: SnapshotVariable[] = Array.isArray(app.data.variables) ? app.data.variables : [];
-    const vars = validateInputs(variables, body?.inputs);
-    const system = renderVars(app.data.promptTemplate, vars);
-
-    const byokGemini = typeof req.headers?.['x-gemini-api-key'] === 'string' ? req.headers['x-gemini-api-key'] : '';
-    const byokGroq = typeof req.headers?.['x-groq-api-key'] === 'string' ? req.headers['x-groq-api-key'] : '';
-
-    if (byokGemini || byokGroq) {
-      // BYOK: gọi đúng nhà cung cấp người gọi chọn, không rơi về key server, không tính quota.
-      const preferred = pickModel(app.data.model);
-      const useGemini = !!byokGemini;
-      const model = useGemini ? (preferred.startsWith('gemini') ? preferred : DEFAULT_GEMINI) : DEFAULT_GROQ;
-      let output: string;
-      try {
-        output = useGemini ? await callGemini(byokGemini, model, system) : await callGroq(byokGroq, model, system);
-      } catch (e) {
-        throw new HttpError(502, 'Gọi model bằng key của bạn thất bại.', { detail: e instanceof Error ? e.message : undefined });
-      }
-      res.status(200).json({ output, model, usage: null });
-      return;
-    }
-
-    const cap = Math.max(1, Number(process.env.RUN_MAX_DAILY_QUOTA) || 100);
-    const quota = effectiveQuota(keyDoc.data.dailyQuota, cap);
-    const today = await consumeQuota(keyHash, quota); // đếm cả lượt gọi model thất bại (chặn dò lỗi tốn tiền)
-    const { output, model } = await runWithServerKeys(pickModel(app.data.model), system);
-    res.status(200).json({ output, model, usage: { today, quota } });
+    const app = await loadCallableApp(ctx, appId);
+    res.status(200).json(await runApp(ctx, app, body?.inputs, req.headers));
   } catch (err: any) {
+    if (res.headersSent) return;
     if (err instanceof HttpError) {
       res.status(err.status).json({ error: err.message, ...(err.extra || {}) });
     } else {

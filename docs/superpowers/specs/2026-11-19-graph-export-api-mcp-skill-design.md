@@ -1,7 +1,7 @@
 # Thiết kế: Xuất Prompt Graph thành Agent Skill · HTTP API · MCP server (#4)
 
 Ngày: 2026-11-19
-Trạng thái: ĐÃ DUYỆT (2026-11-19, chấp nhận cả 4 đề xuất ở "Câu hỏi mở": (c) · tất cả app · (a) · SDK) · Đợt 1–2 đã build
+Trạng thái: ĐÃ DUYỆT (2026-11-19, chấp nhận cả 4 đề xuất ở "Câu hỏi mở": (c) · tất cả app · (a) · SDK) · Đợt 1–3 đã build
 
 ## Mục tiêu
 
@@ -198,3 +198,20 @@ Streaming qua API; app legacy nhiều bước; giấu prompt khỏi người xem
   mọi app, tuỳ chọn "Chỉ app này"), key hiện một lần, danh sách key + lượt hôm nay, thu hồi.
 - Test: hàm thuần client/server + chạy cả handler với Firestore/OAuth/Groq giả lập qua `fetch` (quota, BYOK, 401/404/400/
   405/429, tranh chấp ghi). Chưa kiểm với Firestore/Vercel thật; rules chưa có emulator.
+
+## Ghi chú triển khai Đợt 3
+
+- MCP chạy trong CÙNG function `api/run.ts` (quyết định (a)): `vercel.json` rewrite `/api/mcp` → `/api/run?mode=mcp`.
+  Phần lõi tách thành `authenticate` / `loadCallableApp` / `runApp`, HTTP API và MCP dùng chung (quota, BYOK, rate-limit).
+- SDK `@modelcontextprotocol/sdk` (quyết định SDK): `Server` mức thấp + `StreamableHTTPServerTransport`
+  stateless, `enableJsonResponse: true` (không SSE). Dùng `Server` thay `McpServer` để khai `inputSchema` bằng JSON Schema
+  trực tiếp từ biến (không cần zod). Key sai → HTTP 401 trước khi vào MCP.
+- `tools/list`: phạm vi `*` → truy vấn `sharedApps` theo `userId` + `apiEnabled` (hai điều kiện bằng); phạm vi danh sách →
+  đọc từng app. Tên tool = slug tên app (bỏ dấu, ≤ 48), trùng thì thêm 6 ký tự đầu của appId; sắp theo appId để ổn định
+  vì `tools/call` (stateless) dựng lại danh sách để tìm app. Biến có mặc định không nằm trong `required`.
+- `tools/call`: lỗi nghiệp vụ (thiếu biến, hết quota, tool lạ) trả `isError: true` kèm thông điệp để agent đọc; kết quả
+  kèm dòng "x/y lượt hôm nay" khi dùng key server.
+- Lệnh kết nối đối chiếu tài liệu Claude Code: `claude mcp add --transport http <name> <url> --header "Authorization: Bearer …"`,
+  JSON `mcpServers` cần `"type": "http"`. Key vừa tạo được điền thẳng vào lệnh (chỉ trong phiên đó).
+- Test: hàm thuần + chạy MCP THẬT bằng client SDK qua HTTP server cục bộ mô phỏng Vercel (body đã parse, `req.query`),
+  Firestore/OAuth/Groq giả lập. Chưa kiểm trên Vercel thật (rewrite, cách Vercel đưa body vào transport).

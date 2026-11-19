@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { KeyRound, Loader2, Copy, Check, Plus, Ban, Plug } from 'lucide-react';
+import { KeyRound, Loader2, Copy, Check, Plus, Ban, Plug, Bot } from 'lucide-react';
 import { PromptProject } from '../../../types';
 import { publishApp, getAppApiState } from '../../../services/chainAppService';
 import { listApiKeys, createApiKey, revokeApiKey, type ApiKeyInfo } from '../../../services/apiKeyService';
-import { buildPublishSnapshot, buildCurlExample, quotaToday } from '../../../utils/apiAccess';
+import { buildPublishSnapshot, buildCurlExample, buildMcpSetup, quotaToday } from '../../../utils/apiAccess';
 import { toast } from '../../common/Toaster';
 import { confirmDialog } from '../../common/ConfirmDialog';
 
@@ -16,6 +16,7 @@ interface Props {
 export default function ApiAccessPanel({ project, user }: Props) {
   const snapshot = useMemo(() => buildPublishSnapshot(project), [project]);
   const apiUrl = `${window.location.origin}/api/run`;
+  const mcpUrl = `${window.location.origin}/api/mcp`;
 
   const [state, setState] = useState<{ published: boolean; apiEnabled: boolean } | null>(null);
   const [toggling, setToggling] = useState(false);
@@ -80,11 +81,13 @@ export default function ApiAccessPanel({ project, user }: Props) {
   };
 
   const curl = snapshot ? buildCurlExample(apiUrl, project.id, snapshot.variables) : '';
+  // Key vừa tạo thì điền thẳng vào lệnh (chỉ trong phiên này); còn lại dùng chỗ giữ.
+  const mcpSetup = buildMcpSetup(mcpUrl, newKey || undefined);
   const today = quotaToday();
 
   return (
     <div className="rounded-2xl border border-line bg-panel p-5">
-      <div className="mb-3 flex items-center gap-1.5 text-sm font-bold text-ink"><Plug size={15} className="text-emerald-500" /> Gọi app qua API</div>
+      <div className="mb-3 flex items-center gap-1.5 text-sm font-bold text-ink"><Plug size={15} className="text-emerald-500" /> Gọi app qua API &amp; MCP</div>
 
       {!snapshot ? (
         <p className="text-xs text-muted">App này không bật API được: chỉ Prompt Graph có prompt (không trống, ≤ 50.000 ký tự, ≤ 30 biến) quy được về một lời gọi.</p>
@@ -118,6 +121,29 @@ export default function ApiAccessPanel({ project, user }: Props) {
                 Trả về <code>{'{ "output": "…", "model": "…", "usage": { "today", "quota" } }'}</code>. Gửi kèm header
                 <code> X-Gemini-Api-Key</code> hoặc <code>X-Groq-Api-Key</code> để chạy bằng key AI của bạn và không tính lượt. Chỉ gọi từ server — đừng nhúng API key vào trang web.
               </p>
+            </div>
+          )}
+
+          {state?.apiEnabled && (
+            <div className="border-t border-line pt-4">
+              <div className="mb-1 flex items-center gap-1.5 text-xs font-bold text-muted"><Bot size={13} /> Dùng như MCP server cho agent</div>
+              <p className="mb-2 text-xs text-faint">
+                Mỗi app đã bật API (trong phạm vi key) thành một tool; agent tự điền biến theo mô tả. Dùng chung quota với API.
+              </p>
+              <div className="space-y-2">
+                {mcpSetup.map((m) => (
+                  <div key={m.label}>
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-xs font-semibold text-ink">{m.label}</span>
+                      <button onClick={() => copy(m.label, m.text)} className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                        {copied === m.label ? <Check size={12} /> : <Copy size={12} />} Sao chép
+                      </button>
+                    </div>
+                    <pre className="overflow-x-auto rounded-xl border border-line bg-surface p-3 font-mono text-xs text-ink">{m.text}</pre>
+                    {m.note && <p className="mt-1 text-xs text-faint">{m.note}</p>}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
