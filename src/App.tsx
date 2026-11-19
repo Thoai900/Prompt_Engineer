@@ -291,6 +291,8 @@ export default function App() {
     return () => unsubs.forEach((u) => u());
   }, [user, authReady]);
 
+  const saveTemplateAndStay = (template: PromptTemplate) => handleSaveTemplate(template, { stay: true });
+
   const handleSelectTemplate = (template: PromptTemplate) => {
     setLoadedTemplate(template);
     setActiveTab('builder');
@@ -336,7 +338,9 @@ export default function App() {
     else setActiveTab(entry.tab);
   };
 
-  const handleSaveTemplate = async (template: PromptTemplate) => {
+  // `stay`: lưu xong ở lại tab hiện tại (Lab — vòng chất lượng còn chạy lại Health;
+  // Studio — bước Hoàn tất còn nút "Kiểm thử chất lượng"). Mặc định chuyển sang Library như cũ.
+  const handleSaveTemplate = async (template: PromptTemplate, opts?: { stay?: boolean }) => {
     if (!user) {
       toast('Please login to save templates.');
       return;
@@ -418,7 +422,7 @@ export default function App() {
         next[idx] = stampedTemplate;
         return next;
       });
-      setActiveTab('library');
+      if (!opts?.stay) setActiveTab('library');
     } catch (err) {
       try {
         handleFirestoreError(err, isUpdate ? 'update' : 'create', `templates/${template.id}`);
@@ -726,13 +730,13 @@ export default function App() {
             <ProjectChainTab theme={theme} user={user} customTemplates={visibleTemplates} onSaveTemplate={handleSaveTemplate} />
           </TabPanel>
           <TabPanel isActive={activeTab === 'lab'} mounted={visitedTabs.has('lab')}>
-            <LabTab myTemplates={user ? customTemplates.filter((t) => t.userId === user.uid) : []} onApplyTemplate={handleSelectTemplate} onSaveTemplate={handleSaveTemplate} />
+            <LabTab myTemplates={user ? customTemplates.filter((t) => t.userId === user.uid) : []} onApplyTemplate={handleSelectTemplate} onSaveTemplate={saveTemplateAndStay} />
           </TabPanel>
           <TabPanel isActive={activeTab === 'studio'} mounted={visitedTabs.has('studio')}>
             <StudioTab
               user={user}
               authReady={authReady}
-              onSaveTemplate={handleSaveTemplate}
+              onSaveTemplate={saveTemplateAndStay}
               onOpenInBuilder={handleSelectTemplate}
               onNavigateToTab={setActiveTab}
               onLogin={loginWithGoogle}
