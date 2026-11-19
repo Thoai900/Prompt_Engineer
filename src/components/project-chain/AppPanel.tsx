@@ -1,18 +1,30 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AppWindow, Play, Loader2, Share2, Check, AlertCircle, Rocket } from 'lucide-react';
+import { AppWindow, Play, Loader2, Share2, Check, AlertCircle, Rocket, Activity } from 'lucide-react';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { PromptProject } from '../../types';
 import {
   loadLocalProjects, collectChainInputs, runChainApp, publishApp, loadSharedApp, buildAppUrl, type ChainStep,
 } from '../../services/chainAppService';
 import { toast } from '../common/Toaster';
+import FeedbackForm from '../lab/health/FeedbackForm';
+import { loadHealthSuites, newHealthSuite, saveHealthSuite } from '../../services/healthService';
+import { compileAppTemplate, effectiveInputs, appTemplateHash } from '../../utils/feedbackUtils';
+import { commitRevision } from '../../utils/promptRevisions';
+import { GEMINI_FLASH } from '../../config/models';
+
+interface AppPanelProps {
+  /** Chọn sẵn dự án đang mở trong Project Chain. */
+  initialProjectId?: string;
+  /** Mở Prompt Health ở suite vừa tạo/tìm thấy cho app. */
+  onOpenHealth?: (suiteId: string) => void;
+}
 
 /**
  * Chain → App: chạy một Project Chain như một app (form biến → output), chia sẻ qua link.
  * Hiển thị trong Project Chain (nút "Chạy như App"); trước đây là chế độ trong Lab.
  */
-export default function AppPanel({ initialProjectId }: { initialProjectId?: string }) {
-  const { user, geminiApiKey, groqApiKey, openaiApiKey, useSystemGeminiKey } = useWorkspace();
+export default function AppPanel({ initialProjectId, onOpenHealth }: AppPanelProps) {
+  const { user, geminiApiKey, groqApiKey, openaiApiKey, useSystemGeminiKey, activeWorkspaceId } = useWorkspace();
 
   const [localProjects] = useState<PromptProject[]>(() => loadLocalProjects());
   const [sharedApp, setSharedApp] = useState<PromptProject | null>(null);
@@ -28,6 +40,9 @@ export default function AppPanel({ initialProjectId }: { initialProjectId?: stri
   const [publishing, setPublishing] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   const [copied, setCopied] = useState(false);
+  const [openingSuite, setOpeningSuite] = useState(false);
+  // Giá trị biến của LẦN CHẠY gần nhất (chụp lúc bấm Chạy) — gửi kèm phản hồi.
+  const [ranInputs, setRanInputs] = useState<Record<string, string>>({});
 
   // Deep-link ?app=<id> → nạp app đã chia sẻ (public), rồi dọn URL.
   useEffect(() => {
@@ -65,6 +80,7 @@ export default function AppPanel({ initialProjectId }: { initialProjectId?: stri
     setRunning(true);
     setError('');
     setSteps([]);
+    setRanInputs(effectiveInputs(collectChainInputs(activeProject), values));
     try {
       const result = await runChainApp(activeProject, values, apiKeys, (s) => setSteps((prev) => [...(prev || []), s]));
       setSteps(result.steps);
@@ -92,6 +108,31 @@ export default function AppPanel({ initialProjectId }: { initialProjectId?: stri
     }
   };
 
+  // Flywheel: tạo (hoặc mở) Health suite theo dõi app này — prompt MẪU giữ {{biến}}.
+  const openHealthSuite = async () => {
+    if (!activeProject || !user || !onOpenHealth) return;
+    const template = compileAppTemplate(activeProject);
+    if (!template) { toast.error('Chỉ hỗ trợ Project Chain dạng Prompt Graph (v3).'); return; }
+    setOpeningSuite(true);
+    try {
+      const existing = (await loadHealthSuites(user)).find((s) => s.source?.kind === 'sharedApp' && s.source.id === activeProject.id);
+      if (existing) { onOpenHealth(existing.id); return; }
+      let suite = newHealthSuite(`App: ${activeProject.name}`, GEMINI_FLASH); // cùng model app dùng khi chạy
+      if (activeWorkspaceId) suite.workspaceId = activeWorkspaceId;
+      suite.source = { kind: 'sharedApp', id: activeProject.id, title: activeProject.name };
+      suite = commitRevision(suite, template, 'source-sync', 'Prompt mẫu của app');
+      await saveHealthSuite(user, suite);
+      onOpenHealth(suite.id);
+    } catch {
+      toast.error('Không tạo được suite.');
+    } finally {
+      setOpeningSuite(false);
+    }
+  };
+
+  const finalOutput = steps && steps.length > 0 && !running ? steps[steps.length - 1].output : '';
+  const canFeedback = !!sharedApp && !!user && !!sharedApp.userId && sharedApp.userId !== user.uid;
+
   return (
     <>
       <p className="mb-4 text-sm text-muted">Biến một <span className="font-semibold text-ink">Project Chain</span> thành app: điền biến → chạy cả chuỗi → nhận kết quả. Chia sẻ bằng link; người nhận chạy bằng tài khoản của họ (an toàn, không mở API công khai).</p>
@@ -117,7 +158,17 @@ export default function AppPanel({ initialProjectId }: { initialProjectId?: stri
                 <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)} className="rounded-xl border border-line bg-surface px-3 py-2 text-sm font-semibold text-ink">
                   {localProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
-                <button onClick={publish} disabled={publishing} className="ml-auto flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3 py-2 text-sm font-semibold text-muted hover:bg-hover disabled:opacity-60">
+                {user && onOpenHealth && (
+                  <button
+                    onClick={openHealthSuite}
+                    disabled={openingSuite}
+                    title="Theo dõi chất lượng app bằng Prompt Health; phản hồi của người dùng app (khi đã xuất bản) đổ về suite này"
+                    className="ml-auto flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3 py-2 text-sm font-semibold text-muted hover:bg-hover disabled:opacity-60"
+                  >
+                    {openingSuite ? <Loader2 size={14} className="animate-spin" /> : <Activity size={14} />} Suite kiểm thử
+                  </button>
+                )}
+                <button onClick={publish} disabled={publishing} className={`${user && onOpenHealth ? '' : 'ml-auto '}flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3 py-2 text-sm font-semibold text-muted hover:bg-hover disabled:opacity-60`}>
                   {publishing ? <Loader2 size={14} className="animate-spin" /> : <Rocket size={14} />} Xuất bản dạng App
                 </button>
               </div>
@@ -181,6 +232,20 @@ export default function AppPanel({ initialProjectId }: { initialProjectId?: stri
                 );
               })}
             </div>
+          )}
+
+          {canFeedback && finalOutput && (
+            <FeedbackForm
+              key={finalOutput}
+              draft={{
+                appId: activeProject.id,
+                ownerId: sharedApp!.userId!,
+                userId: user!.uid,
+                inputs: ranInputs,
+                output: finalOutput,
+                revisionHash: appTemplateHash(activeProject),
+              }}
+            />
           )}
         </div>
       )}

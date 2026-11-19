@@ -32,6 +32,7 @@ import { learnFromTemplate } from './services/suggestionStore';
 import { DEFAULT_REASONING_MODEL } from './config/models';
 import { buildSearchEntries, type SearchEntry } from './utils/globalSearch';
 import { loadLocalProjects } from './services/chainAppService';
+import { rulesStore, skillsStore, startCollectionStores } from './services/collectionStore';
 import { bumpTemplateUsage } from './services/metricsService';
 import { blocksChanged, pushVersion, snapshotVersion } from './utils/templateVersionUtils';
 import { PRESET_RULES, PRESET_SKILLS } from './presets';
@@ -76,6 +77,7 @@ export default function App() {
 
   useEffect(() => {
     const cleanup = initSuggestionSync();
+    startCollectionStores();
     return cleanup;
   }, []);
 
@@ -286,8 +288,10 @@ export default function App() {
       onError,
     ));
     if (user) {
+      // Lấy MỌI template của mình (cả public) — không phụ thuộc việc template public
+      // của mình có lọt vào nhóm limit(100) public ở trên hay không.
       unsubs.push(onSnapshot(
-        query(collection(db, 'templates'), where('userId', '==', user.uid), where('isPublic', '==', false)),
+        query(collection(db, 'templates'), where('userId', '==', user.uid)),
         (snap) => {
           ownMap.clear();
           snap.forEach((d) => ownMap.set(d.id, toTemplate(d.id, d.data())));
@@ -319,19 +323,18 @@ export default function App() {
     }
   };
 
-  // Tìm kiếm toàn cục (H4): gom template hiển thị + chain/rule/skill cục bộ.
-  // Gọi mỗi lần MỞ palette (không phải mỗi render) nên đọc localStorage tại chỗ là rẻ.
+  // Tìm kiếm toàn cục (H4): gom template hiển thị + chain/rule/skill.
+  // Gọi mỗi lần MỞ palette (không phải mỗi render); rule/skill lấy từ collectionStore.
   const getSearchEntries = (): SearchEntry[] => {
-    const readLs = <T,>(key: string): T[] => {
-      try {
-        const parsed = JSON.parse(localStorage.getItem(key) || '[]');
-        return Array.isArray(parsed) ? (parsed as T[]) : [];
-      } catch { return []; }
-    };
-    const localRules = readLs<AiRule>('custom_rules');
-    const localSkills = readLs<AiSkill>('custom_skills');
-    // LLM Config: localStorage thay toàn bộ preset khi đã có (giống ConfigsView).
-    const storedConfigs = localStorage.getItem('llm_custom_profiles') ? readLs<CustomProfile>('llm_custom_profiles') : LLM_CONFIG_PRESETS;
+    const localRules = rulesStore.getSnapshot().items;
+    const localSkills = skillsStore.getSnapshot().items;
+    // LLM Config (chưa vào collectionStore): localStorage thay toàn bộ preset khi đã có (giống ConfigsView).
+    let storedConfigs: CustomProfile[] = LLM_CONFIG_PRESETS;
+    try {
+      const raw = localStorage.getItem('llm_custom_profiles');
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(parsed)) storedConfigs = parsed;
+    } catch { /* dữ liệu hỏng → dùng preset */ }
     const dedupe = <T extends { id: string }>(preset: T[], custom: T[]): T[] => {
       const ids = new Set(custom.map((x) => x.id));
       return [...custom, ...preset.filter((p) => !ids.has(p.id))];
@@ -758,7 +761,7 @@ export default function App() {
             <ProjectChainTab theme={theme} user={user} customTemplates={visibleTemplates} onSaveTemplate={handleSaveTemplate} />
           </TabPanel>
           <TabPanel isActive={activeTab === 'lab'} mounted={visitedTabs.has('lab')}>
-            <LabTab myTemplates={user ? customTemplates.filter((t) => t.userId === user.uid) : []} onApplyTemplate={handleSelectTemplate} onSaveTemplate={saveTemplateAndStay} />
+            <LabTab libraryTemplates={visibleTemplates} onApplyTemplate={handleSelectTemplate} onSaveTemplate={saveTemplateAndStay} />
           </TabPanel>
           <TabPanel isActive={activeTab === 'studio'} mounted={visitedTabs.has('studio')}>
             <StudioTab

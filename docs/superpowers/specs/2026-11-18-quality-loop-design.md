@@ -1,7 +1,7 @@
 # Thiết kế: Vòng chất lượng Viết → Đo → Tối ưu → Lưu
 
 Ngày: 2026-11-18
-Trạng thái: đã duyệt (theo cả 3 đề xuất ở "Cần chốt"), đã build
+Trạng thái: đã build, sau đó GỘP vào Prompt Flywheel của master (xem mục cuối)
 
 ## Vấn đề
 
@@ -116,3 +116,14 @@ Không có `templateId` (người dùng dán prompt tay vào Optimizer) thì gi�
 - Duyệt test do AI soạn diễn ra ngay trong danh sách test của HealthPanel (sửa/xoá rồi mới Lưu hoặc Chạy), không làm modal riêng.
 - Bước E đặt thành dải "Sức khoẻ prompt" trong `PromptDetailModal`, chỉ hiện với template của tôi; Studio có thêm nút "Kiểm thử chất lượng" sau khi lưu.
 - `customTemplates` trong App gộp cả template công khai của người khác, nên Lab chỉ nhận các template có `userId` là của mình.
+
+## Gộp vào Prompt Flywheel (khi merge master, 2026-11-19)
+
+Master đã có Prompt Flywheel (`docs/superpowers/specs/2026-11-18-prompt-flywheel-versioning-design.md`): suite có lịch sử revision, gắn template qua `source`, và banner tối ưu theo test trượt chạy ngay trong Health (backend nhận nhiều test). Người dùng chọn gộp mục 7 vào đó:
+
+- **Bỏ** `HealthSuite.templateId` → dùng `source: { kind: 'template', id, title }` của master (bỏ luôn điều kiện `templateId` trong `firestore.rules`).
+- **Bỏ** nút "Tối ưu với bộ test này" (Health → Auto-Optimizer) và liên kết template trong Auto-Optimizer → dùng `OptimizeSuggestion` của master (tối ưu trên mọi test trượt, lưu thành revision, chạy lại toàn suite, có nút quay lại).
+- **Giữ** (master chưa có): AI soạn test (`draftHealthTests`, nút "Soạn test bằng AI"); lối vào từ Library (`PromptDetailModal`) và Studio (`StepFinish`) mở/tạo suite theo template; lưu ngược về template.
+- **Lưu ngược về template** chuyển vào HealthPanel: khi phiên bản hiện hành (đã lưu) khác template nguồn của tôi → `SaveAsVersionPanel` (chia khối giữ câu chữ, diff, lưu thành phiên bản mới của CÙNG template) rồi ghi revision `source-sync` để suite khớp template. Chạy lại/khôi phục giao cho Prompt Git (revision) và lịch sử phiên bản của template.
+- `LabSeed` chỉ còn `templateId/templateTitle/suiteId`; Chain → App mở suite bằng `sendToLab('health', '', { suiteId })`.
+

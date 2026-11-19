@@ -23,21 +23,23 @@ const MODES: { id: LabMode; label: string; icon: React.ReactNode }[] = [
  * Linter đã thành Prompt Inspector dùng chung; Gia sư chuyển sang Learn; Chain → App sang Project Chain.
  */
 interface LabTabProps {
-  /** Template của tôi — để vòng chất lượng lưu bản tối ưu thành phiên bản của template gốc. */
-  myTemplates?: PromptTemplate[];
+  /** Template trong thư viện (Prompt Health: chọn template nguồn, lưu bản hiện hành về template của tôi). */
+  libraryTemplates?: PromptTemplate[];
   /** Mở một template trong Builder (App.tsx điều hướng). */
   onApplyTemplate?: (t: PromptTemplate) => void;
   /** Lưu một template vào thư viện (App.tsx xử lý Firestore + lịch sử phiên bản). */
   onSaveTemplate?: (t: PromptTemplate) => Promise<void> | void;
 }
 
-export default function LabTab({ myTemplates = [], onApplyTemplate, onSaveTemplate }: LabTabProps) {
+export default function LabTab({ libraryTemplates = [], onApplyTemplate, onSaveTemplate }: LabTabProps) {
   const [mode, setMode] = useState<LabMode>('bakeoff');
-  // Seed gửi từ tab khác (Prompt Inspector, Health, Library, Studio) → mồi sẵn từng chế độ.
+  // Seed gửi từ tab khác (Prompt Inspector, Library, Studio, Project Chain) → mồi sẵn từng chế độ.
   // Giữ nguyên object seed để panel nhận lại cả khi gửi lặp cùng một prompt.
   const [bakeoffSeed, setBakeoffSeed] = useState('');
   const [optimizerSeed, setOptimizerSeed] = useState<LabSeed | null>(null);
+  // Prompt Health: seed từ template (mở/tạo suite gắn template) hoặc id suite (Chain → App).
   const [healthSeed, setHealthSeed] = useState<LabSeed | null>(null);
+  const [healthSuiteId, setHealthSuiteId] = useState<string | undefined>();
 
   useEffect(() => {
     const consume = () => {
@@ -45,6 +47,7 @@ export default function LabTab({ myTemplates = [], onApplyTemplate, onSaveTempla
       if (!seed) return;
       if (seed.mode === 'bakeoff') setBakeoffSeed(seed.prompt);
       else if (seed.mode === 'optimizer') setOptimizerSeed(seed);
+      else if (seed.suiteId) setHealthSuiteId(seed.suiteId);
       else setHealthSeed(seed);
       setMode(seed.mode);
     };
@@ -79,8 +82,17 @@ export default function LabTab({ myTemplates = [], onApplyTemplate, onSaveTempla
         </div>
 
         {mode === 'bakeoff' && <BakeoffPanel initialPrompt={bakeoffSeed} />}
-        {mode === 'optimizer' && <OptimizerPanel seed={optimizerSeed} myTemplates={myTemplates} onApplyTemplate={onApplyTemplate} onSaveTemplate={onSaveTemplate} />}
-        {mode === 'health' && <HealthPanel seed={healthSeed} />}
+        {mode === 'optimizer' && <OptimizerPanel seed={optimizerSeed} onApplyTemplate={onApplyTemplate} onSaveTemplate={onSaveTemplate} />}
+        {mode === 'health' && (
+          <HealthPanel
+            key={healthSuiteId}
+            libraryTemplates={libraryTemplates}
+            onApplyTemplate={onApplyTemplate}
+            onSaveTemplate={onSaveTemplate}
+            initialSuiteId={healthSuiteId}
+            seed={healthSeed}
+          />
+        )}
         {mode === 'taste' && <TastePanel />}
       </div>
     </div>

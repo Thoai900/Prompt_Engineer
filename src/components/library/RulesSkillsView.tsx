@@ -1,19 +1,17 @@
 import { toast } from '../common/Toaster';
 import { confirmDialog } from '../common/ConfirmDialog';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Sparkles, Plus, Trash, Copy, Check, FileDown,
   RefreshCw, ChevronUp, ChevronDown,
   HelpCircle, Eye, Edit3, CheckCircle2, AlertTriangle, Play, BookOpen
 } from 'lucide-react';
 import { User } from 'firebase/auth';
-import { collection, doc, getDocs, query, setDoc, where, deleteDoc, serverTimestamp } from 'firebase/firestore';
-import { db, handleFirestoreError } from '../../firebase';
 import { TabType, AiRule, AiSkill, SkillVariable, SkillStep, PromptTemplate, PromptBlock, SkillRunRecord } from '../../types';
 import { PRESET_RULES, PRESET_SKILLS } from '../../presets';
 import { optimizeAiRules } from '../../services/aiService';
+import { rulesStore, useRules } from '../../services/collectionStore';
 import SkillsPanel from './SkillsPanel';
-import { LIBRARY_CHANGED_EVENT, type LibraryChangedKind } from '../../services/libraryNav';
 import { toSkillMd, toAgentsMd, toClaudeMd, downloadText } from '../../utils/exporters';
 import DomainChips from '../common/DomainChips';
 import { filterByDomain } from '../../utils/presetFilter';
@@ -30,23 +28,17 @@ interface RulesSkillsViewProps {
   focus?: { id: string; nonce: number } | null;
 }
 
-// Safely parse a localStorage JSON array; corrupt/legacy data returns [] instead of crashing the tab.
-function safeParseArray<T>(raw: string | null): T[] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as T[]) : [];
-  } catch (err) {
-    console.warn('Bỏ qua dữ liệu localStorage hỏng:', err);
-    return [];
-  }
-}
-
 /** Rules & Skills trong tab Thư viện (trước là tab Rules & Skills riêng). */
 export default function RulesSkillsView({ user, onApplyTemplate, subTab: activeSubTab, focus }: RulesSkillsViewProps) {
 
   // --- rules state ---
-  const [rules, setRules] = useState<AiRule[]>([]);
+  // Bước 3 (một nguồn dữ liệu): rule custom đến từ rulesStore (Firestore khi đăng
+  // nhập, localStorage khi là khách) — không tự đọc/ghi localStorage ở đây nữa.
+  const { items: customRules, status: rulesStatus } = useRules();
+  const rules = useMemo(() => {
+    const presetIds = new Set(PRESET_RULES.map(r => r.id));
+    return [...PRESET_RULES, ...customRules.filter(r => !presetIds.has(r.id))];
+  }, [customRules]);
   const [selectedRuleId, setSelectedRuleId] = useState<string>('');
   const [ruleTitle, setRuleTitle] = useState('');
   const [ruleDesc, setRuleDesc] = useState('');
@@ -65,84 +57,20 @@ export default function RulesSkillsView({ user, onApplyTemplate, subTab: activeS
   // Model AI dùng chung cho mọi tác vụ AI trong tab (tối ưu rule, sinh skill, chạy skill).
   const [selectedModel, setSelectedModel] = useState<string>(GEMINI_FLASH);
 
-  // M3: toàn bộ state/logic skills đã tách sang components/rulesskills/SkillsPanel.tsx.
-  const [syncToken, setSyncToken] = useState(0);
+  // M3: toàn bộ state/logic skills đã tách sang ./SkillsPanel.tsx (cùng thư mục).
   const [ruleDomain, setRuleDomain] = useState<string | null>(null);
 
     // Sync state
-  const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
 
-  // --- INITIAL DATA LOAD & SYNC (rules; skills nằm trong SkillsPanel) ---
+  // Chọn preset đầu tiên khi mở tab.
   useEffect(() => {
-    let parsedRules = safeParseArray<AiRule>(localStorage.getItem('custom_rules'));
-    const presetRuleIds = new Set(PRESET_RULES.map(r => r.id));
-    parsedRules = parsedRules.filter(r => !r.isPreset && !presetRuleIds.has(r.id));
-    setRules([...PRESET_RULES, ...parsedRules]);
     if (PRESET_RULES.length > 0) selectRule(PRESET_RULES[0]);
-  }, []);
-
-  // Sync with Firestore when user status is ready
-  useEffect(() => {
-    if (user) {
-      syncDataWithFirestore();
-    }
-  }, [user]);
-
-  const syncDataWithFirestore = async () => {
-    if (!user) return;
-    setIsSyncing(true);
-    setSyncError(null);
-    try {
-      const rulesQuery = query(collection(db, 'rules'), where('userId', '==', user.uid));
-      const rulesSnap = await getDocs(rulesQuery);
-      const dbRules: AiRule[] = [];
-      rulesSnap.forEach(docSnap => {
-        const data = docSnap.data();
-        dbRules.push({
-          id: docSnap.id,
-          title: data.title,
-          description: data.description || '',
-          content: data.content || '',
-          type: data.type || 'system-rules',
-          tags: data.tags || [],
-          source: data.source || undefined,
-          updatedAt: data.updatedAt || new Date().toISOString()
-        });
-      });
-
-      const localRules = safeParseArray<AiRule>(localStorage.getItem('custom_rules')).filter(r => !r.isPreset);
-      const presetRuleIds = new Set(PRESET_RULES.map(r => r.id));
-      const mergedRulesMap = new Map<string, AiRule>();
-      localRules.forEach(r => mergedRulesMap.set(r.id, r));
-      dbRules.forEach(r => mergedRulesMap.set(r.id, r));
-      const mergedRules = Array.from(mergedRulesMap.values()).filter(r => !presetRuleIds.has(r.id));
-
-      localStorage.setItem('custom_rules', JSON.stringify(mergedRules));
-      setRules([...PRESET_RULES, ...mergedRules]);
-      if (mergedRules.length > 0 && !selectedRuleId) selectRule(mergedRules[0]);
-    } catch (err) {
-      console.error("Sync data failed:", err);
-      setSyncError('Đồng bộ đám mây thất bại. Dữ liệu vẫn được giữ cục bộ trên thiết bị này.');
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  // Nhập từ GitHub / tạo bằng AI ở LibraryHub → đọc lại kho.
-  useEffect(() => {
-    const onChanged = (e: Event) => {
-      const kind = (e as CustomEvent<LibraryChangedKind>).detail;
-      if (kind === 'rule') {
-        const parsed = safeParseArray<AiRule>(localStorage.getItem('custom_rules')).filter(r => !r.isPreset);
-        setRules([...PRESET_RULES, ...parsed]);
-      } // 'skill': SkillsPanel tự nghe sự kiện và đọc lại.
-    };
-    window.addEventListener(LIBRARY_CHANGED_EVENT, onChanged);
-    return () => window.removeEventListener(LIBRARY_CHANGED_EVENT, onChanged);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Mở sẵn rule được chọn từ kết quả tìm kiếm (mỗi nonce một lần, chờ kho nạp xong).
+  // Nhập từ GitHub / tạo bằng AI không cần đọc lại: rulesStore tự cập nhật danh sách.
   const handledFocus = useRef<number | null>(null);
   useEffect(() => {
     if (!focus || activeSubTab !== 'rules' || handledFocus.current === focus.nonce) return;
@@ -175,9 +103,10 @@ export default function RulesSkillsView({ user, onApplyTemplate, subTab: activeS
       updatedAt: new Date().toISOString()
     };
     
-    const updated = [...rules.filter(r => !r.isPreset), newRule];
-    setRules([...PRESET_RULES, ...updated]);
-    localStorage.setItem('custom_rules', JSON.stringify(updated));
+    rulesStore.save(newRule).catch((err) => {
+      console.error(err);
+      toast.error('Không tạo được quy tắc mới.');
+    });
     selectRule(newRule);
   };
 
@@ -205,33 +134,11 @@ export default function RulesSkillsView({ user, onApplyTemplate, subTab: activeS
     };
 
     try {
-      // 1. Save to local storage
-      const customOnly = rules.filter(r => !r.isPreset && r.id !== selectedRuleId);
-      const updatedList = [...customOnly, updatedRule];
-      localStorage.setItem('custom_rules', JSON.stringify(updatedList));
-      
-      // Update state
-      setRules([...PRESET_RULES, ...updatedList]);
-
-      // 2. Save to Firestore if user logged in
-      if (user) {
-        const docRef = doc(db, 'rules', selectedRuleId);
-        await setDoc(docRef, {
-          userId: user.uid,
-          title: ruleTitle,
-          description: ruleDesc,
-          content: ruleContent,
-          type: ruleType,
-          tags: updatedRule.tags,
-          source: existingRule?.source ?? null,
-          updatedAt: serverTimestamp(),
-          authorName: user.displayName || 'User'
-        });
-      }
+      await rulesStore.save(updatedRule);
     } catch (err) {
       console.error(err);
-      setSyncError('Không thể lưu quy tắc lên Cloud, đã lưu tạm cục bộ.');
-      toast('Không thể lưu quy tắc lên Cloud, đã lưu tạm cục bộ.');
+      setSyncError('Không thể lưu quy tắc. Vui lòng thử lại.');
+      toast.error('Không thể lưu quy tắc.');
     } finally {
       setIsSavingRule(false);
     }
@@ -243,17 +150,7 @@ export default function RulesSkillsView({ user, onApplyTemplate, subTab: activeS
 
     setIsDeletingRule(true);
     try {
-      const customOnly = rules.filter(r => !r.isPreset && r.id !== selectedRuleId);
-      localStorage.setItem('custom_rules', JSON.stringify(customOnly));
-      
-      // Update state
-      const newRulesList = [...PRESET_RULES, ...customOnly];
-      setRules(newRulesList);
-
-      // Firestore delete
-      if (user) {
-        await deleteDoc(doc(db, 'rules', selectedRuleId));
-      }
+      await rulesStore.remove(selectedRuleId);
 
       // Select first preset
       if (PRESET_RULES.length > 0) selectRule(PRESET_RULES[0]);
@@ -276,10 +173,10 @@ export default function RulesSkillsView({ user, onApplyTemplate, subTab: activeS
       updatedAt: new Date().toISOString()
     };
 
-    const customOnly = rules.filter(r => !r.isPreset);
-    const updatedList = [...customOnly, dupRule];
-    localStorage.setItem('custom_rules', JSON.stringify(updatedList));
-    setRules([...PRESET_RULES, ...updatedList]);
+    rulesStore.save(dupRule).catch((err) => {
+      console.error(err);
+      toast.error('Không nhân bản được quy tắc.');
+    });
     selectRule(dupRule);
   };
 
@@ -383,18 +280,16 @@ export default function RulesSkillsView({ user, onApplyTemplate, subTab: activeS
   return (
     <div className="flex-1 p-4 md:p-6 flex flex-col overflow-y-auto w-full max-w-6xl mx-auto pb-safe">
       
-      {/* Thanh đồng bộ (tiêu đề, bộ chọn loại, Khám phá/Tạo bằng AI nằm ở LibraryHub) */}
+      {/* Trạng thái đồng bộ (tiêu đề, bộ chọn loại, Khám phá/Tạo bằng AI nằm ở LibraryHub) */}
       {user && (
         <div className="mb-4 flex justify-end">
-          <button
-            onClick={() => { syncDataWithFirestore(); setSyncToken(t => t + 1); }}
-            disabled={isSyncing}
-            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 dark:bg-slate-900 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-350 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-            title="Đồng bộ hóa với đám mây Firestore"
+          <span
+            className="px-3 py-1.5 bg-slate-100 border border-slate-200 dark:bg-slate-900 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-350 rounded-lg flex items-center gap-1.5"
+            title="Rule & skill đồng bộ realtime với đám mây khi đăng nhập"
           >
-            <RefreshCw size={12} className={isSyncing ? "animate-spin" : ""} />
-            <span>{isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ đám mây'}</span>
-          </button>
+            <RefreshCw size={12} className={rulesStatus === 'loading' ? 'animate-spin' : ''} />
+            <span>{rulesStatus === 'loading' ? 'Đang tải từ đám mây...' : rulesStatus === 'error' ? 'Lỗi đồng bộ đám mây' : 'Đã đồng bộ đám mây'}</span>
+          </span>
         </div>
       )}
 
@@ -420,7 +315,6 @@ export default function RulesSkillsView({ user, onApplyTemplate, subTab: activeS
           onApplyTemplate={onApplyTemplate}
           selectedModel={selectedModel}
           onSelectModel={setSelectedModel}
-          syncToken={syncToken}
         />
       ) : (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-0 items-stretch">

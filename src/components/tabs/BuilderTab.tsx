@@ -1,5 +1,5 @@
 import { toast } from '../common/Toaster';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { 
   Plus, Trash2, Copy, Check, X, Layers, Save, PencilLine, Braces, 
@@ -31,6 +31,7 @@ import { PRESET_RULES, PRESET_SKILLS } from '../../presets';
 import { DEFAULT_FRAMEWORKS } from '../../utils/builderUtils';
 import { templateToGraphProject } from '../../utils/graphMigration';
 import { openProjectInGraph } from '../../services/graphExportService';
+import { useRules, useSkills } from '../../services/collectionStore';
 import { GEMINI_FLASH } from '../../config/models';
 
 interface BuilderTabProps {
@@ -159,8 +160,11 @@ export default function BuilderTab({
   const [showFrameworks, setShowFrameworks] = useState<boolean>(true);
   const [showRulesLibrary, setShowRulesLibrary] = useState<boolean>(true);
   const [showComponents, setShowComponents] = useState<boolean>(true);
-  const [localRules, setLocalRules] = useState<AiRule[]>([]);
-  const [localSkills, setLocalSkills] = useState<AiSkill[]>([]);
+  // Rule/skill custom từ collectionStore (realtime) + preset.
+  const { items: customRules } = useRules();
+  const { items: customSkills } = useSkills();
+  const localRules = useMemo<AiRule[]>(() => [...PRESET_RULES, ...customRules], [customRules]);
+  const localSkills = useMemo<AiSkill[]>(() => [...PRESET_SKILLS, ...customSkills], [customSkills]);
   const [sidebarSearchQuery, setSidebarSearchQuery] = useState('');
   const [showRulesInSidebar, setShowRulesInSidebar] = useState(true);
   const [showSkillsInSidebar, setShowSkillsInSidebar] = useState(true);
@@ -212,19 +216,6 @@ export default function BuilderTab({
       setExpandedBlocks(prev => ({ ...prev, [latestBlock.id]: true }));
     }
   }, [blocks.length]);
-
-  useEffect(() => {
-    loadRulesAndSkills();
-  }, []);
-
-  const loadRulesAndSkills = () => {
-    const rulesStr = localStorage.getItem('custom_rules');
-    const skillsStr = localStorage.getItem('custom_skills');
-    const parsedRules = rulesStr ? JSON.parse(rulesStr) : [];
-    const parsedSkills = skillsStr ? JSON.parse(skillsStr) : [];
-    setLocalRules([...PRESET_RULES, ...parsedRules]);
-    setLocalSkills([...PRESET_SKILLS, ...parsedSkills]);
-  };
 
   const addBlock = (blockType: string, atIndex?: number) => {
     const itemToAdd = AVAILABLE_BLOCKS.find(b => b.type === blockType);

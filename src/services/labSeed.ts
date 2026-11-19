@@ -3,21 +3,17 @@
  * Prompt có thể dài nên không đưa lên URL: lưu tạm ở sessionStorage + phát sự kiện
  * để LabTab đang mount nhận ngay; LabTab mount sau thì đọc lại khi mount.
  *
- * Các trường tuỳ chọn phục vụ vòng chất lượng (spec 2026-11-18-quality-loop-design):
- * template gốc → Health suite → Optimizer → lưu phiên bản mới của CÙNG template.
+ * Các trường tuỳ chọn phục vụ Prompt Health (spec 2026-11-18-quality-loop-design):
+ * mở/tạo suite gắn một template đã lưu, hoặc mở thẳng một suite theo id.
  */
 export type LabSeedMode = 'bakeoff' | 'optimizer' | 'health';
 
 export interface LabSeedExtras {
-  /** Template gốc (đã lưu) mà prompt này thuộc về. */
+  /** Template gốc (đã lưu) mà prompt này thuộc về — Health mở/tạo suite có source template này. */
   templateId?: string;
   templateTitle?: string;
-  /** Health suite đã sinh ra seed này (để Optimizer chạy lại Health sau khi lưu). */
+  /** Mở thẳng Health suite này (vd từ "Chạy như App" của Project Chain). */
   suiteId?: string;
-  /** Đầu vào thử (Optimizer hiện dùng phần tử đầu). */
-  testInputs?: string[];
-  /** Tiêu chí "thế nào là tốt". */
-  criteria?: string[];
 }
 
 export interface LabSeed extends LabSeedExtras {
@@ -36,8 +32,6 @@ export function sendToLab(mode: LabSeedMode, prompt: string, extras: LabSeedExtr
   window.location.hash = '#lab';
 }
 
-const strList = (v: unknown): string[] | undefined =>
-  Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.trim() !== '') : undefined;
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v ? v : undefined);
 
 /** Đọc seed từ chuỗi JSON (thuần, có test). Sai định dạng → null; trường lạ bị bỏ. */
@@ -51,8 +45,6 @@ export function parseLabSeed(raw: string | null): LabSeed | null {
       templateId: str(s.templateId),
       templateTitle: str(s.templateTitle),
       suiteId: str(s.suiteId),
-      testInputs: strList(s.testInputs),
-      criteria: strList(s.criteria),
     };
     for (const [k, v] of Object.entries(extras)) if (v !== undefined) (seed as any)[k] = v;
     return seed;

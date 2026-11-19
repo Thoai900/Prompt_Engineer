@@ -1,16 +1,27 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Trash2, Play, Loader2, Save, Activity, TrendingUp, TrendingDown, Minus, AlertTriangle, Wand2, Sparkles, Link2 } from 'lucide-react';
+import { Plus, Trash2, Play, Loader2, Save, Activity, TrendingUp, TrendingDown, Minus, AlertTriangle, RefreshCw, ExternalLink, Wand2 } from 'lucide-react';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { ALL_MODEL_OPTIONS, GEMINI_FLASH } from '../../config/models';
-import { HealthSuite, HealthTest } from '../../types';
+import { HealthSuite, HealthTest, PromptTemplate } from '../../types';
 import {
   loadHealthSuites, saveHealthSuite, deleteHealthSuite, runHealthCheck, newHealthSuite, compareRuns,
 } from '../../services/healthService';
 import { toast } from '../common/Toaster';
 import { confirmDialog } from '../common/ConfirmDialog';
+import RevisionTimeline from './health/RevisionTimeline';
+import OptimizeSuggestion from './health/OptimizeSuggestion';
+import {
+  commitRevision, restoreRevision, hasUncommittedPrompt, headRevision, judgeRevision, REGRESSION_DROP,
+} from '../../utils/promptRevisions';
+import { blocksToText } from '../../utils/templateVersionUtils';
+import { promptToTemplate } from '../../utils/labUtils';
+import FeedbackInbox from './health/FeedbackInbox';
+import { compileAppTemplate } from '../../utils/feedbackUtils';
+import { loadSharedApp, loadLocalProjects } from '../../services/chainAppService';
 import { draftHealthTests } from '../../services/aiService';
-import { sendToLab, type LabSeed } from '../../services/labSeed';
-import { MAX_SUITE_TESTS, findSuiteForTemplate, needsOptimization, normalizeDraftTests, pickOptimizerSeedFromRun } from '../../utils/healthUtils';
+import type { LabSeed } from '../../services/labSeed';
+import { MAX_SUITE_TESTS, findSuiteForTemplate, normalizeDraftTests } from '../../utils/healthUtils';
+import SaveAsVersionPanel from './SaveAsVersionPanel';
 
 function scoreColor(score: number): string {
   if (score >= 80) return 'text-emerald-600 dark:text-emerald-400';
@@ -20,18 +31,29 @@ function scoreColor(score: number): string {
 
 function tid(): string { return `t_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`; }
 
-/**
- * Prompt Health/CI: suite có version + bộ test, chạy "khám sức khoẻ" và bắt hồi quy.
- * Vòng chất lượng: nhận seed từ một template (mở/tạo suite gắn templateId, AI soạn test),
- * và khi điểm yếu thì gửi sang Auto-Optimizer kèm test tệ nhất + tiêu chí.
- */
-export default function HealthPanel({ seed }: { seed?: LabSeed | null }) {
+interface HealthPanelProps {
+  /** Template trong thư viện — để lấy prompt làm nguồn cho suite. */
+  libraryTemplates?: PromptTemplate[];
+  /** Mở prompt trong Builder (App.tsx điều hướng). */
+  onApplyTemplate?: (t: PromptTemplate) => void;
+  /** Mở thẳng suite này (vd từ "Suite kiểm thử" của Chain → App). */
+  initialSuiteId?: string;
+  /** Seed từ một template đã lưu (Library / Studio): mở suite có nguồn là template đó, chưa có thì tạo + AI soạn test. */
+  seed?: LabSeed | null;
+  /** Lưu template (App) — để lưu phiên bản hiện hành về template nguồn của tôi. */
+  onSaveTemplate?: (t: PromptTemplate) => Promise<void> | void;
+}
+
+/** Prompt Health/CI: suite có version + bộ test, chạy "khám sức khoẻ" và bắt hồi quy. */
+export default function HealthPanel({ libraryTemplates = [], onApplyTemplate, initialSuiteId, seed, onSaveTemplate }: HealthPanelProps) {
   const { user, geminiApiKey, groqApiKey, openaiApiKey, useSystemGeminiKey, activeWorkspaceId } = useWorkspace();
 
   const [suites, setSuites] = useState<HealthSuite[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Đợt 2: bản do Optimizer tạo đang chờ so với bản trước nó (sau khi chạy lại toàn suite).
+  const [pendingJudge, setPendingJudge] = useState<{ suiteId: string; oldRevId: string; newRevId: string } | null>(null);
   const [drafting, setDrafting] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const handledSeed = useRef<LabSeed | null>(null);
@@ -41,7 +63,7 @@ export default function HealthPanel({ seed }: { seed?: LabSeed | null }) {
     loadHealthSuites(user).then((s) => {
       if (cancelled) return;
       setSuites(s);
-      setActiveId((prev) => prev || s[0]?.id || null);
+      setActiveId((prev) => prev || (initialSuiteId && s.some((x) => x.id === initialSuiteId) ? initialSuiteId : s[0]?.id) || null);
       setLoaded(true);
 
       // H3 (thông báo hồi quy): suite nào lần chạy MỚI NHẤT tụt ≥10 điểm so với lần
@@ -57,45 +79,6 @@ export default function HealthPanel({ seed }: { seed?: LabSeed | null }) {
   }, [user]);
 
   const active = useMemo(() => suites.find((s) => s.id === activeId) || null, [suites, activeId]);
-
-  /** AI soạn test cho suite (thêm vào danh sách để người dùng duyệt/sửa rồi mới Lưu). */
-  const draftTestsFor = async (suite: HealthSuite) => {
-    if (!suite.prompt.trim()) { toast.error('Nhập prompt cần kiểm thử trước.'); return; }
-    const room = MAX_SUITE_TESTS - suite.testCases.length;
-    if (room <= 0) { toast.error(`Suite đã có ${suite.testCases.length} test — xoá bớt trước khi soạn thêm.`); return; }
-    setDrafting(true);
-    try {
-      const tests = normalizeDraftTests(await draftHealthTests(suite.prompt)).slice(0, room);
-      if (tests.length === 0) { toast.error('AI không soạn được test nào. Thử lại hoặc thêm tay.'); return; }
-      setSuites((prev) => prev.map((s) => (s.id === suite.id ? { ...s, testCases: [...s.testCases, ...tests] } : s)));
-      toast.success(`AI đã soạn ${tests.length} test — xem lại, sửa nếu cần rồi bấm Lưu hoặc Chạy kiểm tra.`);
-    } catch (e: any) {
-      toast.error(e?.message || 'Không soạn được test. Hãy đăng nhập và thử lại.');
-    } finally {
-      setDrafting(false);
-    }
-  };
-
-  // Seed từ template (Library / Studio): mở suite sẵn có của template, hoặc tạo mới + AI soạn test.
-  useEffect(() => {
-    if (!seed || !loaded || handledSeed.current === seed) return;
-    handledSeed.current = seed;
-    const existing = findSuiteForTemplate(suites, seed.templateId);
-    if (existing) {
-      setActiveId(existing.id);
-      if (existing.prompt !== seed.prompt) {
-        setSuites((prev) => prev.map((s) => (s.id === existing.id ? { ...s, prompt: seed.prompt } : s)));
-        toast.info('Đã cập nhật prompt của suite theo template hiện tại — bấm Lưu để giữ.');
-      }
-      return;
-    }
-    const s: HealthSuite = { ...newHealthSuite(seed.templateTitle || 'Suite mới', GEMINI_FLASH), prompt: seed.prompt, templateId: seed.templateId };
-    if (activeWorkspaceId) s.workspaceId = activeWorkspaceId;
-    setSuites((prev) => [s, ...prev]);
-    setActiveId(s.id);
-    void draftTestsFor(s);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seed, loaded]);
 
   const patchActive = (patch: Partial<HealthSuite>) => {
     setSuites((prev) => prev.map((s) => (s.id === activeId ? { ...s, ...patch } : s)));
@@ -129,17 +112,62 @@ export default function HealthPanel({ seed }: { seed?: LabSeed | null }) {
     patchActive({ testCases: active.testCases.filter((t) => t.id !== testId) });
   };
 
+  /** AI soạn test cho suite — thêm vào danh sách để người dùng duyệt/sửa rồi mới Lưu hoặc Chạy. */
+  const draftTestsFor = async (suite: HealthSuite) => {
+    const text = suite.prompt.trim();
+    if (!text) { toast.error('Nhập prompt cần kiểm thử trước.'); return; }
+    const room = MAX_SUITE_TESTS - suite.testCases.length;
+    if (room <= 0) { toast.error(`Suite đã có ${suite.testCases.length} test — xoá bớt trước khi soạn thêm.`); return; }
+    setDrafting(true);
+    try {
+      const tests = normalizeDraftTests(await draftHealthTests(text)).slice(0, room);
+      if (tests.length === 0) { toast.error('AI không soạn được test nào. Thử lại hoặc thêm tay.'); return; }
+      setSuites((prev) => prev.map((s) => (s.id === suite.id ? { ...s, testCases: [...s.testCases, ...tests] } : s)));
+      toast.success(`AI đã soạn ${tests.length} test — xem lại, sửa nếu cần rồi bấm Lưu hoặc Chạy kiểm tra.`);
+    } catch (e: any) {
+      toast.error(e?.message || 'Không soạn được test. Hãy đăng nhập và thử lại.');
+    } finally {
+      setDrafting(false);
+    }
+  };
+
+  // Seed từ template (Library / Studio): mở suite có nguồn là template đó; chưa có thì tạo
+  // (nguồn template + revision 'source-sync') và để AI soạn sẵn test.
+  useEffect(() => {
+    if (!seed?.templateId || !loaded || handledSeed.current === seed) return;
+    handledSeed.current = seed;
+    const existing = findSuiteForTemplate(suites, seed.templateId);
+    if (existing) { setActiveId(existing.id); return; }
+    const title = seed.templateTitle || 'Template';
+    let s: HealthSuite = { ...newHealthSuite(title, GEMINI_FLASH), source: { kind: 'template', id: seed.templateId, title } };
+    if (activeWorkspaceId) s.workspaceId = activeWorkspaceId;
+    s = commitRevision(s, seed.prompt, 'source-sync', `Từ template "${title}"`);
+    setSuites((prev) => [s, ...prev]);
+    setActiveId(s.id);
+    void draftTestsFor(s);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seed, loaded]);
+
+  /** Thay suite đang mở bằng `next` và lưu ngay (dùng cho thao tác revision). */
+  const replaceAndSave = async (next: HealthSuite) => {
+    setSuites((prev) => prev.map((s) => (s.id === next.id ? next : s)));
+    try { await saveHealthSuite(user, next); } catch { /* toast trong service */ }
+  };
+
+  // Prompt Git: "Lưu" ghi prompt đã sửa thành revision mới — để cron (chạy theo prompt
+  // đã lưu) luôn gắn run vào đúng revision.
   const saveActive = async () => {
     if (!active) return;
     setSaving(true);
-    try { await saveHealthSuite(user, active); toast.success('Đã lưu suite.'); }
+    const next = commitRevision(active, active.prompt, 'manual');
+    setSuites((prev) => prev.map((s) => (s.id === next.id ? next : s)));
+    try { await saveHealthSuite(user, next); toast.success('Đã lưu suite.'); }
     catch { toast.error('Không lưu được suite.'); }
     finally { setSaving(false); }
   };
 
-  const runCheck = async () => {
-    if (!active) return;
-    if (active.testCases.length === 0) { toast.error('Thêm ít nhất một test case.'); return; }
+  /** Chạy toàn bộ test của `base` (đã commit revision), cập nhật state + lưu. */
+  const runSuite = async (base: HealthSuite) => {
     setRunning(true);
     const apiKeys = {
       gemini: useSystemGeminiKey ? undefined : (geminiApiKey || undefined),
@@ -147,14 +175,109 @@ export default function HealthPanel({ seed }: { seed?: LabSeed | null }) {
       openai: openaiApiKey || undefined,
     };
     try {
-      const run = await runHealthCheck(active, apiKeys);
-      const updated: HealthSuite = { ...active, runs: [run, ...active.runs].slice(0, 10) };
-      setSuites((prev) => prev.map((s) => (s.id === active.id ? updated : s)));
+      const run = await runHealthCheck(base, apiKeys);
+      const updated: HealthSuite = { ...base, runs: [run, ...base.runs].slice(0, 10) };
+      setSuites((prev) => prev.map((s) => (s.id === base.id ? updated : s)));
       try { await saveHealthSuite(user, updated); } catch { /* toast trong service */ }
     } finally {
       setRunning(false);
     }
   };
+
+  const runCheck = async () => {
+    if (!active) return;
+    if (active.testCases.length === 0) { toast.error('Thêm ít nhất một test case.'); return; }
+    await runSuite(commitRevision(active, active.prompt, 'manual'));
+  };
+
+  // Đợt 2: nhận bản từ Optimizer → revision 'optimizer' (thành hiện hành) → chạy lại TOÀN suite
+  // → so với bản trước (judgeRevision). Kém hơn thì hiện cảnh báo + nút quay lại.
+  const acceptOptimized = async (prompt: string, note: string) => {
+    if (!active) return;
+    const oldRevId = active.headRevisionId;
+    const next = commitRevision(active, prompt, 'optimizer', note);
+    if (next === active || !next.headRevisionId) return;
+    if (oldRevId && oldRevId !== next.headRevisionId) {
+      setPendingJudge({ suiteId: next.id, oldRevId, newRevId: next.headRevisionId });
+    }
+    await runSuite(next);
+  };
+
+  const restore = async (revisionId: string) => {
+    if (!active) return;
+    if (hasUncommittedPrompt(active) && !(await confirmDialog({ message: 'Prompt đang sửa chưa được lưu thành phiên bản. Bỏ thay đổi đó?', danger: true, confirmText: 'Bỏ & khôi phục' }))) return;
+    await replaceAndSave(restoreRevision(active, revisionId));
+    toast.success('Đã đặt phiên bản làm hiện hành. Chạy kiểm tra để cập nhật điểm.');
+  };
+
+  // Nguồn template: lấy prompt từ template trong thư viện (ghi thành revision 'source-sync').
+  const sourceTemplate = active?.source?.kind === 'template' ? libraryTemplates.find((t) => t.id === active.source!.id) : undefined;
+  const sourceIsApp = active?.source?.kind === 'sharedApp';
+
+  // Nguồn Shared App: lấy prompt MẪU của bản ĐÃ XUẤT BẢN (khớp hash phản hồi); chưa xuất bản → bản cục bộ.
+  const syncFromApp = async () => {
+    if (!active?.source) return;
+    const appId = active.source.id;
+    const project = (await loadSharedApp(appId)) || loadLocalProjects().find((p) => p.id === appId) || null;
+    const template = project ? compileAppTemplate(project) : null;
+    if (!template) { toast.error('Không tìm thấy app (hoặc app không phải Prompt Graph).'); return; }
+    const next = commitRevision(active, template, 'source-sync', `Đồng bộ từ app "${project!.name}"`);
+    if (next === active) { toast('Prompt đã trùng với app — không có gì mới.'); return; }
+    await replaceAndSave(next);
+    toast.success('Đã đồng bộ prompt mới nhất từ app.');
+  };
+  // Quyết định (b): KHÔNG ghi đè graph của app bằng prompt phẳng — sao chép để chủ app tự sửa graph.
+  const copyForApp = async () => {
+    if (!active) return;
+    try {
+      await navigator.clipboard.writeText(headRevision(active)?.content || active.prompt);
+      toast.success('Đã sao chép. Sửa graph ở tab Project Chain rồi "Xuất bản dạng App" lại.');
+    } catch {
+      toast.error('Không sao chép được.');
+    }
+  };
+
+  const addTestFromFeedback = async (test: HealthTest) => {
+    if (!active) return;
+    await replaceAndSave({ ...active, testCases: [...active.testCases, test] });
+  };
+  const linkTemplate = async (templateId: string) => {
+    if (!active) return;
+    if (!templateId) { await replaceAndSave({ ...active, source: undefined }); return; }
+    const t = libraryTemplates.find((x) => x.id === templateId);
+    if (!t) return;
+    const text = blocksToText(t.blocks);
+    if (!text.trim()) { toast.error('Template này chưa có nội dung.'); return; }
+    const linked: HealthSuite = { ...active, source: { kind: 'template', id: t.id, title: t.title } };
+    await replaceAndSave(commitRevision(linked, text, 'source-sync', `Từ template "${t.title}"`));
+    toast.success(`Đã lấy prompt từ "${t.title}".`);
+  };
+  const syncFromSource = async () => {
+    if (!active || !sourceTemplate) return;
+    const next = commitRevision(active, blocksToText(sourceTemplate.blocks), 'source-sync', `Đồng bộ từ "${sourceTemplate.title}"`);
+    if (next === active) { toast('Prompt đã trùng với template — không có gì mới.'); return; }
+    await replaceAndSave(next);
+    toast.success('Đã đồng bộ prompt mới nhất từ template.');
+  };
+  // Lưu ngược về template: chỉ với template của tôi, khi phiên bản hiện hành (đã lưu) khác nội dung template.
+  const headContent = active ? (headRevision(active)?.content || active.prompt) : '';
+  const canSaveBack = !!(active && sourceTemplate && onSaveTemplate && user && sourceTemplate.userId === user.uid
+    && !hasUncommittedPrompt(active) && headContent.trim() && headContent !== blocksToText(sourceTemplate.blocks));
+  const onSavedToTemplate = async (blocks: PromptTemplate['blocks']) => {
+    if (!active || !sourceTemplate) return;
+    // Ghi lại đúng nội dung template vừa lưu để suite và template khớp nhau.
+    await replaceAndSave(commitRevision(active, blocksToText(blocks), 'source-sync', `Đã lưu về template "${sourceTemplate.title}"`));
+  };
+
+  const openInBuilder = () => {
+    if (!active || !onApplyTemplate) return;
+    onApplyTemplate(promptToTemplate(headRevision(active)?.content || active.prompt, 'health'));
+  };
+
+  const verdict = active && pendingJudge?.suiteId === active.id
+    ? judgeRevision(active, pendingJudge.oldRevId, pendingJudge.newRevId)
+    : null;
+  const testNo = (testId: string) => (active?.testCases.findIndex((t) => t.id === testId) ?? -1) + 1;
 
   const latest = active?.runs[0];
   const prev = active?.runs[1];
@@ -196,12 +319,6 @@ export default function HealthPanel({ seed }: { seed?: LabSeed | null }) {
               <button onClick={() => removeSuite(active.id, active.name)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/30" title="Xoá suite" aria-label="Xoá suite"><Trash2 size={15} /></button>
             </div>
 
-            {active.templateId && (
-              <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-muted">
-                <Link2 size={12} className="text-emerald-500" /> Suite này đo một template đã lưu — tối ưu xong có thể lưu thành phiên bản mới của template.
-              </p>
-            )}
-
             {/* H3: bật cron — Vercel Cron chạy suite này hằng ngày, kết quả tự cộng vào lịch sử run. */}
             <label className="mb-4 flex cursor-pointer items-center gap-2 text-xs font-semibold text-muted">
               <input
@@ -216,7 +333,50 @@ export default function HealthPanel({ seed }: { seed?: LabSeed | null }) {
               </span>
             </label>
 
-            <label className="mb-1.5 block text-xs font-bold text-muted">Prompt được kiểm thử</label>
+            {/* Prompt Git: nguồn prompt (template trong thư viện, hoặc Shared App) */}
+            <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+              <span className="font-bold text-muted">Nguồn:</span>
+              {sourceIsApp ? (
+                <>
+                  <span className="rounded-lg bg-hover px-2 py-1 font-semibold text-ink">App: {active.source!.title || active.source!.id}</span>
+                  <button onClick={syncFromApp} className="flex items-center gap-1 rounded-lg px-2 py-1 font-semibold text-emerald-600 hover:bg-hover dark:text-emerald-400" title="Lấy prompt mẫu mới nhất của app thành phiên bản mới">
+                    <RefreshCw size={12} /> Đồng bộ từ app
+                  </button>
+                  {active.prompt.trim() && (
+                    <button onClick={copyForApp} className="flex items-center gap-1 rounded-lg px-2 py-1 font-semibold text-muted hover:bg-hover" title="Sao chép phiên bản hiện hành để áp dụng vào graph của app">
+                      <ExternalLink size={12} /> Sao chép để sửa app
+                    </button>
+                  )}
+                </>
+              ) : (<>
+              <select
+                value={active.source?.id || ''}
+                onChange={(e) => linkTemplate(e.target.value)}
+                className="max-w-xs rounded-lg border border-line bg-surface px-2 py-1 text-ink"
+              >
+                <option value="">— Không liên kết —</option>
+                {active.source && !sourceTemplate && <option value={active.source.id}>{active.source.title || 'Template'} (không còn trong thư viện)</option>}
+                {libraryTemplates.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
+              </select>
+              {sourceTemplate && (
+                <button onClick={syncFromSource} className="flex items-center gap-1 rounded-lg px-2 py-1 font-semibold text-emerald-600 hover:bg-hover dark:text-emerald-400" title="Lấy nội dung mới nhất của template thành phiên bản mới">
+                  <RefreshCw size={12} /> Đồng bộ từ nguồn
+                </button>
+              )}
+              {onApplyTemplate && active.prompt.trim() && (
+                <button onClick={openInBuilder} className="flex items-center gap-1 rounded-lg px-2 py-1 font-semibold text-muted hover:bg-hover" title="Mở phiên bản hiện hành trong Builder để sửa/lưu thành template">
+                  <ExternalLink size={12} /> Mở trong Builder
+                </button>
+              )}
+              </>)}
+            </div>
+
+            <label className="mb-1.5 flex items-center gap-2 text-xs font-bold text-muted">
+              Prompt được kiểm thử
+              {hasUncommittedPrompt(active) && (active.revisions || []).length > 0 && (
+                <span className="rounded bg-amber-100 px-1.5 py-0.5 font-semibold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">Đã sửa — chạy hoặc Lưu để tạo phiên bản mới</span>
+              )}
+            </label>
             <textarea
               value={active.prompt}
               onChange={(e) => patchActive({ prompt: e.target.value })}
@@ -252,11 +412,19 @@ export default function HealthPanel({ seed }: { seed?: LabSeed | null }) {
                       </span>
                       <button onClick={() => removeTest(t.id)} className="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/30" aria-label="Xoá test"><Trash2 size={12} /></button>
                     </div>
+                    {t.vars && Object.keys(t.vars).length > 0 && (
+                      <div className="mb-2 flex flex-wrap gap-1 text-xs" title="Giá trị biến điền vào {{...}} của prompt khi chạy test này">
+                        <span className="text-faint">Biến:</span>
+                        {Object.entries(t.vars).map(([k, v]) => (
+                          <span key={k} className="max-w-full truncate rounded bg-panel px-1.5 py-0.5 text-muted" title={v}>{k}: {v || '—'}</span>
+                        ))}
+                      </div>
+                    )}
                     <textarea
                       value={t.input}
                       onChange={(e) => updateTest(t.id, { input: e.target.value })}
                       rows={2}
-                      placeholder="Đầu vào thử…"
+                      placeholder={t.vars ? 'Đầu vào thử (để trống = như app: câu kích hoạt cố định)…' : 'Đầu vào thử…'}
                       className="mb-2 w-full resize-y rounded-lg border border-line bg-panel px-2.5 py-1.5 text-xs text-ink placeholder:text-faint focus:border-emerald-500 focus:outline-none"
                     />
                     <textarea
@@ -282,6 +450,43 @@ export default function HealthPanel({ seed }: { seed?: LabSeed | null }) {
             </div>
           </div>
 
+          {!running && <OptimizeSuggestion suite={active} signedIn={!!user} onAccept={acceptOptimized} />}
+
+          {verdict?.ready && (
+            <div className={`rounded-2xl border p-4 text-sm ${verdict.ok ? 'border-emerald-300 bg-emerald-50/60 dark:border-emerald-800 dark:bg-emerald-950/20' : 'border-rose-300 bg-rose-50/60 dark:border-rose-800 dark:bg-rose-950/20'}`}>
+              <div className="flex flex-wrap items-center gap-2 text-ink">
+                {verdict.ok
+                  ? <>Bản tối ưu <b>đạt</b> trên toàn suite ({verdict.avgDelta! >= 0 ? '+' : ''}{verdict.avgDelta} điểm TB), không test nào tụt quá {REGRESSION_DROP} điểm. Đang là phiên bản hiện hành.</>
+                  : <>Bản tối ưu <b>chưa đạt</b> trên toàn suite: TB {verdict.avgDelta! >= 0 ? '+' : ''}{verdict.avgDelta} điểm{verdict.regressions.length > 0 && <>, tụt quá {REGRESSION_DROP} điểm ở {verdict.regressions.map((r) => `Test ${testNo(r.testId)} (${r.scoreA}→${r.scoreB})`).join(', ')}</>}.</>}
+                <span className="ml-auto flex gap-2">
+                  {!verdict.ok && active.headRevisionId === pendingJudge!.newRevId && (
+                    <button
+                      onClick={async () => { await replaceAndSave(restoreRevision(active, pendingJudge!.oldRevId)); setPendingJudge(null); toast.success('Đã quay lại bản trước.'); }}
+                      className="rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-rose-500"
+                    >
+                      Quay lại bản trước
+                    </button>
+                  )}
+                  <button onClick={() => setPendingJudge(null)} className="rounded-xl border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-muted hover:bg-hover">Đóng</button>
+                </span>
+              </div>
+            </div>
+          )}
+
+          {canSaveBack && !running && (
+            <SaveAsVersionPanel
+              key={active.headRevisionId}
+              template={sourceTemplate!}
+              prompt={headContent}
+              onSaveTemplate={onSaveTemplate!}
+              onSaved={onSavedToTemplate}
+            />
+          )}
+
+          {sourceIsApp && user && <FeedbackInbox key={active.id} suite={active} user={user} onAddTest={addTestFromFeedback} />}
+
+          <RevisionTimeline suite={active} onRestore={restore} />
+
           {/* Kết quả & lịch sử */}
           {latest && (
             <div className="rounded-2xl border border-line bg-panel p-5">
@@ -300,18 +505,6 @@ export default function HealthPanel({ seed }: { seed?: LabSeed | null }) {
                   <span className="flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"><AlertTriangle size={12} /> Hồi quy</span>
                 )}
                 {cmp.modelChanged && <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">Đổi model</span>}
-                {needsOptimization(latest) && (
-                  <button
-                    onClick={() => {
-                      const { prompt, ...extras } = pickOptimizerSeedFromRun(active, latest);
-                      sendToLab('optimizer', prompt, extras);
-                    }}
-                    title="Gửi prompt sang Auto-Optimizer, kèm các test điểm thấp nhất và tiêu chí của chúng"
-                    className="ml-auto flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500"
-                  >
-                    <Sparkles size={14} /> Tối ưu với bộ test này
-                  </button>
-                )}
               </div>
 
               <div className="text-xs font-bold text-muted">Lịch sử ({active.runs.length})</div>

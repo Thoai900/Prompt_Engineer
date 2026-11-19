@@ -6,12 +6,11 @@ describe('parseLabSeed', () => {
     expect(parseLabSeed(JSON.stringify({ mode: 'bakeoff', prompt: 'p' }))).toEqual({ mode: 'bakeoff', prompt: 'p' });
   });
 
-  it('đọc trường mở rộng, lọc phần tử rỗng/sai kiểu, bỏ trường lạ', () => {
+  it('đọc trường mở rộng, bỏ chuỗi rỗng/sai kiểu và trường lạ', () => {
     const seed = parseLabSeed(JSON.stringify({
-      mode: 'optimizer', prompt: 'p', templateId: 't1', suiteId: 's1',
-      testInputs: ['a', '', 3], criteria: ['c'], evil: 'x',
+      mode: 'health', prompt: '', templateId: 't1', templateTitle: 'Blog', suiteId: 3, evil: 'x',
     }));
-    expect(seed).toEqual({ mode: 'optimizer', prompt: 'p', templateId: 't1', suiteId: 's1', testInputs: ['a'], criteria: ['c'] });
+    expect(seed).toEqual({ mode: 'health', prompt: '', templateId: 't1', templateTitle: 'Blog' });
   });
 
   it('mode lạ, thiếu prompt, JSON hỏng hoặc rỗng → null', () => {

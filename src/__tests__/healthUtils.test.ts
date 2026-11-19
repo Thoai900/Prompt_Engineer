@@ -1,9 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import {
-  normalizeDraftTests, needsOptimization, pickOptimizerSeedFromRun, findSuiteForTemplate,
-  suiteWriteFields, normalizeSplitBlocks, MAX_SUITE_TESTS,
-} from '../utils/healthUtils';
-import type { HealthRun, HealthSuite } from '../types';
+import { normalizeDraftTests, findSuiteForTemplate, normalizeSplitBlocks, MAX_SUITE_TESTS } from '../utils/healthUtils';
+import type { HealthSuite } from '../types';
 
 let n = 0;
 const gid = () => `id${++n}`;
@@ -18,10 +15,6 @@ const suite = (over: Partial<HealthSuite> = {}): HealthSuite => ({
   ],
   runs: [], ...over,
 });
-const run = (scores: Record<string, number>): HealthRun => {
-  const results = Object.entries(scores).map(([testId, score]) => ({ testId, score }));
-  return { at: '2026-11-18T00:00:00Z', model: 'm', avgScore: Math.round(results.reduce((s, r) => s + r.score, 0) / results.length), results };
-};
 
 describe('normalizeDraftTests', () => {
   it('bỏ test rỗng/trùng/sai kiểu, cắt criteria ≤5 và lọc chuỗi rỗng', () => {
@@ -44,53 +37,17 @@ describe('normalizeDraftTests', () => {
   });
 });
 
-describe('needsOptimization', () => {
-  it('trung bình < 70 hoặc có test < 60 thì gợi ý; chưa chạy thì không', () => {
-    expect(needsOptimization(undefined)).toBe(false);
-    expect(needsOptimization(run({ a: 65, b: 70 }))).toBe(true);   // avg 68
-    expect(needsOptimization(run({ a: 95, b: 55 }))).toBe(true);   // avg 75 nhưng có test 55
-    expect(needsOptimization(run({ a: 80, b: 70 }))).toBe(false);
-  });
-});
-
-describe('pickOptimizerSeedFromRun', () => {
-  it('lấy ≤3 test tệ nhất (tệ nhất trước), hợp nhất criteria bỏ trùng, mang suite/template id', () => {
-    const s = suite({ templateId: 'tpl1' });
-    const seed = pickOptimizerSeedFromRun(s, run({ a: 50, b: 30, c: 90, d: 70 }));
-    expect(seed.testInputs).toEqual(['in-b', 'in-a', 'in-d']);
-    expect(seed.criteria).toEqual(['c2', 'c3', 'c1', 'c5']);
-    expect(seed).toMatchObject({ prompt: 'P', suiteId: 's1', templateId: 'tpl1', templateTitle: 'Blog SEO' });
-  });
-
-  it('bỏ kết quả của test đã bị xoá khỏi suite', () => {
-    const seed = pickOptimizerSeedFromRun(suite(), run({ gone: 0, c: 40 }));
-    expect(seed.testInputs).toEqual(['in-c']);
-  });
-});
-
 describe('findSuiteForTemplate', () => {
-  it('trả suite cập nhật gần nhất của template, hoặc null', () => {
+  it('trả suite cập nhật gần nhất có nguồn là template (bỏ qua sharedApp), hoặc null', () => {
     const list = [
-      suite({ id: 'old', templateId: 't', updatedAt: '2026-01-01' }),
-      suite({ id: 'new', templateId: 't', updatedAt: '2026-06-01' }),
-      suite({ id: 'other', templateId: 'x', updatedAt: '2026-12-01' }),
+      suite({ id: 'old', source: { kind: 'template', id: 't' }, updatedAt: '2026-01-01' }),
+      suite({ id: 'new', source: { kind: 'template', id: 't' }, updatedAt: '2026-06-01' }),
+      suite({ id: 'other', source: { kind: 'template', id: 'x' }, updatedAt: '2026-12-01' }),
+      suite({ id: 'app', source: { kind: 'sharedApp', id: 't' }, updatedAt: '2026-12-01' }),
     ];
     expect(findSuiteForTemplate(list, 't')?.id).toBe('new');
     expect(findSuiteForTemplate(list, 'none')).toBeNull();
     expect(findSuiteForTemplate(list, undefined)).toBeNull();
-  });
-});
-
-describe('suiteWriteFields', () => {
-  it('ghi templateId/workspaceId khi có, cắt runs theo giới hạn', () => {
-    const s = suite({ templateId: 'tpl1', workspaceId: 'w1', runs: [run({ a: 1 }), run({ a: 2 }), run({ a: 3 })] });
-    const f = suiteWriteFields('u1', s, 2);
-    expect(f).toMatchObject({ userId: 'u1', templateId: 'tpl1', workspaceId: 'w1', cronEnabled: false });
-    expect((f.runs as unknown[]).length).toBe(2);
-  });
-
-  it('không có templateId thì không ghi khoá đó', () => {
-    expect('templateId' in suiteWriteFields('u1', suite(), 10)).toBe(false);
   });
 });
 

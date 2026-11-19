@@ -125,6 +125,28 @@ service cloud.firestore {
         && data.createdAt is timestamp;
     }
 
+    // Giới hạn rộng hơn mức app tự cắt (versions ≤ 50) để không chặn dữ liệu hợp lệ;
+    // field graph có thể vắng/null (project legacy v2).
+    function optList(data, key, max) {
+      return !(key in data.keys()) || data[key] == null || (data[key] is list && data[key].size() <= max);
+    }
+
+    function isValidProject(data) {
+      return data.keys().hasAll(['userId', 'name', 'createdAt', 'updatedAt'])
+        && data.userId is string && data.userId.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && ( !('description' in data.keys()) || (data.description is string && data.description.size() <= 5000) )
+        && ( !('workspaceId' in data.keys()) || (data.workspaceId is string && data.workspaceId.size() <= 128) )
+        && optList(data, 'globalEvalCriteria', 50)
+        && optList(data, 'nodes', 200)
+        && optList(data, 'graphNodes', 300)
+        && optList(data, 'edges', 1000)
+        && optList(data, 'testCases', 100)
+        && optList(data, 'versions', 60)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     function isValidSharedApp(data) {
       return data.keys().hasAll(['userId', 'name', 'nodes', 'createdAt', 'updatedAt'])
         && data.userId is string && data.userId.size() <= 128
@@ -142,9 +164,12 @@ service cloud.firestore {
         && ( !('prompt' in data.keys()) || (data.prompt is string && data.prompt.size() <= 50000) )
         && ( !('model' in data.keys()) || (data.model is string && data.model.size() <= 60) )
         && ( !('workspaceId' in data.keys()) || (data.workspaceId is string && data.workspaceId.size() <= 128) )
-        && ( !('templateId' in data.keys()) || (data.templateId is string && data.templateId.size() <= 128) )
         && ( !('testCases' in data.keys()) || (data.testCases is list && data.testCases.size() <= 50) )
         && ( !('runs' in data.keys()) || (data.runs is list && data.runs.size() <= 50) )
+        && ( !('revisions' in data.keys()) || (data.revisions is list && data.revisions.size() <= 20) )
+        && ( !('headRevisionId' in data.keys()) || (data.headRevisionId is string && data.headRevisionId.size() <= 64) )
+        && ( !('source' in data.keys()) || (data.source is map && data.source.keys().hasOnly(['kind', 'id', 'title'])
+              && data.source.kind is string && data.source.id is string && data.source.id.size() <= 128) )
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
@@ -225,12 +250,14 @@ service cloud.firestore {
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create: if isValidId(projectId)
         && isSignedIn()
+        && isValidProject(incoming())
         && incoming().userId == request.auth.uid
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
       allow update: if isValidId(projectId)
         && isSignedIn()
         && existing().userId == request.auth.uid
+        && isValidProject(incoming())
         && incoming().userId == existing().userId
         && incoming().createdAt == existing().createdAt
         && incoming().updatedAt == request.time;
@@ -352,6 +379,43 @@ service cloud.firestore {
         && ( !('xp' in incoming().keys()) || (incoming().xp is number && incoming().xp >= 0) )
         && ( !('badges' in incoming().keys()) || (incoming().badges is list && incoming().badges.size() <= 200) )
         && ( !('completed' in incoming().keys()) || (incoming().completed is list && incoming().completed.size() <= 100) );
+    }
+
+    // Flywheel (Đợt 3): phản hồi người dùng Shared App gửi chủ app. Người gửi chỉ TẠO được
+    // (không đọc lại — tránh lộ phản hồi của người khác); chủ app đọc / đổi status / xoá.
+    // Giới hạn kích thước khớp FEEDBACK_LIMITS trong src/utils/feedbackUtils.ts.
+    function isValidAppFeedback(data) {
+      return data.keys().hasOnly(['appId', 'ownerId', 'userId', 'rating', 'comment', 'inputs', 'output', 'revisionHash', 'status', 'createdAt'])
+        && data.keys().hasAll(['appId', 'ownerId', 'userId', 'rating', 'inputs', 'output', 'status', 'createdAt'])
+        && isValidId(data.appId)
+        && data.ownerId is string && data.ownerId.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.rating in ['up', 'down']
+        && ( !('comment' in data.keys()) || (data.comment is string && data.comment.size() <= 1000) )
+        && data.inputs is map && data.inputs.size() <= 20
+        && data.output is string && data.output.size() <= 8000
+        && ( !('revisionHash' in data.keys()) || (data.revisionHash is string && data.revisionHash.size() <= 16) )
+        && data.status in ['new', 'converted', 'dismissed']
+        && data.createdAt is timestamp;
+    }
+
+    match /appFeedback/{feedbackId} {
+      allow get: if isValidId(feedbackId) && isOwner(resource.data.ownerId);
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isValidId(feedbackId)
+        && isSignedIn()
+        && isValidAppFeedback(incoming())
+        && incoming().userId == request.auth.uid
+        && incoming().status == 'new'
+        && incoming().createdAt == request.time
+        && exists(/databases/$(database)/documents/sharedApps/$(incoming().appId))
+        && get(/databases/$(database)/documents/sharedApps/$(incoming().appId)).data.userId == incoming().ownerId
+        && incoming().ownerId != request.auth.uid;
+      allow update: if isValidId(feedbackId)
+        && isOwner(existing().ownerId)
+        && isValidAppFeedback(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status']);
+      allow delete: if isValidId(feedbackId) && isOwner(existing().ownerId);
     }
 
     match /healthSuites/{suiteId} {

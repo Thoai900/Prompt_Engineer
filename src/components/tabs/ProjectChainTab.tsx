@@ -2,15 +2,18 @@ import { toast } from '../common/Toaster';
 import { confirmDialog } from '../common/ConfirmDialog';
 import React, { useEffect, useState } from 'react';
 import { Plus, Trash2, Layers, X, AppWindow, ArrowLeft } from 'lucide-react';
-import { collection, doc, getDocs, query, where, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { PromptProject, PromptTemplate } from '../../types';
 import { TEMPLATES } from '../../data';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { GraphWorkspace } from '../project-chain/GraphWorkspace';
 import AppPanel from '../project-chain/AppPanel';
+import { sendToLab } from '../../services/labSeed';
 import { createEmptyGraphProject, isGraphProject, migrateProjectToGraph, parseRawPromptToGraph } from '../../utils/graphMigration';
 import { GRAPH_SAMPLE_PROJECTS } from '../../utils/graphSamples';
+import { projectFromDoc } from '../../utils/projectDoc';
+import { deleteProjectFromCloud, markProjectsInCloud, saveProjectToCloud } from '../../services/projectStore';
 
 /**
  * Project Chain v3 — "Prompt Graph": shell của tab, chỉ còn quản lý danh sách
@@ -66,11 +69,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
     if (user) {
       setSyncStatus('saving');
       try {
-        await setDoc(doc(db, 'projects', updatedProj.id), {
-          ...updatedProj,
-          userId: user.uid,
-          updatedAt: new Date().toISOString(),
-        });
+        await saveProjectToCloud(updatedProj, user.uid);
         setSyncStatus('synced');
       } catch (err) {
         console.error('Lỗi Firestore:', err);
@@ -101,32 +100,15 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
         try {
           const snap = await getDocs(query(collection(db, 'projects'), where('userId', '==', user.uid)));
           const dbProjects: PromptProject[] = [];
-          snap.forEach((docSnap) => {
-            const data = docSnap.data() as any;
-            dbProjects.push({
-              id: docSnap.id,
-              name: data.name,
-              description: data.description || '',
-              globalEvalCriteria: data.globalEvalCriteria || [],
-              nodes: data.nodes || [],
-              schemaVersion: data.schemaVersion,
-              graphNodes: data.graphNodes,
-              edges: data.edges,
-              createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt || new Date().toISOString(),
-              updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt || new Date().toISOString(),
-              userId: data.userId,
-              workspaceId: data.workspaceId,
-              testCases: data.testCases || [],
-              versions: data.versions || [],
-            });
-          });
+          snap.forEach((docSnap) => dbProjects.push(projectFromDoc(docSnap.id, docSnap.data())));
+          markProjectsInCloud(dbProjects.map((p) => p.id));
 
           if (dbProjects.length > 0) {
             finalList = dbProjects;
           } else {
             // Lần đầu đăng nhập: đẩy danh sách cục bộ lên cloud.
             for (const p of localProjects) {
-              await setDoc(doc(db, 'projects', p.id), { ...p, userId: user.uid });
+              await saveProjectToCloud(p, user.uid);
             }
           }
           setSyncStatus('synced');
@@ -200,7 +182,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
     localStorage.setItem(LOCAL_KEY, JSON.stringify(nextProjects));
 
     if (user) {
-      setDoc(doc(db, 'projects', newProj.id), { ...newProj, userId: user.uid })
+      saveProjectToCloud(newProj, user.uid)
         .then(() => setSyncStatus('synced'))
         .catch(() => setSyncStatus('error'));
     }
@@ -228,7 +210,7 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
     localStorage.setItem(LOCAL_KEY, JSON.stringify(nextProjects));
 
     if (user) {
-      deleteDoc(doc(db, 'projects', id))
+      deleteProjectFromCloud(id)
         .then(() => setSyncStatus('synced'))
         .catch(() => setSyncStatus('error'));
     }
@@ -320,7 +302,10 @@ export default function ProjectChainTab({ theme = 'dark', user, customTemplates 
               <button onClick={() => setAppMode(false)} className="mb-4 flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink">
                 <ArrowLeft size={13} /> Về Prompt Graph
               </button>
-              <AppPanel initialProjectId={activeProject?.id} />
+              <AppPanel
+                initialProjectId={activeProject?.id}
+                onOpenHealth={(suiteId) => sendToLab('health', '', { suiteId })}
+              />
             </div>
           </div>
         ) : !activeProject ? (

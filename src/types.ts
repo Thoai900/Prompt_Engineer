@@ -326,6 +326,7 @@ export interface HealthTest {
   id: string;
   input: string;        // đầu vào thử
   criteria: string[];   // tiêu chí chấm cho test này
+  vars?: Record<string, string>; // giá trị {{biến}} điền vào prompt trước khi chạy (test từ phản hồi Shared App)
 }
 
 export interface HealthTestResult {
@@ -339,6 +340,18 @@ export interface HealthRun {
   model: string;        // model đã chạy lần này (để phát hiện "đổi model")
   avgScore: number;     // điểm trung bình toàn suite
   results: HealthTestResult[];
+  revisionId?: string;  // Prompt Git: revision đã chạy (trống = run trước khi có lịch sử)
+}
+
+// Prompt Git: một bản lưu của prompt trong Health suite (xem utils/promptRevisions.ts).
+export interface PromptRevision {
+  id: string;
+  at: string;           // ISO date string
+  content: string;      // prompt đầy đủ tại revision này
+  hash: string;         // hashPrompt(content) — phát hiện trùng
+  origin: 'manual' | 'optimizer' | 'source-sync' | 'restore';
+  note?: string;
+  parentId?: string;    // revision trước đó
 }
 
 export interface HealthSuite {
@@ -349,11 +362,28 @@ export interface HealthSuite {
   testCases: HealthTest[];
   runs: HealthRun[];    // mới nhất ở đầu, giữ tối đa ~10 lần
   cronEnabled?: boolean; // H3: bật chạy tự động hằng ngày (Vercel Cron, cần đăng nhập)
-  templateId?: string;   // template gốc mà suite này đo (vòng chất lượng); undefined = suite độc lập
+  revisions?: PromptRevision[]; // Prompt Git: mới nhất ở đầu, tối đa 20
+  headRevisionId?: string;      // revision đang là prompt hiện hành
+  source?: { kind: 'template' | 'sharedApp'; id: string; title?: string }; // nguồn prompt
   userId?: string;
   workspaceId?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+// Flywheel: phản hồi của người dùng Shared App gửi về chủ app (collection `appFeedback`).
+export interface AppFeedback {
+  id: string;
+  appId: string;
+  ownerId: string;      // userId của app — rule chỉ cho chủ app đọc
+  userId: string;       // người gửi
+  rating: 'up' | 'down';
+  comment?: string;
+  inputs: Record<string, string>; // giá trị biến thực tế của lần chạy
+  output: string;
+  revisionHash?: string; // hash prompt mẫu của app lúc chạy
+  status: 'new' | 'converted' | 'dismissed';
+  createdAt: string;    // ISO
 }
 
 // ── LLM Config (UtilityBeltTab) — dời khỏi component để dùng chung khi import ──
