@@ -1,7 +1,7 @@
 # Thiết kế: Xuất Prompt Graph thành Agent Skill · HTTP API · MCP server (#4)
 
 Ngày: 2026-11-19
-Trạng thái: ĐÃ DUYỆT (2026-11-19, chấp nhận cả 4 đề xuất ở "Câu hỏi mở": (c) · tất cả app · (a) · SDK) · Đợt 1 đang build
+Trạng thái: ĐÃ DUYỆT (2026-11-19, chấp nhận cả 4 đề xuất ở "Câu hỏi mở": (c) · tất cả app · (a) · SDK) · Đợt 1–2 đã build
 
 ## Mục tiêu
 
@@ -180,3 +180,21 @@ Streaming qua API; app legacy nhiều bước; giấu prompt khỏi người xem
   `buildInstallCommands`.
 - UI: nút "Xuất skill" trên thanh công cụ panel xem trước prompt của Prompt Graph → `ExportSkillModal`
   (xem trước, sao chép, tải, lệnh cài theo agent). Mục "Bật API / MCP…" để Đợt 2.
+
+## Ghi chú triển khai Đợt 2
+
+- `src/utils/apiAccess.ts` (thuần): `buildPublishSnapshot`, `generateApiKey` (`pb_live_` + 43 ký tự base64url),
+  `hashApiKey` (WebCrypto, khớp `hashKey` node crypto ở server — có test), `buildCurlExample`, `quotaToday`.
+- `publishApp(user, project, { apiEnabled? })`: app Prompt Graph luôn ghi snapshot; bật API = xuất bản lại để snapshot
+  khớp graph hiện tại. App mới tạo có `apiEnabled: false`. Bật API cần xác nhận (nhắc chi phí + prompt vẫn công khai).
+- `api/run.ts` theo Phần D; quota đếm TRƯỚC khi gọi model (lượt gọi model lỗi vẫn bị tính — chặn dò lỗi tốn tiền).
+  Quota dùng read-modify-write có precondition `updateTime` (thử lại 4 lần), không dùng transform `increment` vì
+  cần reset theo ngày. Không phân biệt "không tồn tại / chưa bật / ngoài phạm vi" (đều 404) để tránh dò app.
+- BYOK: `X-Gemini-Api-Key` hoặc `X-Groq-Api-Key` → gọi đúng nhà cung cấp đó, không rơi về key server, không tính quota
+  (vẫn qua rate-limit theo key).
+- Rules `apiKeys`: id phải là SHA-256 hex; client không sửa được `usage`, chỉ hạ `dailyQuota` (1–100), thu hồi một
+  chiều (không bỏ `revokedAt` được). `isValidSharedApp` kiểm thêm `promptTemplate`/`variables`/`model`/`apiEnabled`.
+- UI: khu "Gọi app qua API" trong Chain → App (chủ app, đã đăng nhập): bật/tắt API, ví dụ curl, tạo key (mặc định
+  mọi app, tuỳ chọn "Chỉ app này"), key hiện một lần, danh sách key + lượt hôm nay, thu hồi.
+- Test: hàm thuần client/server + chạy cả handler với Firestore/OAuth/Groq giả lập qua `fetch` (quota, BYOK, 401/404/400/
+  405/429, tranh chấp ghi). Chưa kiểm với Firestore/Vercel thật; rules chưa có emulator.

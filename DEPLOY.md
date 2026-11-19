@@ -47,6 +47,10 @@ Bắt buộc nếu muốn bật (thiếu thì endpoint từ chối chạy, KHÔN
 
 Sau khi set 2 env này + redeploy, các Health suite bật "Tự động chạy hằng ngày" (Lab → Prompt Health) sẽ được server tự chạy và ghi kết quả vào lịch sử run.
 
+### HTTP API cho app (`/api/run`, Lab → Chain → App → "Gọi app qua API")
+Dùng chung `FIREBASE_SERVICE_ACCOUNT` (ở trên) để đọc `apiKeys`/`sharedApps` và đếm lượt; gọi model bằng `GEMINI_API_KEY`/`GROQ_API_KEY`. Thiếu `FIREBASE_SERVICE_ACCOUNT` thì `/api/run` trả 500, phần khác không ảnh hưởng.
+Tùy chọn: `RUN_MAX_DAILY_QUOTA` (100 — trần lượt/ngày mỗi API key; rules cũng giới hạn ≤ 100), `RUN_RATE_LIMIT_PER_MIN` (10 — mỗi key, mỗi instance).
+
 ---
 
 ## 2. Deploy Firestore rules (Firebase) — BẮT BUỘC

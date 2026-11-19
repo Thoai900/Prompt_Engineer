@@ -7,6 +7,7 @@ import {
 } from '../../services/chainAppService';
 import { toast } from '../common/Toaster';
 import FeedbackForm from './health/FeedbackForm';
+import ApiAccessPanel from './api/ApiAccessPanel';
 import { loadHealthSuites, newHealthSuite, saveHealthSuite } from '../../services/healthService';
 import { compileAppTemplate, effectiveInputs, appTemplateHash } from '../../utils/feedbackUtils';
 import { commitRevision } from '../../utils/promptRevisions';
@@ -127,7 +128,7 @@ export default function AppPanel({ onOpenHealth }: AppPanelProps) {
 
   return (
     <>
-      <p className="mb-4 text-sm text-muted">Biến một <span className="font-semibold text-ink">Project Chain</span> thành app: điền biến → chạy cả chuỗi → nhận kết quả. Chia sẻ bằng link; người nhận chạy bằng tài khoản của họ (an toàn, không mở API công khai).</p>
+      <p className="mb-4 text-sm text-muted">Biến một <span className="font-semibold text-ink">Project Chain</span> thành app: điền biến → chạy cả chuỗi → nhận kết quả. Chia sẻ bằng link; người nhận chạy bằng tài khoản của họ. Muốn gọi từ hệ thống khác: bật API cho app (cần API key) ở bên dưới.</p>
 
       {sharedLoading ? (
         <div className="flex items-center gap-2 rounded-2xl border border-line bg-panel p-6 text-sm text-muted"><Loader2 size={16} className="animate-spin" /> Đang tải app được chia sẻ…</div>
@@ -201,6 +202,8 @@ export default function AppPanel({ onOpenHealth }: AppPanelProps) {
               {running ? 'Đang chạy app…' : 'Chạy app'}
             </button>
           </div>
+
+          {!sharedApp && user && <ApiAccessPanel key={activeProject.id} project={activeProject} user={user} />}
 
           {error && (
             <div className="flex items-start gap-2 rounded-xl bg-rose-50 p-4 text-sm text-rose-600 dark:bg-rose-950/30 dark:text-rose-400">
