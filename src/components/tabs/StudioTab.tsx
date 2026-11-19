@@ -244,7 +244,7 @@ export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBui
   return (
     <div className="custom-scrollbar h-full w-full overflow-y-auto">
       {/* Header của Studio */}
-      <div className="sticky top-0 z-20 border-b border-line/60 bg-glass/70 backdrop-blur-xl">
+      <div className="sticky top-0 z-20 border-b border-glass-edge glass-2">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 lg:px-8">
           <div className="min-w-0">
             <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400">

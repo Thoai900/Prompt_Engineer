@@ -141,7 +141,7 @@ export default function LearnTab({ libraryTemplates = [] }: LearnTabProps) {
       case 'lab-professional': return renderLab('professional');
       case 'lab-entertainment': return renderLab('entertainment');
       case 'tutor': return (
-        <div className="flex-1 overflow-y-auto bg-surface p-4 md:p-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="mx-auto max-w-5xl">
             <button onClick={goDashboard} className="mb-4 flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink">
               <ArrowLeft size={13} /> Về Học viện
@@ -152,7 +152,7 @@ export default function LearnTab({ libraryTemplates = [] }: LearnTabProps) {
         </div>
       );
       case 'news': return (
-        <div className="flex-1 overflow-y-auto bg-surface p-4 md:p-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
           <button onClick={goDashboard} className="mb-4 flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink">
             <ArrowLeft size={13} /> Về Học viện
           </button>
@@ -164,7 +164,7 @@ export default function LearnTab({ libraryTemplates = [] }: LearnTabProps) {
   };
 
   const renderDashboard = () => (
-    <div className="flex-1 overflow-y-auto bg-surface p-4 md:p-8 space-y-10">
+    <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-10">
       {/* Header & Gamification Bar */}
       <div className="flex flex-col gap-6">
         <div className="bg-emerald-600 hover:bg-emerald-700 rounded-3xl p-6 md:p-8 text-white shadow-lg relative overflow-hidden">
@@ -351,7 +351,7 @@ export default function LearnTab({ libraryTemplates = [] }: LearnTabProps) {
   );
 
   return (
-    <div className="flex flex-col h-full bg-surface w-full overflow-hidden">
+    <div className="flex flex-col h-full w-full overflow-hidden">
       {renderView()}
     </div>
   );

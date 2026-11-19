@@ -39,7 +39,7 @@ export default function TastePanel() {
       ) : (
         <div className="space-y-4">
           {/* Sức mạnh cá nhân hoá */}
-          <div className="rounded-2xl border border-line bg-panel p-5">
+          <div className="rounded-2xl border border-glass-edge glass-1 p-5">
             <div className="mb-2 flex items-center justify-between">
               <span className="flex items-center gap-2 text-sm font-bold text-ink"><Fingerprint size={16} className="text-emerald-500" /> Độ hiểu bạn</span>
               <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{insights.strength}%</span>
@@ -55,7 +55,7 @@ export default function TastePanel() {
 
           {/* Vốn từ / chủ đề */}
           {insights.topTerms.length > 0 && (
-            <div className="rounded-2xl border border-line bg-panel p-5">
+            <div className="rounded-2xl border border-glass-edge glass-1 p-5">
               <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-ink"><Hash size={15} className="text-emerald-500" /> Vốn từ &amp; chủ đề của bạn</h3>
               <div className="flex flex-wrap gap-1.5">
                 {insights.topTerms.map((t) => (
@@ -69,7 +69,7 @@ export default function TastePanel() {
 
           {/* Biến hay dùng */}
           {insights.topValues.length > 0 && (
-            <div className="rounded-2xl border border-line bg-panel p-5">
+            <div className="rounded-2xl border border-glass-edge glass-1 p-5">
               <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-ink"><Variable size={15} className="text-emerald-500" /> Giá trị biến bạn hay dùng</h3>
               <div className="space-y-2">
                 {insights.topValues.map((v) => (
@@ -86,7 +86,7 @@ export default function TastePanel() {
 
           {/* Cụm từ gần đây */}
           {insights.recentPhrases.length > 0 && (
-            <div className="rounded-2xl border border-line bg-panel p-5">
+            <div className="rounded-2xl border border-glass-edge glass-1 p-5">
               <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-ink"><MessageSquare size={15} className="text-emerald-500" /> Cụm từ gần đây bạn dạy AI</h3>
               <ul className="space-y-1.5">
                 {insights.recentPhrases.map((p, i) => (

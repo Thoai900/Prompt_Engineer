@@ -452,7 +452,9 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-full w-full flex-1 flex-col overflow-hidden bg-surface font-sans text-ink md:flex-row">
+    <div className="relative isolate flex h-full w-full flex-1 flex-col overflow-hidden bg-surface font-sans text-ink md:flex-row">
+      {/* Lớp nền màu cho hiệu ứng kính — cố định, nằm sau mọi bề mặt */}
+      <div aria-hidden="true" className="glass-ambient pointer-events-none fixed inset-0 -z-10" />
       <Toaster />
       <ConfirmDialogHost />
       <CommandPalette
@@ -466,7 +468,7 @@ export default function App() {
       />
       {/* Header tĩnh trên Mobile — ẩn ở trang chủ để landing page chiếm trọn màn hình */}
       {activeTab !== 'home' && (
-      <header className="z-50 flex w-full items-center justify-between border-b border-line bg-panel p-3 md:hidden shrink-0">
+      <header className="z-50 flex w-full items-center justify-between border-b border-glass-edge glass-2 p-3 md:hidden shrink-0">
         <div className="flex cursor-pointer items-center space-x-2.5" onClick={() => setActiveTab('home')}>
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-sm font-bold text-white">P</div>
           <h1 className="text-base font-semibold tracking-tight text-ink">PromptBuilder</h1>
@@ -485,7 +487,7 @@ export default function App() {
 
       {/* Tab con của nhóm đang mở (mobile) — chỉ hiện khi nhóm có từ 2 tab */}
       {activeTab !== 'home' && activeGroup && activeGroup.tabs.length > 1 && (
-        <div className="md:hidden shrink-0 border-b border-line bg-panel">
+        <div className="md:hidden shrink-0 border-b border-glass-edge glass-2">
           <div className="flex overflow-x-auto px-2 no-scrollbar" role="tablist" aria-label={activeGroup.label}>
             {activeGroup.tabs.map((tab) => {
               const item = navItemByTab[tab];
@@ -526,7 +528,7 @@ export default function App() {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="fixed bottom-0 left-0 top-0 z-[80] flex w-72 flex-col bg-panel p-5 shadow-xl border-r border-line md:hidden"
+              className="fixed bottom-0 left-0 top-0 z-[80] flex w-72 flex-col glass-3 p-5 border-r border-glass-edge md:hidden"
             >
               {/* Header Drawer */}
               <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
@@ -597,7 +599,7 @@ export default function App() {
 
        {/* Sidebar trên Desktop — ẩn ở trang chủ để người dùng tập trung vào landing page */}
       {activeTab !== 'home' && (
-      <nav className={`hidden md:flex md:flex-col md:items-stretch md:justify-start md:border-r md:p-4 z-[60] border-line bg-panel transition-all duration-300 ease-in-out shrink-0 ${
+      <nav className={`hidden md:flex md:flex-col md:items-stretch md:justify-start md:border-r md:p-4 z-[60] border-glass-edge glass-2 transition-all duration-300 ease-in-out shrink-0 ${
         isSidebarCollapsed ? 'md:w-20' : 'md:w-64'
       }`}>
         <div className={`flex md:mb-6 md:px-2 shrink-0 ${
@@ -721,7 +723,7 @@ export default function App() {
       </nav>
       )}
 
-      <main className="relative flex h-full w-full flex-1 flex-col overflow-hidden bg-surface">
+      <main className="relative flex h-full w-full flex-1 flex-col overflow-hidden">
         <Suspense fallback={<TabLoader />}>
           <TabPanel isActive={activeTab === 'home'} mounted={visitedTabs.has('home')}>
             <HomeTab
@@ -778,7 +780,7 @@ export default function App() {
 
       {/* Thanh tab đáy (mobile): 4 nhóm + "Thêm" (menu đầy đủ: workspace, persona, đăng nhập) */}
       {activeTab !== 'home' && (
-        <nav className="md:hidden shrink-0 border-t border-line bg-panel pb-safe" aria-label="Điều hướng chính">
+        <nav className="md:hidden shrink-0 border-t border-glass-edge glass-2 pb-safe" aria-label="Điều hướng chính">
           <div className="grid grid-cols-5">
             {NAV_GROUPS.map((g) => {
               const isActive = activeGroup?.id === g.id;

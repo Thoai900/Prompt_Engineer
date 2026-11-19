@@ -27,7 +27,7 @@ function CountChip({ label, value }: { label: string; value: number }) {
 
 export default function LivePreview({ text, blockCount, ruleCount, skillCount, personaName, quality }: LivePreviewProps) {
   return (
-    <aside className="flex max-h-[calc(100vh-7rem)] flex-col overflow-hidden rounded-2xl border border-line bg-panel/70 backdrop-blur-sm">
+    <aside className="flex max-h-[calc(100vh-7rem)] flex-col overflow-hidden rounded-2xl border border-glass-edge glass-1">
       <div className="border-b border-line/70 px-4 py-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-xs font-bold text-faint">

@@ -82,7 +82,7 @@ export function Toaster() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, x: 24, scale: 0.96 }}
             transition={{ type: 'spring', stiffness: 360, damping: 30 }}
-            className={`pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl border bg-[var(--color-panel,#ffffff)] px-4 py-3 shadow-lg backdrop-blur-md ${STYLES[item.type].ring}`}
+            className={`pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl border glass-3 px-4 py-3 ${STYLES[item.type].ring}`}
             role={item.type === 'error' ? 'alert' : 'status'}
           >
             <span className="mt-0.5 shrink-0">{STYLES[item.type].icon}</span>

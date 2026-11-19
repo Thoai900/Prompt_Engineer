@@ -31,7 +31,7 @@ export default function LintIssueList({ issues }: { issues: LintIssue[] }) {
         const s = SEV_STYLE[issue.severity];
         const Icon = s.icon;
         return (
-          <div key={i} className={`rounded-xl border bg-panel p-3 ${s.border}`}>
+          <div key={i} className={`rounded-xl border glass-1 p-3 ${s.border}`}>
             <div className="mb-1 flex flex-wrap items-center gap-2">
               <Icon size={14} className="shrink-0" />
               <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${s.badge}`}>{SEVERITY_LABELS[issue.severity]}</span>

@@ -306,7 +306,7 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate, in
       ) : (
         <div className="space-y-4">
           {/* Cấu hình suite */}
-          <div className="rounded-2xl border border-line bg-panel p-5">
+          <div className="rounded-2xl border border-glass-edge glass-1 p-5">
             <div className="mb-4 flex flex-wrap items-center gap-3">
               <input
                 value={active.name}
@@ -489,7 +489,7 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate, in
 
           {/* Kết quả & lịch sử */}
           {latest && (
-            <div className="rounded-2xl border border-line bg-panel p-5">
+            <div className="rounded-2xl border border-glass-edge glass-1 p-5">
               <div className="mb-4 flex flex-wrap items-center gap-5">
                 <div>
                   <div className="text-xs font-semibold text-faint">điểm sức khoẻ</div>

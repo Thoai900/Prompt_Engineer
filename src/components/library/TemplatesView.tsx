@@ -343,7 +343,7 @@ export default function TemplatesView({ onSelectTemplate, customTemplates = [], 
   }, [allTemplates]);
 
   return (
-    <div className="flex-1 p-6 flex flex-col overflow-y-auto bg-[#fafafa]">
+    <div className="flex-1 p-6 flex flex-col overflow-y-auto">
       <div className="mb-8">
         {!embedded && (
         <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 mb-8">
@@ -391,7 +391,7 @@ export default function TemplatesView({ onSelectTemplate, customTemplates = [], 
                   <button
                     key={t.id}
                     onClick={() => openDetail(t)}
-                    className="group text-left flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 hover:border-indigo-400 hover:shadow-md transition-all"
+                    className="group text-left flex items-center gap-3 rounded-2xl border border-glass-edge glass-1 p-3 hover:border-indigo-400 hover:shadow-md transition-all"
                   >
                     <div className="shrink-0 w-9 h-9 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-indigo-500">
                       <Icon className="w-4 h-4" />

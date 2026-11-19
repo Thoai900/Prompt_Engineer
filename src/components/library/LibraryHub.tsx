@@ -214,7 +214,7 @@ export default function LibraryHub(props: LibraryHubProps) {
                   <button
                     key={e.id}
                     onClick={() => openEntry(e)}
-                    className="flex flex-col items-start gap-1.5 rounded-2xl border border-line bg-panel p-4 text-left transition-colors hover:border-emerald-400 hover:bg-hover"
+                    className="flex flex-col items-start gap-1.5 rounded-2xl border border-glass-edge glass-1 p-4 text-left transition-colors hover:border-emerald-400 hover:bg-hover"
                   >
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">{KIND_LABELS[e.kind]}</span>

@@ -26,7 +26,7 @@ export const QuickPromptModal: React.FC<QuickPromptModalProps> = ({
   return (
     <div className="fixed inset-0 bg-slate-955/70 backdrop-blur-sm z-[999] flex items-center justify-center p-4">
       <div
-        className="relative bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-2xl p-6 md:p-8 w-full max-w-lg border border-slate-200/50 dark:border-slate-800/50 text-slate-900 dark:text-slate-100"
+        className="relative glass-3 rounded-2xl p-6 md:p-8 w-full max-w-lg border border-glass-edge text-slate-900 dark:text-slate-100"
         onClick={(e) => e.stopPropagation()}
       >
         {isGeneratingQuickPrompt && (
