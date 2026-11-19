@@ -15,7 +15,7 @@ export interface NavGroup {
 
 export const NAV_GROUPS: readonly NavGroup[] = [
   { id: 'create', label: 'Tạo', tabs: ['studio', 'builder', 'projectchain'] },
-  { id: 'library', label: 'Thư viện', tabs: ['library', 'rulesskills', 'utilitybelt'] },
+  { id: 'library', label: 'Thư viện', tabs: ['library'] },
   { id: 'experiment', label: 'Thử nghiệm', tabs: ['lab'] },
   { id: 'learn', label: 'Học', tabs: ['learn'] },
 ];
@@ -45,6 +45,9 @@ export function targetTabForGroup(
 const LEGACY_TABS: Record<string, { tab: TabType; params?: Record<string, string> }> = {
   enhancer: { tab: 'studio', params: { studio: 'quick' } },
   aifuture: { tab: 'learn', params: { learn: 'news' } },
+  // Gộp vào tab Thư viện (spec 2026-11-18-unified-library-design).
+  rulesskills: { tab: 'library', params: { lib: 'rules' } },
+  utilitybelt: { tab: 'library', params: { lib: 'configs' } },
 };
 
 export function resolveLegacyTab(raw: string, search = ''): { tab: TabType; params?: Record<string, string> } | null {

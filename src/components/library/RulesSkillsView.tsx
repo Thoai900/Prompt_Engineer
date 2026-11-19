@@ -1,10 +1,10 @@
 import { toast } from '../common/Toaster';
 import { confirmDialog } from '../common/ConfirmDialog';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Sparkles, Plus, Trash, Copy, Check, FileDown,
-  RefreshCw, Sliders, ChevronUp, ChevronDown,
-  HelpCircle, Eye, Edit3, CheckCircle2, AlertTriangle, Play, BookOpen, Compass
+  RefreshCw, ChevronUp, ChevronDown,
+  HelpCircle, Eye, Edit3, CheckCircle2, AlertTriangle, Play, BookOpen
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { collection, doc, getDocs, query, setDoc, where, deleteDoc, serverTimestamp } from 'firebase/firestore';
@@ -12,9 +12,8 @@ import { db, handleFirestoreError } from '../../firebase';
 import { TabType, AiRule, AiSkill, SkillVariable, SkillStep, PromptTemplate, PromptBlock, SkillRunRecord } from '../../types';
 import { PRESET_RULES, PRESET_SKILLS } from '../../presets';
 import { optimizeAiRules } from '../../services/aiService';
-import SkillsPanel from '../rulesskills/SkillsPanel';
-import LibraryExplorer from '../library-explorer/LibraryExplorer';
-import AuthoringWizard from '../authoring/AuthoringWizard';
+import SkillsPanel from './SkillsPanel';
+import { LIBRARY_CHANGED_EVENT, type LibraryChangedKind } from '../../services/libraryNav';
 import { toSkillMd, toAgentsMd, toClaudeMd, downloadText } from '../../utils/exporters';
 import DomainChips from '../common/DomainChips';
 import { filterByDomain } from '../../utils/presetFilter';
@@ -22,9 +21,13 @@ import { GEMINI_FLASH, GEMINI_MODEL_OPTIONS } from '../../config/models';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-interface RulesSkillsTabProps {
+interface RulesSkillsViewProps {
   user: User | null;
   onApplyTemplate?: (template: PromptTemplate) => void;
+  /** Loại đang xem — do LibraryHub điều khiển (bộ chọn loại của tab Thư viện). */
+  subTab: 'rules' | 'skills';
+  /** Mở sẵn một mục (từ kết quả tìm kiếm / deep-link `?id=`). nonce đổi để mở lại cùng id. */
+  focus?: { id: string; nonce: number } | null;
 }
 
 // Safely parse a localStorage JSON array; corrupt/legacy data returns [] instead of crashing the tab.
@@ -39,8 +42,8 @@ function safeParseArray<T>(raw: string | null): T[] {
   }
 }
 
-export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<'rules' | 'skills'>('rules');
+/** Rules & Skills trong tab Thư viện (trước là tab Rules & Skills riêng). */
+export default function RulesSkillsView({ user, onApplyTemplate, subTab: activeSubTab, focus }: RulesSkillsViewProps) {
 
   // --- rules state ---
   const [rules, setRules] = useState<AiRule[]>([]);
@@ -64,8 +67,6 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
 
   // M3: toàn bộ state/logic skills đã tách sang components/rulesskills/SkillsPanel.tsx.
   const [syncToken, setSyncToken] = useState(0);
-  const [explorerOpen, setExplorerOpen] = useState(false);
-  const [wizardOpen, setWizardOpen] = useState(false);
   const [ruleDomain, setRuleDomain] = useState<string | null>(null);
 
     // Sync state
@@ -127,6 +128,28 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
       setIsSyncing(false);
     }
   };
+
+  // Nhập từ GitHub / tạo bằng AI ở LibraryHub → đọc lại kho.
+  useEffect(() => {
+    const onChanged = (e: Event) => {
+      const kind = (e as CustomEvent<LibraryChangedKind>).detail;
+      if (kind === 'rule') {
+        const parsed = safeParseArray<AiRule>(localStorage.getItem('custom_rules')).filter(r => !r.isPreset);
+        setRules([...PRESET_RULES, ...parsed]);
+      } // 'skill': SkillsPanel tự nghe sự kiện và đọc lại.
+    };
+    window.addEventListener(LIBRARY_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(LIBRARY_CHANGED_EVENT, onChanged);
+  }, []);
+
+  // Mở sẵn rule được chọn từ kết quả tìm kiếm (mỗi nonce một lần, chờ kho nạp xong).
+  const handledFocus = useRef<number | null>(null);
+  useEffect(() => {
+    if (!focus || activeSubTab !== 'rules' || handledFocus.current === focus.nonce) return;
+    const rule = rules.find(r => r.id === focus.id);
+    if (rule) { handledFocus.current = focus.nonce; selectRule(rule); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus, rules]);
 
   // --- RULE MANAGEMENT ACTIONS ---
   const selectRule = (rule: AiRule) => {
@@ -360,68 +383,20 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
   return (
     <div className="flex-1 p-4 md:p-6 flex flex-col overflow-y-auto w-full max-w-6xl mx-auto pb-safe">
       
-      {/* Header tab */}
-      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800 dark:text-white">
-            <Sliders className="text-emerald-500 w-5 h-5" />
-            <span>Rules & Skills Builder</span>
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Thiết kế các tệp quy định hệ thống dài hạn, cẩm nang chỉ dẫn (SOPs) và cấu trúc kỹ năng hành vi chuyên sâu cho AI.
-          </p>
+      {/* Thanh đồng bộ (tiêu đề, bộ chọn loại, Khám phá/Tạo bằng AI nằm ở LibraryHub) */}
+      {user && (
+        <div className="mb-4 flex justify-end">
+          <button
+            onClick={() => { syncDataWithFirestore(); setSyncToken(t => t + 1); }}
+            disabled={isSyncing}
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 dark:bg-slate-900 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-350 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+            title="Đồng bộ hóa với đám mây Firestore"
+          >
+            <RefreshCw size={12} className={isSyncing ? "animate-spin" : ""} />
+            <span>{isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ đám mây'}</span>
+          </button>
         </div>
-        <div className="flex items-center gap-2">
-          {user && (
-            <button
-              onClick={() => { syncDataWithFirestore(); setSyncToken(t => t + 1); }}
-              disabled={isSyncing}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 dark:bg-slate-900 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-350 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-              title="Đồng bộ hóa với đám mây Firestore"
-            >
-              <RefreshCw size={12} className={isSyncing ? "animate-spin" : ""} />
-              <span>{isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ đám mây'}</span>
-            </button>
-          )}
-
-          {activeSubTab === 'rules' && (
-            <button
-              onClick={() => setExplorerOpen(true)}
-              className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 dark:bg-indigo-950/20 dark:border-indigo-900/50 text-xs font-semibold text-indigo-700 dark:text-indigo-400 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Khám phá & nhập rule/skill/persona từ GitHub"
-            >
-              <Compass size={14} />
-              <span>Khám phá GitHub</span>
-            </button>
-          )}
-
-          {activeSubTab === 'rules' && (
-            <button
-              onClick={() => setWizardOpen(true)}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-              title="Tạo quy tắc bằng AI từ 1 câu mô tả"
-            >
-              <Sparkles size={14} />
-              <span>Tạo bằng AI</span>
-            </button>
-          )}
-
-          <div className="flex bg-slate-100 dark:bg-slate-900 p-0.5 rounded-xl border border-slate-200/50 dark:border-slate-800">
-            <button
-              onClick={() => setActiveSubTab('rules')}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${activeSubTab === 'rules' ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              ⚠️ Rules & Guides
-            </button>
-            <button
-              onClick={() => setActiveSubTab('skills')}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${activeSubTab === 'skills' ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              ⚡ AI Skills
-            </button>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Sync error banner */}
       {syncError && (
@@ -441,6 +416,7 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
       {activeSubTab === 'skills' ? (
         <SkillsPanel
           user={user}
+          focus={focus}
           onApplyTemplate={onApplyTemplate}
           selectedModel={selectedModel}
           onSelectModel={setSelectedModel}
@@ -744,37 +720,6 @@ export default function RulesSkillsTab({ user, onApplyTemplate }: RulesSkillsTab
           </div>
         </div>
       )}
-
-      <LibraryExplorer
-        open={explorerOpen}
-        onClose={() => setExplorerOpen(false)}
-        user={user}
-        defaultCategory="rule"
-        categories={['skill', 'rule', 'guide']}
-        onImported={(target) => {
-          if (target === 'rule') {
-            const parsed = safeParseArray<AiRule>(localStorage.getItem('custom_rules')).filter(r => !r.isPreset);
-            setRules([...PRESET_RULES, ...parsed]);
-          } else if (target === 'skill') {
-            setSyncToken(t => t + 1); // SkillsPanel đọc lại
-          }
-          setExplorerOpen(false);
-        }}
-      />
-
-      <AuthoringWizard
-        open={wizardOpen}
-        onClose={() => setWizardOpen(false)}
-        user={user}
-        defaultKind="rule"
-        model={selectedModel}
-        onCreated={(k) => {
-          if (k === 'rule') {
-            const parsed = safeParseArray<AiRule>(localStorage.getItem('custom_rules')).filter(r => !r.isPreset);
-            setRules([...PRESET_RULES, ...parsed]);
-          }
-        }}
-      />
 
     </div>
   );

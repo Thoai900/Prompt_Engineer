@@ -324,7 +324,7 @@ export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBui
               )}
               {stepKey === 'draft' && <StepDraft draft={draft} onPatch={patch} />}
               {stepKey === 'enhance' && (
-                <StepEnhance draft={draft} rules={store.rules} skills={store.skills} onPatch={patch} onNavigateToTab={onNavigateToTab} />
+                <StepEnhance draft={draft} rules={store.rules} skills={store.skills} onPatch={patch} />
               )}
               {stepKey === 'check' && (
                 <StepCheck draft={draft} assembledText={assembledNoPersona} onPatch={patch} />

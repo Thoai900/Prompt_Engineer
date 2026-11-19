@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { NAV_GROUPS, groupOfTab, targetTabForGroup, resolveLegacyTab } from '../utils/navGroups';
 import type { TabType } from '../types';
 
-const ALL_TABS: TabType[] = ['studio', 'home', 'builder', 'projectchain', 'rulesskills', 'utilitybelt', 'library', 'learn', 'lab'];
+const ALL_TABS: TabType[] = ['studio', 'home', 'builder', 'projectchain', 'library', 'learn', 'lab'];
 
 describe('navGroups', () => {
   it('mỗi tab (trừ home) thuộc đúng một nhóm', () => {
@@ -18,7 +18,7 @@ describe('navGroups', () => {
 
   it('groupOfTab trả về đúng nhóm', () => {
     expect(groupOfTab('builder')?.id).toBe('create');
-    expect(groupOfTab('utilitybelt')?.id).toBe('library');
+    expect(groupOfTab('library')?.id).toBe('library');
     expect(groupOfTab('lab')?.id).toBe('experiment');
     expect(groupOfTab('learn')?.id).toBe('learn');
   });
@@ -37,6 +37,8 @@ describe('navGroups', () => {
     expect(resolveLegacyTab('aifuture')).toEqual({ tab: 'learn', params: { learn: 'news' } });
     expect(resolveLegacyTab('builder')).toBeNull();
     expect(resolveLegacyTab('toString')).toBeNull();
+    expect(resolveLegacyTab('rulesskills')).toEqual({ tab: 'library', params: { lib: 'rules' } });
+    expect(resolveLegacyTab('utilitybelt')).toEqual({ tab: 'library', params: { lib: 'configs' } });
     expect(resolveLegacyTab('lab', '?app=abc')).toEqual({ tab: 'projectchain' });
     expect(resolveLegacyTab('lab', '')).toBeNull();
   });

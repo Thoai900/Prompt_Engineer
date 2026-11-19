@@ -1,7 +1,7 @@
 # Thiết kế: Gộp 3 tab Thư viện thành một (Library · Rules & Skills · LLM Config)
 
 Ngày: 2026-11-18
-Trạng thái: bản nháp — chờ duyệt các câu hỏi ở mục "Cần chốt"
+Trạng thái: đã duyệt (theo cả 3 đề xuất ở "Cần chốt"), đã build
 
 ## Vấn đề
 
@@ -113,8 +113,15 @@ Ghost-text, `BackupPanel` và `UsageStatsPanel` chuyển vào **modal Cài đặ
 - **Trạng thái editor bị mất khi đổi loại.** Hiện mỗi tab giữ state nhờ `visitedTabs`. Cách xử lý: khung giữ các View đã mở ở trạng thái mounted và ẩn bằng CSS, giống cách App làm với tab.
 - **Diff lớn ở bước 1** dễ sinh lỗi hồi quy. Cách xử lý: bước 1 chỉ di chuyển code, không sửa logic, rồi review bằng `git diff -M`.
 
-## Cần chốt
+## Đã chốt
 
-1. **Mặc định khi mở Thư viện:** `Mẫu prompt` (đề xuất, ít gây bất ngờ) hay `Tất cả`?
-2. **Persona** hiện quản lý qua `PersonaManagerModal`. Có đưa thành loại thứ 5 trong Thư viện không? Đề xuất: chưa, để đợt sau.
-3. **Tên tab:** giữ "Library" hay đổi thành "Thư viện" cho thống nhất tiếng Việt?
+1. Mở Thư viện mặc định ở loại **Mẫu prompt**.
+2. **Chưa** đưa Persona vào Thư viện.
+3. Tên tab: **Thư viện**.
+
+## Ghi chú khi build (khác với thiết kế ở trên)
+
+- **Mục B làm theo kiểu "chuyển + nhúng", chưa chia nhỏ.** 4 file được `git mv` vào `components/library/` và thêm chế độ nhúng (bỏ tiêu đề riêng, bỏ Explorer/Wizard riêng, nhận `focus`). Rule và Skill vẫn chung một component (`RulesSkillsView`, loại do hub điều khiển qua `subTab`), chưa tách thành `RulesView`/`SkillsView`. Không tạo `AllResultsView` riêng — kết quả nằm trong `LibraryHub`. Việc chia nhỏ God-component vẫn còn nợ.
+- **Mục C dùng lại `globalSearch.ts`** thay vì tạo `libraryIndex.ts`: thêm loại `config`, `itemId`, `domain`, `keywords` (tag + tác giả). Nguồn của App chỉ có template của người dùng, nên hub bổ sung mẫu dựng sẵn + cộng đồng.
+- **Ô tìm luôn tìm mọi loại**: bắt đầu gõ thì chuyển sang "Tất cả" (giới hạn theo loại làm người dùng tưởng không có kết quả). Ô tìm riêng của Mẫu prompt bị ẩn khi nhúng; các bộ lọc nguồn/danh mục/loại kết quả của Mẫu prompt vẫn giữ.
+- Command Palette thêm lệnh "Thư viện › Rule/Skill/LLM Config" và "Mở Cài đặt" (prop `commands`).

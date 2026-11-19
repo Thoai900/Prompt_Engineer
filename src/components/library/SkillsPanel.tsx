@@ -1,6 +1,6 @@
 import { toast } from '../common/Toaster';
 import { confirmDialog } from '../common/ConfirmDialog';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Sparkles, Plus, Trash, Copy, Check, FileDown,
   RefreshCw, Sliders, ChevronUp, ChevronDown,
@@ -15,9 +15,8 @@ import { generateSkillInstructions, renderSkillPrompt, executeSkill } from '../.
 import { GEMINI_MODEL_OPTIONS } from '../../config/models';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import LibraryExplorer from '../library-explorer/LibraryExplorer';
-import { ExternalLink, Compass } from 'lucide-react';
-import AuthoringWizard from '../authoring/AuthoringWizard';
+import { ExternalLink } from 'lucide-react';
+import { LIBRARY_CHANGED_EVENT, type LibraryChangedKind } from '../../services/libraryNav';
 import DomainChips from '../common/DomainChips';
 import { filterByDomain } from '../../utils/presetFilter';
 
@@ -42,9 +41,11 @@ interface SkillsPanelProps {
   onSelectModel: (model: string) => void;
   /** Shell tăng số này khi bấm "Đồng bộ đám mây" → panel re-sync skills. */
   syncToken?: number;
+  /** Mở sẵn một skill (từ kết quả tìm kiếm / deep-link). */
+  focus?: { id: string; nonce: number } | null;
 }
 
-export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSelectModel, syncToken = 0 }: SkillsPanelProps) {
+export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSelectModel, syncToken = 0, focus }: SkillsPanelProps) {
   // --- skills state ---
   const [skills, setSkills] = useState<AiSkill[]>([]);
   const [selectedSkillId, setSelectedSkillId] = useState<string>('');
@@ -86,8 +87,6 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
 
   const [syncError, setSyncError] = useState<string | null>(null);
   const [skillKind, setSkillKind] = useState<'structured' | 'document'>('structured');
-  const [explorerOpen, setExplorerOpen] = useState(false);
-  const [wizardOpen, setWizardOpen] = useState(false);
   const [skillDomain, setSkillDomain] = useState<string | null>(null);
 
   // Nạp localStorage + presets khi mount (nửa skills của effect cũ trong tab).
@@ -106,6 +105,28 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
     if (user) syncSkills();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, syncToken]);
+
+  // Nhập từ GitHub / tạo bằng AI ở LibraryHub → đọc lại localStorage (không phụ thuộc đăng nhập).
+  useEffect(() => {
+    const onChanged = (e: Event) => {
+      if ((e as CustomEvent<LibraryChangedKind>).detail !== 'skill') return;
+      const parsed = safeParseArray<AiSkill>(localStorage.getItem('custom_skills')).filter(sk => !sk.isPreset);
+      setSkills([...PRESET_SKILLS, ...parsed]);
+      if (user) syncSkills();
+    };
+    window.addEventListener(LIBRARY_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(LIBRARY_CHANGED_EVENT, onChanged);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  // Mở sẵn skill được chọn từ kết quả tìm kiếm (mỗi nonce một lần, chờ kho nạp xong).
+  const handledFocus = useRef<number | null>(null);
+  useEffect(() => {
+    if (!focus || handledFocus.current === focus.nonce) return;
+    const skill = skills.find(sk => sk.id === focus.id);
+    if (skill) { handledFocus.current = focus.nonce; selectSkill(skill); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus, skills]);
 
   const syncSkills = async () => {
     if (!user) return;
@@ -599,20 +620,6 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-xs font-bold text-slate-400">Kỹ năng AI</h3>
             <div className="flex items-center gap-1">
-              <button
-                onClick={() => setWizardOpen(true)}
-                className="p-1.5 hover:bg-violet-50 dark:hover:bg-violet-950/30 text-violet-500 hover:text-violet-600 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-violet-200/50"
-                title="Tạo kỹ năng bằng AI từ 1 câu mô tả"
-              >
-                <Sparkles size={16} />
-              </button>
-              <button
-                onClick={() => setExplorerOpen(true)}
-                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-indigo-500 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-slate-200/50"
-                title="Khám phá & nhập skill từ GitHub"
-              >
-                <Compass size={16} />
-              </button>
               <button
                 onClick={handleCreateNewSkill}
                 className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-emerald-500 hover:text-emerald-600 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-slate-200/50"
@@ -1183,33 +1190,6 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
         </div>
       </div>
 
-      <LibraryExplorer
-        open={explorerOpen}
-        onClose={() => setExplorerOpen(false)}
-        user={user}
-        defaultCategory="skill"
-        categories={['skill']}
-        onImported={() => {
-          // Đọc lại localStorage (không phụ thuộc đăng nhập) để skill mới xuất hiện.
-          const parsed = safeParseArray<AiSkill>(localStorage.getItem('custom_skills')).filter(sk => !sk.isPreset);
-          setSkills([...PRESET_SKILLS, ...parsed]);
-          setExplorerOpen(false);
-          if (user) syncSkills();
-        }}
-      />
-
-      <AuthoringWizard
-        open={wizardOpen}
-        onClose={() => setWizardOpen(false)}
-        user={user}
-        defaultKind="skill"
-        model={selectedModel}
-        onCreated={() => {
-          const parsed = safeParseArray<AiSkill>(localStorage.getItem('custom_skills')).filter(sk => !sk.isPreset);
-          setSkills([...PRESET_SKILLS, ...parsed]);
-          if (user) syncSkills();
-        }}
-      />
     </>
   );
 }

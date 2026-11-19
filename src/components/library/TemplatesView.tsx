@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { TEMPLATES } from '../../data';
@@ -40,6 +40,10 @@ interface LibraryTabProps {
   user: any;
   onNavigateToTab: (tab: any) => void;
   activeWorkspaceId?: string;
+  /** Trong tab Thư viện: ẩn tiêu đề + ô tìm riêng (LibraryHub có ô tìm chung). */
+  embedded?: boolean;
+  /** Mở sẵn chi tiết một mẫu (từ kết quả tìm kiếm / deep-link). */
+  focus?: { id: string; nonce: number } | null;
 }
 
 const CATEGORIES = ['Tất cả', 'Công thức Prompt', 'Học sinh/Sinh viên', 'Người đi làm', 'Sáng tạo nội dung', 'Phát triển cá nhân', 'Mẫu của tôi'];
@@ -92,7 +96,8 @@ function FacetGroup({
   );
 }
 
-export default function LibraryTab({ onSelectTemplate, customTemplates = [], communityTemplates = [], user, onNavigateToTab, activeWorkspaceId }: LibraryTabProps) {
+/** Mẫu prompt trong tab Thư viện (trước là tab Library riêng). */
+export default function TemplatesView({ onSelectTemplate, customTemplates = [], communityTemplates = [], user, onNavigateToTab, activeWorkspaceId, embedded = false, focus }: LibraryTabProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
   const [activeTab, setActiveTab] = useState<'trending' | 'new' | 'saved'>('trending');
@@ -286,6 +291,15 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], com
   }, [filteredTemplates, activeCollection]);
 
   // Resolve id gần đây → template thật (bỏ id không còn tồn tại), tối đa 8 ô hiển thị.
+  // Mở sẵn chi tiết mẫu được chọn từ kết quả tìm kiếm (mỗi nonce một lần, chờ danh sách nạp xong).
+  const handledFocus = useRef<number | null>(null);
+  useEffect(() => {
+    if (!focus || handledFocus.current === focus.nonce) return;
+    const t = allTemplates.find((x) => x.id === focus.id);
+    if (t) { handledFocus.current = focus.nonce; openDetail(t); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus, allTemplates]);
+
   const recentTemplates = useMemo(
     () => recentIds.map((id) => allTemplates.find((t) => t.id === id)).filter(Boolean).slice(0, 8) as PromptTemplate[],
     [recentIds, allTemplates],
@@ -331,6 +345,7 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], com
   return (
     <div className="flex-1 p-6 flex flex-col overflow-y-auto bg-[#fafafa]">
       <div className="mb-8">
+        {!embedded && (
         <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 mb-8">
           <div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
@@ -349,6 +364,7 @@ export default function LibraryTab({ onSelectTemplate, customTemplates = [], com
             <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
           </div>
         </div>
+        )}
 
         {/* Dùng gần đây — tín hiệu THẬT (thay khối "Kết quả của bạn" seed cứng cũ) */}
         {recentTemplates.length > 0 && (
