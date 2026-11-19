@@ -142,11 +142,11 @@ export default function CommandPalette({ items, onNavigate, theme, onToggleTheme
             transition={{ type: 'spring', stiffness: 380, damping: 30 }}
             onClick={(e) => e.stopPropagation()}
             onKeyDown={onListKeyDown}
-            className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-[var(--color-panel,#ffffff)] shadow-2xl dark:border-slate-800"
+            className="w-full max-w-lg overflow-hidden rounded-2xl border border-glass-edge glass-3"
             role="dialog"
             aria-label="Command palette"
           >
-            <div className="flex items-center gap-2.5 border-b border-slate-150 px-4 py-3 dark:border-slate-800">
+            <div className="flex items-center gap-2.5 border-b border-line px-4 py-3">
               <Search size={17} className="shrink-0 text-slate-400" />
               <input
                 ref={inputRef}

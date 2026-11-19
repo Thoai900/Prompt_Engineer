@@ -92,7 +92,7 @@ export function ConfirmDialogHost() {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: 'spring', stiffness: 380, damping: 30 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm overflow-hidden rounded-2xl border border-slate-200 bg-[var(--color-panel,#ffffff)] shadow-2xl dark:border-slate-800"
+        className="w-full max-w-sm overflow-hidden rounded-2xl border border-glass-edge glass-3"
         role="alertdialog"
         aria-label={state.title || 'Xác nhận'}
       >

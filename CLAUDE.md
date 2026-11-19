@@ -26,6 +26,7 @@
 - **Xác nhận**: `await confirmDialog({message,danger?,confirmText?})` từ `components/common/ConfirmDialog.tsx` (KHÔNG `window.confirm`).
 - **Tên model AI**: chỉ khai báo ở `src/config/models.ts` — KHÔNG hardcode chuỗi model.
 - **Màu/theme**: dùng token ngữ nghĩa (`bg-surface/panel/glass`, `text-ink/muted/faint`, `border-line`) — tự đổi light/dark. `src/index.css` có lớp override `!important` remap các utility slate/white theo theme; tránh dựa vào `bg-slate-*` cho bề mặt cố định.
+- **Kính (glassmorphism)**: bề mặt kính dùng utility `glass-1` (card) · `glass-2` (sidebar/header/tab bar) · `glass-3` (modal/toast/drawer) kèm `border border-glass-edge` — KHÔNG tự ghép `bg-*/NN backdrop-blur-*`. Lớp nền màu `glass-ambient` đặt một lần ở App; tab muốn thấy nền thì đừng phủ nền đặc ở thẻ gốc. Không làm kính cho ô nhập/vùng soạn thảo và canvas Prompt Graph.
 - **AI service**: `src/services/aiService.ts` — mọi hàm nhận `systemInstruction`. Persona chèn bằng `withPersona()`. Đa số hàm có fallback Gemini→Groq.
 
 ## Kiểm thử & CI
