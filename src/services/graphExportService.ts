@@ -1,7 +1,7 @@
-import { doc, setDoc } from 'firebase/firestore';
-import { db, handleFirestoreError } from '../firebase';
+import { handleFirestoreError } from '../firebase';
 import { PromptProject } from '../types';
 import { LOCAL_PROJECTS_KEY, loadLocalProjects } from './chainAppService';
+import { saveProjectToCloud } from './projectStore';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Đường "bơm" prompt từ MỌI trang (Builder, Enhancer, Studio, Library...) vào
@@ -24,7 +24,7 @@ export async function openProjectInGraph(
 
   if (user) {
     try {
-      await setDoc(doc(db, 'projects', project.id), { ...project, userId: user.uid });
+      await saveProjectToCloud(project, user.uid);
     } catch (err) {
       try { handleFirestoreError(err, 'create', `projects/${project.id}`); } catch (e: any) { console.error(e.message); }
     }

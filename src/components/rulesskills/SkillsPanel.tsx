@@ -1,17 +1,16 @@
 import { toast } from '../common/Toaster';
 import { confirmDialog } from '../common/ConfirmDialog';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Sparkles, Plus, Trash, Copy, Check, FileDown,
   RefreshCw, Sliders, ChevronUp, ChevronDown,
   HelpCircle, Eye, Edit3, CheckCircle2, AlertTriangle, Play, BookOpen
 } from 'lucide-react';
 import { User } from 'firebase/auth';
-import { collection, doc, getDocs, query, setDoc, where, deleteDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../firebase';
 import { AiSkill, SkillVariable, SkillStep, PromptTemplate, SkillRunRecord } from '../../types';
 import { PRESET_SKILLS } from '../../presets';
 import { generateSkillInstructions, renderSkillPrompt, executeSkill } from '../../services/aiService';
+import { skillsStore, useSkills } from '../../services/collectionStore';
 import { GEMINI_MODEL_OPTIONS } from '../../config/models';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -40,13 +39,17 @@ interface SkillsPanelProps {
   onApplyTemplate?: (template: PromptTemplate) => void;
   selectedModel: string;
   onSelectModel: (model: string) => void;
-  /** Shell tăng số này khi bấm "Đồng bộ đám mây" → panel re-sync skills. */
-  syncToken?: number;
 }
 
-export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSelectModel, syncToken = 0 }: SkillsPanelProps) {
+export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSelectModel }: SkillsPanelProps) {
   // --- skills state ---
-  const [skills, setSkills] = useState<AiSkill[]>([]);
+  // Bước 3 (một nguồn dữ liệu): skill custom đến từ skillsStore (Firestore khi đăng
+  // nhập, localStorage khi là khách).
+  const { items: customSkills } = useSkills();
+  const skills = useMemo(() => {
+    const presetIds = new Set(PRESET_SKILLS.map(sk => sk.id));
+    return [...PRESET_SKILLS, ...customSkills.filter(sk => !presetIds.has(sk.id))];
+  }, [customSkills]);
   const [selectedSkillId, setSelectedSkillId] = useState<string>('');
   const [skillTitle, setSkillTitle] = useState('');
   const [skillDesc, setSkillDesc] = useState('');
@@ -90,59 +93,11 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
   const [wizardOpen, setWizardOpen] = useState(false);
   const [skillDomain, setSkillDomain] = useState<string | null>(null);
 
-  // Nạp localStorage + presets khi mount (nửa skills của effect cũ trong tab).
+  // Chọn preset đầu tiên khi mở panel.
   useEffect(() => {
-    let parsedSkills = safeParseArray<AiSkill>(localStorage.getItem('custom_skills'));
-    const presetSkillIds = new Set(PRESET_SKILLS.map(sk => sk.id));
-    parsedSkills = parsedSkills.filter(sk => !sk.isPreset && !presetSkillIds.has(sk.id));
-    setSkills([...PRESET_SKILLS, ...parsedSkills]);
     if (PRESET_SKILLS.length > 0) selectSkill(PRESET_SKILLS[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Sync Firestore (nửa skills của syncDataWithFirestore cũ) — chạy khi đăng nhập
-  // hoặc khi shell bấm nút đồng bộ (syncToken tăng).
-  useEffect(() => {
-    if (user) syncSkills();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, syncToken]);
-
-  const syncSkills = async () => {
-    if (!user) return;
-    try {
-      const skillsQuery = query(collection(db, 'skills'), where('userId', '==', user.uid));
-      const skillsSnap = await getDocs(skillsQuery);
-      const dbSkills: AiSkill[] = [];
-      skillsSnap.forEach(docSnap => {
-        const data = docSnap.data();
-        dbSkills.push({
-          id: docSnap.id,
-          title: data.title,
-          description: data.description || '',
-          kind: data.kind === 'document' ? 'document' : 'structured',
-          inputs: data.inputs || [],
-          steps: data.steps || [],
-          instructions: data.instructions || '',
-          source: data.source || undefined,
-          updatedAt: data.updatedAt || new Date().toISOString()
-        });
-      });
-
-      const localSkills = safeParseArray<AiSkill>(localStorage.getItem('custom_skills')).filter(sk => !sk.isPreset);
-      const presetSkillIds = new Set(PRESET_SKILLS.map(sk => sk.id));
-      const mergedSkillsMap = new Map<string, AiSkill>();
-      localSkills.forEach(sk => mergedSkillsMap.set(sk.id, sk));
-      dbSkills.forEach(sk => mergedSkillsMap.set(sk.id, sk));
-      const mergedSkills = Array.from(mergedSkillsMap.values()).filter(sk => !presetSkillIds.has(sk.id));
-
-      localStorage.setItem('custom_skills', JSON.stringify(mergedSkills));
-      setSkills([...PRESET_SKILLS, ...mergedSkills]);
-      if (mergedSkills.length > 0 && !selectedSkillId) selectSkill(mergedSkills[0]);
-    } catch (err) {
-      console.error('Sync skills failed:', err);
-      setSyncError('Đồng bộ kỹ năng thất bại. Dữ liệu vẫn được giữ cục bộ trên thiết bị này.');
-    }
-  };
 
   const buildInitialRunValues = (inputs: SkillVariable[]): Record<string, string | boolean> => {
     const seed: Record<string, string | boolean> = {};
@@ -191,10 +146,10 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
       updatedAt: new Date().toISOString()
     };
 
-    const customOnly = skills.filter(s => !s.isPreset);
-    const updatedList = [...customOnly, newSkill];
-    localStorage.setItem('custom_skills', JSON.stringify(updatedList));
-    setSkills([...PRESET_SKILLS, ...updatedList]);
+    skillsStore.save(newSkill).catch((err) => {
+      console.error(err);
+      toast.error('Không tạo được kỹ năng mới.');
+    });
     selectSkill(newSkill);
   };
 
@@ -223,30 +178,11 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
     };
 
     try {
-      const customOnly = skills.filter(s => !s.isPreset && s.id !== selectedSkillId);
-      const updatedList = [...customOnly, updatedSkill];
-      localStorage.setItem('custom_skills', JSON.stringify(updatedList));
-      setSkills([...PRESET_SKILLS, ...updatedList]);
-
-      if (user) {
-        const docRef = doc(db, 'skills', selectedSkillId);
-        await setDoc(docRef, {
-          userId: user.uid,
-          title: skillTitle,
-          description: skillDesc,
-          kind: skillKind,
-          inputs: skillInputs,
-          steps: skillSteps,
-          instructions: skillInstructions,
-          source: updatedSkill.source ?? null,
-          updatedAt: serverTimestamp(),
-          authorName: user.displayName || 'User'
-        });
-      }
+      await skillsStore.save(updatedSkill);
     } catch (err) {
       console.error(err);
-      setSyncError('Không thể lưu kỹ năng lên Cloud, đã lưu tạm cục bộ.');
-      toast('Không thể lưu kỹ năng lên Cloud, đã lưu tạm cục bộ.');
+      setSyncError('Không thể lưu kỹ năng. Vui lòng thử lại.');
+      toast.error('Không thể lưu kỹ năng.');
     } finally {
       setIsSavingSkill(false);
     }
@@ -258,15 +194,7 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
 
     setIsDeletingSkill(true);
     try {
-      const customOnly = skills.filter(s => !s.isPreset && s.id !== selectedSkillId);
-      localStorage.setItem('custom_skills', JSON.stringify(customOnly));
-      
-      const newSkillsList = [...PRESET_SKILLS, ...customOnly];
-      setSkills(newSkillsList);
-
-      if (user) {
-        await deleteDoc(doc(db, 'skills', selectedSkillId));
-      }
+      await skillsStore.remove(selectedSkillId);
 
       if (PRESET_SKILLS.length > 0) selectSkill(PRESET_SKILLS[0]);
     } catch (err) {
@@ -288,10 +216,10 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
       updatedAt: new Date().toISOString()
     };
 
-    const customOnly = skills.filter(s => !s.isPreset);
-    const updatedList = [...customOnly, dupSkill];
-    localStorage.setItem('custom_skills', JSON.stringify(updatedList));
-    setSkills([...PRESET_SKILLS, ...updatedList]);
+    skillsStore.save(dupSkill).catch((err) => {
+      console.error(err);
+      toast.error('Không nhân bản được kỹ năng.');
+    });
     selectSkill(dupSkill);
   };
 
@@ -1189,13 +1117,7 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
         user={user}
         defaultCategory="skill"
         categories={['skill']}
-        onImported={() => {
-          // Đọc lại localStorage (không phụ thuộc đăng nhập) để skill mới xuất hiện.
-          const parsed = safeParseArray<AiSkill>(localStorage.getItem('custom_skills')).filter(sk => !sk.isPreset);
-          setSkills([...PRESET_SKILLS, ...parsed]);
-          setExplorerOpen(false);
-          if (user) syncSkills();
-        }}
+        onImported={() => setExplorerOpen(false)}
       />
 
       <AuthoringWizard
@@ -1204,11 +1126,7 @@ export default function SkillsPanel({ user, onApplyTemplate, selectedModel, onSe
         user={user}
         defaultKind="skill"
         model={selectedModel}
-        onCreated={() => {
-          const parsed = safeParseArray<AiSkill>(localStorage.getItem('custom_skills')).filter(sk => !sk.isPreset);
-          setSkills([...PRESET_SKILLS, ...parsed]);
-          if (user) syncSkills();
-        }}
+        onCreated={() => { /* skillsStore tự cập nhật danh sách */ }}
       />
     </>
   );

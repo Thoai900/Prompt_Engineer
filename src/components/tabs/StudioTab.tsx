@@ -14,6 +14,7 @@ import { confirmDialog } from '../common/ConfirmDialog';
 import { toast } from '../common/Toaster';
 import { PRESET_RULES, PRESET_SKILLS } from '../../presets';
 import { openProjectInGraph } from '../../services/graphExportService';
+import { useRules, useSkills } from '../../services/collectionStore';
 import { templateToGraphProject } from '../../utils/graphMigration';
 import {
   STUDIO_STEPS, StudioDraft, assembleStudioPrompt, clampStep, computeQualityScore,
@@ -38,22 +39,10 @@ interface StudioTabProps {
   onLogin: () => void;
 }
 
-/** Đọc kho Rules/Skills như BuilderTab: bản custom trong localStorage + preset (custom thắng khi trùng id). */
-function loadStore(): { rules: AiRule[]; skills: AiSkill[] } {
-  const readList = <T extends { id: string }>(key: string, presets: T[]): T[] => {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(key) || '[]');
-      const custom: T[] = Array.isArray(parsed) ? parsed : [];
-      const ids = new Set(custom.map((x) => x.id));
-      return [...custom, ...presets.filter((p) => !ids.has(p.id))];
-    } catch {
-      return [...presets];
-    }
-  };
-  return {
-    rules: readList<AiRule>('custom_rules', PRESET_RULES),
-    skills: readList<AiSkill>('custom_skills', PRESET_SKILLS),
-  };
+/** Ghép rule/skill custom (từ collectionStore) với preset — custom thắng khi trùng id. */
+function withPresets<T extends { id: string }>(custom: T[], presets: T[]): T[] {
+  const ids = new Set(custom.map((x) => x.id));
+  return [...custom, ...presets.filter((p) => !ids.has(p.id))];
 }
 
 // Spec phần 1: Studio yêu cầu đăng nhập (kho Rules/Library gắn với uid).
@@ -67,7 +56,12 @@ const UI_MODE_KEY = 'studio_ui_mode';
 export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBuilder, onNavigateToTab, onLogin }: StudioTabProps) {
   const { personas, activeWorkspaceId } = useWorkspace();
   const [draft, setDraft] = useState<StudioDraft>(() => createEmptyDraft());
-  const [store, setStore] = useState<{ rules: AiRule[]; skills: AiSkill[] }>(() => loadStore());
+  const { items: customRules } = useRules();
+  const { items: customSkills } = useSkills();
+  const store = useMemo(() => ({
+    rules: withPresets<AiRule>(customRules, PRESET_RULES),
+    skills: withPresets<AiSkill>(customSkills, PRESET_SKILLS),
+  }), [customRules, customSkills]);
   const [uiMode, setUiMode] = useState<StudioUiMode>(() =>
     localStorage.getItem(UI_MODE_KEY) === 'copilot' ? 'copilot' : 'rail');
 
@@ -98,8 +92,6 @@ export default function StudioTab({ user, authReady, onSaveTemplate, onOpenInBui
   const goToStep = useCallback((index: number) => {
     const next = clampStep(index);
     setDraft((d) => (d.currentStep === next ? d : { ...d, currentStep: next }));
-    // Kho Rules/Skills có thể đã đổi ở tab khác → làm mới khi vào bước Tăng cường.
-    if (STUDIO_STEPS[next]?.key === 'enhance') setStore(loadStore());
   }, []);
 
   const persona = useMemo(

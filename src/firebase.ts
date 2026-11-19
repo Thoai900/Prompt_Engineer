@@ -26,7 +26,11 @@ if (recaptchaSiteKey) {
 // template/project đã tải; multi-tab để nhiều tab chia sẻ cùng cache không xung đột.
 export const db = initializeFirestore(
   app,
-  { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) },
+  {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    // Trường optional = undefined (vd. workspaceId) bị bỏ qua thay vì làm setDoc ném lỗi.
+    ignoreUndefinedProperties: true,
+  },
   firebaseConfig.firestoreDatabaseId,
 );
 export const auth = getAuth(app);
