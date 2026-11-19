@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { HealthSuite, PromptTemplate, TemplateVersion } from '../../types';
-import { X, Heart, Bookmark, Copy, Users, CheckCircle, MessageSquare, Share2, Star, Workflow, History, RotateCcw, ChevronDown, ChevronRight, Flag, ShieldX, FolderPlus, Network, Activity } from 'lucide-react';
+import { X, Heart, Bookmark, Copy, Users, CheckCircle, MessageSquare, Share2, Star, Workflow, Flag, ShieldX, FolderPlus, Network, Activity } from 'lucide-react';
 import InteractiveFewShotPanel from '../common/InteractiveFewShotPanel';
-import { computeUnifiedDiff } from '../../utils/chainUtils';
-import { blocksToText } from '../../utils/templateVersionUtils';
+import VersionHistoryList from '../common/VersionHistoryList';
 import { REPORT_REASONS, adminRemoveTemplate, isCurrentUserAdmin, reportTemplate } from '../../services/reportService';
 import { toast } from '../common/Toaster';
 import { confirmDialog } from '../common/ConfirmDialog';
@@ -55,8 +54,7 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
   // H1: bỏ bình luận mock — thảo luận bắt đầu rỗng, chỉ lưu trong phiên xem.
   const [comments, setComments] = useState<{ id: number; user: string; text: string; time: string; likes: number }[]>([]);
 
-  // H2: phiên bản đang mở diff (so với bản hiện tại).
-  const [expandedVersionId, setExpandedVersionId] = useState<string | null>(null);
+  // H2: lịch sử phiên bản (VersionHistoryList).
   const versions = template.versions || [];
 
   // M5: báo cáo vi phạm + quyền admin (custom claim) — chỉ áp cho template public.
@@ -234,64 +232,14 @@ export default function PromptDetailModal({ template, onClose, onRemix, onAddToP
             )}
 
             {/* H2: Lịch sử phiên bản — diff so với bản hiện tại + khôi phục. */}
-            {versions.length > 0 && (
-              <div className="mt-6 border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
-                <div className="px-4 py-3 border-b border-slate-200 bg-white flex items-center gap-2">
-                  <History className="w-4 h-4 text-indigo-500" />
-                  <h4 className="text-xs font-bold text-slate-500">Lịch sử phiên bản ({versions.length})</h4>
-                </div>
-                <div className="p-3 flex flex-col gap-2">
-                  {versions.map((v) => {
-                    const isOpen = expandedVersionId === v.id;
-                    return (
-                      <div key={v.id} className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-                        <div className="flex items-center justify-between gap-2 p-2.5">
-                          <button
-                            onClick={() => setExpandedVersionId(isOpen ? null : v.id)}
-                            className="flex flex-1 items-center gap-2 text-left cursor-pointer"
-                            title="Xem khác biệt so với bản hiện tại"
-                          >
-                            {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
-                            <div className="flex flex-col">
-                              <span className="text-xs font-bold text-slate-700">
-                                {v.version ? `${v.version} · ` : ''}{new Date(v.at).toLocaleString('vi-VN')}
-                              </span>
-                              <span className="text-xs text-slate-400">{(v.blocks || []).length} khối{v.note ? ` · ${v.note}` : ''}</span>
-                            </div>
-                          </button>
-                          <button
-                            onClick={() => handleRestoreVersion(v)}
-                            className="flex shrink-0 items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100 cursor-pointer"
-                            title="Mở bản này trong Builder — bấm Lưu Template để chốt khôi phục"
-                          >
-                            <RotateCcw className="w-3 h-3" /> Khôi phục
-                          </button>
-                        </div>
-                        {isOpen && (
-                          <div className="max-h-56 overflow-y-auto border-t border-slate-100 bg-slate-950 p-3 font-mono text-xs leading-relaxed">
-                            {computeUnifiedDiff(blocksToText(v.blocks), blocksToText(template.blocks)).map((line, idx) => (
-                              <div
-                                key={idx}
-                                className={
-                                  line.type === 'added' ? 'text-emerald-400 whitespace-pre-wrap' :
-                                  line.type === 'removed' ? 'text-rose-400 whitespace-pre-wrap line-through/50' :
-                                  'text-slate-500 whitespace-pre-wrap'
-                                }
-                              >
-                                {line.type === 'added' ? '+ ' : line.type === 'removed' ? '− ' : '  '}{line.text}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  <p className="text-xs text-slate-400 font-medium px-1">
-                    Diff hiển thị: <span className="text-rose-500">− bản cũ</span> → <span className="text-emerald-600">+ bản hiện tại</span>. "Khôi phục" mở bản cũ trong Builder; bấm Lưu Template để chốt.
-                  </p>
-                </div>
-              </div>
-            )}
+            <div className="mt-6">
+              <VersionHistoryList
+                versions={versions}
+                currentBlocks={template.blocks}
+                onRestore={handleRestoreVersion}
+                restoreHint={'"Khôi phục" mở bản cũ trong Builder; bấm Lưu Template (chế độ cập nhật) để chốt.'}
+              />
+            </div>
 
             <InteractiveFewShotPanel
               template={template}
