@@ -3,8 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useInView } from 'motion/react';
 import {
   Search, Copy, Check, ArrowRight, Bookmark, Loader2,
-  Briefcase, CheckCircle, Compass, Info, Edit3, Zap, Layers,
-  Workflow, Library, ScrollText, GraduationCap, Brain, Moon, Sun
+  Briefcase, CheckCircle, Compass, Info, Edit3, Layers,
+  Workflow, Library, GraduationCap, Moon, Sun
 } from 'lucide-react';
 // aiService kéo theo @google/genai (~280KB). Import động khi người dùng thực sự
 // bấm "Tạo prompt" để không nặng tải khởi động của trang chủ.
@@ -35,12 +35,9 @@ const FEATURES: {
 }[] = [
   { tab: 'builder', title: 'Prompt Builder', desc: 'Dựng prompt theo khung Multi-block trực quan: vai trò, ràng buộc, định dạng — kéo thả, thêm biến số, kiểm soát từng khối tư duy.', icon: <Briefcase className="w-5 h-5" />, span: 'md:col-span-3', featured: true },
   { tab: 'projectchain', title: 'Project Chain', desc: 'Nối nhiều prompt thành một quy trình, trực quan hoá trên canvas và lan truyền thay đổi tự động.', icon: <Workflow className="w-5 h-5" />, span: 'md:col-span-3', featured: true },
-  { tab: 'enhancer', title: 'AI Enhancer', desc: 'Dán prompt thô, nhận lại bản tinh chỉnh rõ ràng hơn.', icon: <Edit3 className="w-5 h-5" />, span: 'md:col-span-2' },
-  { tab: 'library', title: 'Thư viện mẫu', desc: 'Kho prompt cộng đồng và của riêng bạn, đồng bộ đám mây.', icon: <Library className="w-5 h-5" />, span: 'md:col-span-2' },
-  { tab: 'rulesskills', title: 'Rules & Skills', desc: 'Bộ luật và kỹ năng tái sử dụng cho mọi prompt.', icon: <ScrollText className="w-5 h-5" />, span: 'md:col-span-2' },
-  { tab: 'utilitybelt', title: 'LLM Config', desc: 'Tinh chỉnh model, nhiệt độ và tham số cho từng tác vụ.', icon: <Zap className="w-5 h-5" />, span: 'md:col-span-3' },
-  { tab: 'learn', title: 'Learn', desc: 'Lộ trình học prompt engineering từ nền tảng tới nâng cao.', icon: <GraduationCap className="w-5 h-5" />, span: 'md:col-span-3' },
-  { tab: 'aifuture', title: 'AI Future', desc: 'Cập nhật tin tức và xu hướng AI mới nhất ngay trong app.', icon: <Brain className="w-5 h-5" />, span: 'md:col-span-6' },
+  { tab: 'studio', title: 'Prompt Studio', desc: 'Đi từ ý tưởng đến prompt hoàn chỉnh, hoặc dán prompt thô để tăng cường nhanh.', icon: <Edit3 className="w-5 h-5" />, span: 'md:col-span-3' },
+  { tab: 'library', title: 'Thư viện', desc: 'Mẫu prompt, rule, skill và cấu hình LLM tái sử dụng — kho cộng đồng và của riêng bạn, đồng bộ đám mây.', icon: <Library className="w-5 h-5" />, span: 'md:col-span-3' },
+  { tab: 'learn', title: 'Learn', desc: 'Lộ trình học prompt engineering từ nền tảng tới nâng cao.', icon: <GraduationCap className="w-5 h-5" />, span: 'md:col-span-6' },
 ];
 
 /** Small count-up that animates once when scrolled into view. */
@@ -146,10 +143,10 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
   };
 
   return (
-    <div className="bg-surface text-ink w-full h-full overflow-x-hidden overflow-y-auto custom-scrollbar font-sans selection:bg-emerald-500/20 relative flex flex-col scroll-smooth">
+    <div className="text-ink w-full h-full overflow-x-hidden overflow-y-auto custom-scrollbar font-sans selection:bg-emerald-500/20 relative flex flex-col scroll-smooth">
 
       {/* ===================== TOP NAV ===================== */}
-      <header className="sticky top-0 z-50 w-full border-b border-line bg-panel">
+      <header className="sticky top-0 z-50 w-full border-b border-glass-edge glass-2">
         <nav className="mx-auto max-w-6xl px-4 h-16 flex items-center justify-between">
           <button onClick={() => onNavigateToTab('home')} className="flex items-center gap-2.5 cursor-pointer">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-sm font-bold text-white">P</div>
@@ -234,7 +231,7 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.4 }}
               transition={{ duration: 0.5, delay: i * 0.08 }}
-              className="rounded-2xl bg-panel border border-line p-5 text-center"
+              className="rounded-2xl glass-1 border border-glass-edge p-5 text-center"
             >
               <div className="text-3xl md:text-4xl font-bold tracking-tight text-ink tabular-nums">
                 {stat.static ? stat.static : <CountUp to={stat.value!} suffix={stat.suffix} />}
@@ -291,7 +288,7 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
           <p className="text-base text-muted mt-3 mb-8 max-w-xl leading-relaxed">Nhập chủ đề bạn đang vướng. AI sẽ phân rã thành các khối Vai trò · Ràng buộc · Định dạng để bạn dùng ngay hoặc mở trong Builder.</p>
 
           <div className="w-full">
-            <div className="rounded-xl bg-panel border border-line p-3 md:p-4">
+            <div className="rounded-xl glass-1 border border-glass-edge p-3 md:p-4">
               <form onSubmit={handleGeneratePrompt} className="relative flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
                 <div className="relative flex-1 flex items-center bg-hover border border-line rounded-lg">
                   <Search className="absolute left-4 w-5 h-5 text-faint" />
@@ -512,7 +509,7 @@ export default function HomeTab({ onSelectTemplate, onSaveTemplate, user, onNavi
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.3 }}
           transition={{ duration: 0.6 }}
-          className="mx-auto max-w-6xl rounded-xl border border-line bg-panel px-6 py-12 md:px-12 md:py-16 text-center"
+          className="mx-auto max-w-6xl rounded-xl border border-glass-edge glass-1 px-6 py-12 md:px-12 md:py-16 text-center"
         >
           <div className="flex flex-col items-center">
             <h2 className="text-2xl md:text-4xl font-bold text-ink tracking-tight max-w-2xl leading-[1.15] text-balance">

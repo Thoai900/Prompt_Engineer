@@ -10,6 +10,8 @@ const CACHE_KEY = 'learn_guide_diagnosis';
 interface PersonalGuideProps {
   libraryTemplates?: PromptTemplate[];
   onNavigate: (view: LearnModuleId) => void;
+  /** Mở Gia sư chi tiết (dán prompt riêng, bài học & bài tập) — trước nằm trong Lab. */
+  onOpenTutor?: () => void;
 }
 
 function readCache(): TutorDiagnosis | null {
@@ -24,7 +26,7 @@ function readCache(): TutorDiagnosis | null {
 }
 
 /** "Dành riêng cho bạn": chẩn đoán kỹ năng từ prompt thật trong Thư viện → gợi ý đúng module cần luyện. */
-export default function PersonalGuide({ libraryTemplates = [], onNavigate }: PersonalGuideProps) {
+export default function PersonalGuide({ libraryTemplates = [], onNavigate, onOpenTutor }: PersonalGuideProps) {
   const [diagnosis, setDiagnosis] = useState<TutorDiagnosis | null>(readCache);
   const [running, setRunning] = useState(false);
 
@@ -65,9 +67,16 @@ export default function PersonalGuide({ libraryTemplates = [], onNavigate }: Per
           <Sparkles className="text-amber-500" />
           <h3 className="text-lg font-bold text-ink">Dành riêng cho bạn</h3>
         </div>
-        <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
-          Chẩn đoán từ thư viện của bạn
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
+            Chẩn đoán từ thư viện của bạn
+          </span>
+          {onOpenTutor && (
+            <button onClick={onOpenTutor} className="flex cursor-pointer items-center gap-0.5 text-xs font-bold text-muted hover:text-ink">
+              Gia sư chi tiết <ChevronRight size={13} />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm dark:border-amber-900/50 dark:bg-amber-950/20">

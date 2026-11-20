@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, Play, Loader2, Save, Activity, TrendingUp, TrendingDown, Minus, AlertTriangle, RefreshCw, ExternalLink } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Plus, Trash2, Play, Loader2, Save, Activity, TrendingUp, TrendingDown, Minus, AlertTriangle, RefreshCw, ExternalLink, Wand2 } from 'lucide-react';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { ALL_MODEL_OPTIONS, GEMINI_FLASH } from '../../config/models';
 import { HealthSuite, HealthTest, PromptTemplate } from '../../types';
@@ -18,6 +18,10 @@ import { promptToTemplate } from '../../utils/labUtils';
 import FeedbackInbox from './health/FeedbackInbox';
 import { compileAppTemplate } from '../../utils/feedbackUtils';
 import { loadSharedApp, loadLocalProjects } from '../../services/chainAppService';
+import { draftHealthTests } from '../../services/aiService';
+import type { LabSeed } from '../../services/labSeed';
+import { MAX_SUITE_TESTS, findSuiteForTemplate, normalizeDraftTests } from '../../utils/healthUtils';
+import SaveAsVersionPanel from './SaveAsVersionPanel';
 
 function scoreColor(score: number): string {
   if (score >= 80) return 'text-emerald-600 dark:text-emerald-400';
@@ -34,10 +38,14 @@ interface HealthPanelProps {
   onApplyTemplate?: (t: PromptTemplate) => void;
   /** Mở thẳng suite này (vd từ "Suite kiểm thử" của Chain → App). */
   initialSuiteId?: string;
+  /** Seed từ một template đã lưu (Library / Studio): mở suite có nguồn là template đó, chưa có thì tạo + AI soạn test. */
+  seed?: LabSeed | null;
+  /** Lưu template (App) — để lưu phiên bản hiện hành về template nguồn của tôi. */
+  onSaveTemplate?: (t: PromptTemplate) => Promise<void> | void;
 }
 
 /** Prompt Health/CI: suite có version + bộ test, chạy "khám sức khoẻ" và bắt hồi quy. */
-export default function HealthPanel({ libraryTemplates = [], onApplyTemplate, initialSuiteId }: HealthPanelProps) {
+export default function HealthPanel({ libraryTemplates = [], onApplyTemplate, initialSuiteId, seed, onSaveTemplate }: HealthPanelProps) {
   const { user, geminiApiKey, groqApiKey, openaiApiKey, useSystemGeminiKey, activeWorkspaceId } = useWorkspace();
 
   const [suites, setSuites] = useState<HealthSuite[]>([]);
@@ -46,6 +54,9 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate, in
   const [saving, setSaving] = useState(false);
   // Đợt 2: bản do Optimizer tạo đang chờ so với bản trước nó (sau khi chạy lại toàn suite).
   const [pendingJudge, setPendingJudge] = useState<{ suiteId: string; oldRevId: string; newRevId: string } | null>(null);
+  const [drafting, setDrafting] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const handledSeed = useRef<LabSeed | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,6 +64,7 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate, in
       if (cancelled) return;
       setSuites(s);
       setActiveId((prev) => prev || (initialSuiteId && s.some((x) => x.id === initialSuiteId) ? initialSuiteId : s[0]?.id) || null);
+      setLoaded(true);
 
       // H3 (thông báo hồi quy): suite nào lần chạy MỚI NHẤT tụt ≥10 điểm so với lần
       // trước (kể cả run do cron chạy nền) → cảnh báo ngay khi mở panel.
@@ -99,6 +111,42 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate, in
     if (!active) return;
     patchActive({ testCases: active.testCases.filter((t) => t.id !== testId) });
   };
+
+  /** AI soạn test cho suite — thêm vào danh sách để người dùng duyệt/sửa rồi mới Lưu hoặc Chạy. */
+  const draftTestsFor = async (suite: HealthSuite) => {
+    const text = suite.prompt.trim();
+    if (!text) { toast.error('Nhập prompt cần kiểm thử trước.'); return; }
+    const room = MAX_SUITE_TESTS - suite.testCases.length;
+    if (room <= 0) { toast.error(`Suite đã có ${suite.testCases.length} test — xoá bớt trước khi soạn thêm.`); return; }
+    setDrafting(true);
+    try {
+      const tests = normalizeDraftTests(await draftHealthTests(text)).slice(0, room);
+      if (tests.length === 0) { toast.error('AI không soạn được test nào. Thử lại hoặc thêm tay.'); return; }
+      setSuites((prev) => prev.map((s) => (s.id === suite.id ? { ...s, testCases: [...s.testCases, ...tests] } : s)));
+      toast.success(`AI đã soạn ${tests.length} test — xem lại, sửa nếu cần rồi bấm Lưu hoặc Chạy kiểm tra.`);
+    } catch (e: any) {
+      toast.error(e?.message || 'Không soạn được test. Hãy đăng nhập và thử lại.');
+    } finally {
+      setDrafting(false);
+    }
+  };
+
+  // Seed từ template (Library / Studio): mở suite có nguồn là template đó; chưa có thì tạo
+  // (nguồn template + revision 'source-sync') và để AI soạn sẵn test.
+  useEffect(() => {
+    if (!seed?.templateId || !loaded || handledSeed.current === seed) return;
+    handledSeed.current = seed;
+    const existing = findSuiteForTemplate(suites, seed.templateId);
+    if (existing) { setActiveId(existing.id); return; }
+    const title = seed.templateTitle || 'Template';
+    let s: HealthSuite = { ...newHealthSuite(title, GEMINI_FLASH), source: { kind: 'template', id: seed.templateId, title } };
+    if (activeWorkspaceId) s.workspaceId = activeWorkspaceId;
+    s = commitRevision(s, seed.prompt, 'source-sync', `Từ template "${title}"`);
+    setSuites((prev) => [s, ...prev]);
+    setActiveId(s.id);
+    void draftTestsFor(s);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seed, loaded]);
 
   /** Thay suite đang mở bằng `next` và lưu ngay (dùng cho thao tác revision). */
   const replaceAndSave = async (next: HealthSuite) => {
@@ -211,6 +259,16 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate, in
     await replaceAndSave(next);
     toast.success('Đã đồng bộ prompt mới nhất từ template.');
   };
+  // Lưu ngược về template: chỉ với template của tôi, khi phiên bản hiện hành (đã lưu) khác nội dung template.
+  const headContent = active ? (headRevision(active)?.content || active.prompt) : '';
+  const canSaveBack = !!(active && sourceTemplate && onSaveTemplate && user && sourceTemplate.userId === user.uid
+    && !hasUncommittedPrompt(active) && headContent.trim() && headContent !== blocksToText(sourceTemplate.blocks));
+  const onSavedToTemplate = async (blocks: PromptTemplate['blocks']) => {
+    if (!active || !sourceTemplate) return;
+    // Ghi lại đúng nội dung template vừa lưu để suite và template khớp nhau.
+    await replaceAndSave(commitRevision(active, blocksToText(blocks), 'source-sync', `Đã lưu về template "${sourceTemplate.title}"`));
+  };
+
   const openInBuilder = () => {
     if (!active || !onApplyTemplate) return;
     onApplyTemplate(promptToTemplate(headRevision(active)?.content || active.prompt, 'health'));
@@ -248,7 +306,7 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate, in
       ) : (
         <div className="space-y-4">
           {/* Cấu hình suite */}
-          <div className="rounded-2xl border border-line bg-panel p-5">
+          <div className="rounded-2xl border border-glass-edge glass-1 p-5">
             <div className="mb-4 flex flex-wrap items-center gap-3">
               <input
                 value={active.name}
@@ -329,7 +387,12 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate, in
 
             <div className="mb-2 flex items-center justify-between">
               <label className="text-xs font-bold text-muted">Bộ test ({active.testCases.length})</label>
-              <button onClick={addTest} className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"><Plus size={13} /> Thêm test</button>
+              <div className="flex items-center gap-3">
+                <button onClick={() => draftTestsFor(active)} disabled={drafting} className="flex items-center gap-1 text-xs font-semibold text-violet-600 hover:text-violet-700 disabled:opacity-50 dark:text-violet-400">
+                  {drafting ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />} {drafting ? 'AI đang soạn…' : 'Soạn test bằng AI'}
+                </button>
+                <button onClick={addTest} className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"><Plus size={13} /> Thêm test</button>
+              </div>
             </div>
             <div className="space-y-3">
               {active.testCases.map((t, i) => {
@@ -410,13 +473,23 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate, in
             </div>
           )}
 
+          {canSaveBack && !running && (
+            <SaveAsVersionPanel
+              key={active.headRevisionId}
+              template={sourceTemplate!}
+              prompt={headContent}
+              onSaveTemplate={onSaveTemplate!}
+              onSaved={onSavedToTemplate}
+            />
+          )}
+
           {sourceIsApp && user && <FeedbackInbox key={active.id} suite={active} user={user} onAddTest={addTestFromFeedback} />}
 
           <RevisionTimeline suite={active} onRestore={restore} />
 
           {/* Kết quả & lịch sử */}
           {latest && (
-            <div className="rounded-2xl border border-line bg-panel p-5">
+            <div className="rounded-2xl border border-glass-edge glass-1 p-5">
               <div className="mb-4 flex flex-wrap items-center gap-5">
                 <div>
                   <div className="text-xs font-semibold text-faint">điểm sức khoẻ</div>

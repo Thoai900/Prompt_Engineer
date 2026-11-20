@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Play, Loader2, Plus, X, Gauge, Trophy, BadgeCheck, AlertCircle, Coins, History, Download, Trash2 } from 'lucide-react';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { ALL_MODEL_OPTIONS, estimateCostUSD } from '../../config/models';
@@ -35,10 +35,14 @@ function fmtCostPer1k(costUSD: number): string {
 }
 
 /** So tài cùng một prompt trên nhiều model: chất lượng × chi phí × tốc độ. */
-export default function BakeoffPanel() {
+export default function BakeoffPanel({ initialPrompt }: { initialPrompt?: string }) {
   const { geminiApiKey, groqApiKey, openaiApiKey, useSystemGeminiKey } = useWorkspace();
 
-  const [promptText, setPromptText] = useState('');
+  const [promptText, setPromptText] = useState(initialPrompt || '');
+  // Prompt gửi từ tab khác (Prompt Inspector → "So tài model") → cập nhật ô nhập.
+  useEffect(() => {
+    if (initialPrompt) setPromptText(initialPrompt);
+  }, [initialPrompt]);
   const [userInput, setUserInput] = useState('');
   const [criteria, setCriteria] = useState<string[]>([]);
   const [criterionDraft, setCriterionDraft] = useState('');
@@ -147,7 +151,7 @@ export default function BakeoffPanel() {
     <>
       <p className="mb-4 text-sm text-muted">Chạy cùng một prompt trên nhiều model — đo chất lượng × chi phí × tốc độ để chọn model đáng tiền nhất.</p>
 
-      <div className="mb-6 rounded-2xl border border-line bg-panel p-5">
+      <div className="mb-6 rounded-2xl border border-glass-edge glass-1 p-5">
         <label className="mb-1.5 block text-xs font-bold text-muted">Prompt / chỉ dẫn hệ thống</label>
         <textarea
           value={promptText}
@@ -273,7 +277,7 @@ export default function BakeoffPanel() {
 
       {/* Phase 4: lịch sử các lần so tài + xuất CSV */}
       {history.length > 0 && (
-        <div className="mt-8 rounded-2xl border border-line bg-panel p-5">
+        <div className="mt-8 rounded-2xl border border-glass-edge glass-1 p-5">
           <div className="mb-3 flex items-center justify-between">
             <span className="flex items-center gap-2 text-sm font-bold text-ink">
               <History size={15} className="text-emerald-500" /> Lịch sử so tài ({history.length})

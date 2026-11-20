@@ -19,7 +19,8 @@ describe('buildSearchEntries', () => {
     expect(entries[0].tab).toBe('builder');
     expect(entries[0].template?.id).toBe('t1');
     expect(entries[1].tab).toBe('projectchain');
-    expect(entries[2].tab).toBe('rulesskills');
+    expect(entries[2].tab).toBe('library');
+    expect(entries[2].itemId).toBe('r1');
   });
 
   it('nguồn rỗng/thiếu không gây lỗi', () => {
@@ -52,5 +53,23 @@ describe('filterSearchEntries', () => {
   it('truy vấn rỗng trả mảng rỗng, tôn trọng limit', () => {
     expect(filterSearchEntries(entries, '   ')).toEqual([]);
     expect(filterSearchEntries(entries, 'tối', 1)).toHaveLength(1);
+  });
+});
+
+describe('Thư viện hợp nhất', () => {
+  it('LLM config vào index với tab library, domain và mô tả rút từ role', () => {
+    const [c] = buildSearchEntries({ configs: [{ id: 'c1', name: 'Kế toán', domain: 'Tài chính', role: 'Bạn là kế toán.' }] });
+    expect(c).toMatchObject({ kind: 'config', tab: 'library', itemId: 'c1', domain: 'Tài chính', subtitle: 'Bạn là kế toán.' });
+  });
+
+  it('template khớp theo tag/tác giả (xếp sau khớp tiêu đề/mô tả)', () => {
+    const list = buildSearchEntries({
+      templates: [
+        { ...template('t1', 'Email'), tags: ['seo'], authorName: 'Lan' },
+        template('t2', 'SEO checklist'),
+      ],
+    });
+    expect(filterSearchEntries(list, 'seo').map((e) => e.itemId)).toEqual(['t2', 't1']);
+    expect(filterSearchEntries(list, 'lan').map((e) => e.itemId)).toEqual(['t1']);
   });
 });

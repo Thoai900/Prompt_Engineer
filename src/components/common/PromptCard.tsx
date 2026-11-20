@@ -37,12 +37,12 @@ export default function PromptCard({ template, onSelect, onRemix, onPreview, isS
   const isCode = showcase.outputType === 'code';
 
   return (
-    <div className="group bg-white rounded-3xl border border-slate-200 shadow-sm hover:border-indigo-300 hover:shadow-lg transition-all relative flex flex-col min-h-[400px] overflow-hidden">
+    <div className="group glass-1 rounded-3xl border border-glass-edge hover:border-indigo-300 hover:shadow-lg transition-all relative flex flex-col min-h-[400px] overflow-hidden">
       {/* Vùng kết quả — Phương án A: Bạn nhập → Kết quả mẫu (thật) */}
       {showcase.hasResult ? (
         <div
           onClick={() => onPreview?.(template)}
-          className="border-b border-slate-100 bg-slate-50 p-4 cursor-pointer flex flex-col gap-2 shrink-0"
+          className="border-b border-glass-edge bg-glass/40 p-4 cursor-pointer flex flex-col gap-2 shrink-0"
           title="Xem kết quả mẫu đầy đủ"
         >
           <div className="flex items-center justify-between">
@@ -76,7 +76,7 @@ export default function PromptCard({ template, onSelect, onRemix, onPreview, isS
           </div>
         </div>
       ) : (
-        <div className="border-b border-slate-100 bg-slate-50 h-[120px] flex flex-col items-center justify-center gap-2 shrink-0">
+        <div className="border-b border-glass-edge bg-glass/40 h-[120px] flex flex-col items-center justify-center gap-2 shrink-0">
           <div className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center shadow-sm">
             <FileText className="w-6 h-6 text-slate-300" />
           </div>
@@ -87,7 +87,7 @@ export default function PromptCard({ template, onSelect, onRemix, onPreview, isS
       )}
 
       {/* Nội dung */}
-      <div className="flex-1 flex flex-col p-5 bg-white">
+      <div className="flex-1 flex flex-col p-5">
         {/* Tác giả */}
         <div className="flex items-center justify-between mb-2.5 shrink-0">
           <div className="flex items-center gap-2">

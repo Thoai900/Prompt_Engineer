@@ -2,7 +2,7 @@ import React from 'react';
 import { Copy, FileText, History, Package } from 'lucide-react';
 import { toast } from '../common/Toaster';
 import { CompiledGraph, SLOT_COLORS } from '../../utils/graphCompile';
-import { estimateTokens } from '../../config/models';
+import PromptInspector from '../common/PromptInspector';
 
 interface CompiledPreviewPanelProps {
   compiled: CompiledGraph;
@@ -33,7 +33,7 @@ export function CompiledPreviewPanel({ compiled, onSaveVersion, onOpenVersionDra
       {/* Toolbar */}
       <div className="flex items-center gap-2 p-3 border-b border-line/60 shrink-0">
         <span className="text-xs font-bold text-faint mr-auto">
-          ~{estimateTokens(finalPrompt)} token · {sections.length} phần
+          {sections.length} phần
         </span>
         <button
           onClick={onOpenVersionDrawer}
@@ -63,6 +63,12 @@ export function CompiledPreviewPanel({ compiled, onSaveVersion, onOpenVersionDra
           <Copy size={11} /> Sao chép
         </button>
       </div>
+
+      {finalPrompt.trim() && (
+        <div className="p-3 border-b border-line/60 shrink-0 max-h-[45%] overflow-y-auto custom-scrollbar">
+          <PromptInspector text={finalPrompt} />
+        </div>
+      )}
 
       {/* Sections tô màu theo node nguồn */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-3 text-left">

@@ -8,7 +8,7 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { Search, Moon, Sun, CornerDownLeft, Library, Workflow, ScrollText, Wrench } from 'lucide-react';
+import { Search, Moon, Sun, CornerDownLeft, Library, Workflow, ScrollText, Wrench, Zap } from 'lucide-react';
 import { TabType } from '../../types';
 import { SearchEntry, SearchKind, KIND_LABELS, filterSearchEntries } from '../../utils/globalSearch';
 
@@ -18,8 +18,18 @@ interface CommandItem {
   icon: React.ReactNode;
 }
 
+/** Lệnh tuỳ ý (vd mở thẳng một loại trong tab Thư viện). */
+export interface ExtraCommand {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  run: () => void;
+}
+
 interface CommandPaletteProps {
   items: CommandItem[];
+  /** Lệnh bổ sung, hiện sau các mục điều hướng. */
+  commands?: ExtraCommand[];
   onNavigate: (tab: TabType) => void;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
@@ -34,14 +44,16 @@ const KIND_ICONS: Record<SearchKind, React.ReactNode> = {
   project: <Workflow size={16} />,
   rule: <ScrollText size={16} />,
   skill: <Wrench size={16} />,
+  config: <Zap size={16} />,
 };
 
 type Action =
   | { kind: 'nav'; id: string; label: string; icon: React.ReactNode; tab: TabType }
   | { kind: 'theme'; id: string; label: string; icon: React.ReactNode }
+  | { kind: 'command'; id: string; label: string; icon: React.ReactNode; run: () => void }
   | { kind: 'entry'; id: string; label: string; icon: React.ReactNode; entry: SearchEntry };
 
-export default function CommandPalette({ items, onNavigate, theme, onToggleTheme, getSearchEntries, onSelectEntry }: CommandPaletteProps) {
+export default function CommandPalette({ items, commands = [], onNavigate, theme, onToggleTheme, getSearchEntries, onSelectEntry }: CommandPaletteProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [queryText, setQueryText] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
@@ -84,8 +96,9 @@ export default function CommandPalette({ items, onNavigate, theme, onToggleTheme
       label: theme === 'light' ? 'Chuyển sang giao diện tối' : 'Chuyển sang giao diện sáng',
       icon: theme === 'light' ? <Moon size={16} /> : <Sun size={16} />,
     };
-    return [...navActions, themeAction];
-  }, [items, theme]);
+    const extra: Action[] = commands.map((c) => ({ kind: 'command', ...c }));
+    return [...navActions, ...extra, themeAction];
+  }, [items, commands, theme]);
 
   const filtered = useMemo(() => {
     const q = queryText.trim().toLowerCase();
@@ -107,6 +120,7 @@ export default function CommandPalette({ items, onNavigate, theme, onToggleTheme
     if (!action) return;
     if (action.kind === 'nav') onNavigate(action.tab);
     else if (action.kind === 'theme') onToggleTheme();
+    else if (action.kind === 'command') action.run();
     else if (action.kind === 'entry') {
       if (onSelectEntry) onSelectEntry(action.entry);
       else onNavigate(action.entry.tab);
@@ -142,11 +156,11 @@ export default function CommandPalette({ items, onNavigate, theme, onToggleTheme
             transition={{ type: 'spring', stiffness: 380, damping: 30 }}
             onClick={(e) => e.stopPropagation()}
             onKeyDown={onListKeyDown}
-            className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-[var(--color-panel,#ffffff)] shadow-2xl dark:border-slate-800"
+            className="w-full max-w-lg overflow-hidden rounded-2xl border border-glass-edge glass-3"
             role="dialog"
             aria-label="Command palette"
           >
-            <div className="flex items-center gap-2.5 border-b border-slate-150 px-4 py-3 dark:border-slate-800">
+            <div className="flex items-center gap-2.5 border-b border-line px-4 py-3">
               <Search size={17} className="shrink-0 text-slate-400" />
               <input
                 ref={inputRef}

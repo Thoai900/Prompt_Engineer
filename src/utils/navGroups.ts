@@ -15,9 +15,9 @@ export interface NavGroup {
 
 export const NAV_GROUPS: readonly NavGroup[] = [
   { id: 'create', label: 'Tạo', tabs: ['studio', 'builder', 'projectchain'] },
-  { id: 'library', label: 'Thư viện', tabs: ['library', 'rulesskills', 'utilitybelt'] },
-  { id: 'experiment', label: 'Thử nghiệm', tabs: ['lab', 'enhancer'] },
-  { id: 'learn', label: 'Học', tabs: ['learn', 'aifuture'] },
+  { id: 'library', label: 'Thư viện', tabs: ['library'] },
+  { id: 'experiment', label: 'Thử nghiệm', tabs: ['lab'] },
+  { id: 'learn', label: 'Học', tabs: ['learn'] },
 ];
 
 /** Nhóm chứa tab; null với 'home'. */
@@ -36,4 +36,22 @@ export function targetTabForGroup(
   const group = NAV_GROUPS.find((g) => g.id === groupId)!;
   const last = lastTabByGroup[groupId];
   return last && group.tabs.includes(last) ? last : group.tabs[0];
+}
+
+/**
+ * Tab đã gỡ → nơi thay thế, để link/bookmark cũ không hỏng.
+ * `params` là query-param tab đích đọc khi mount (vd. Studio mở chế độ nhanh).
+ */
+const LEGACY_TABS: Record<string, { tab: TabType; params?: Record<string, string> }> = {
+  enhancer: { tab: 'studio', params: { studio: 'quick' } },
+  aifuture: { tab: 'learn', params: { learn: 'news' } },
+  // Gộp vào tab Thư viện (spec 2026-11-18-unified-library-design).
+  rulesskills: { tab: 'library', params: { lib: 'rules' } },
+  utilitybelt: { tab: 'library', params: { lib: 'configs' } },
+};
+
+export function resolveLegacyTab(raw: string, search = ''): { tab: TabType; params?: Record<string, string> } | null {
+  // Link chia sẻ app cũ (?app=<id>#lab) — Chain → App đã chuyển từ Lab sang Project Chain.
+  if (raw === 'lab' && new URLSearchParams(search).has('app')) return { tab: 'projectchain' };
+  return Object.prototype.hasOwnProperty.call(LEGACY_TABS, raw) ? LEGACY_TABS[raw] : null;
 }

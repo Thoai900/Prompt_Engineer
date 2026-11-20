@@ -6,26 +6,34 @@ import {
   loadLocalProjects, collectChainInputs, runChainApp, publishApp, loadSharedApp, buildAppUrl, type ChainStep,
 } from '../../services/chainAppService';
 import { toast } from '../common/Toaster';
-import FeedbackForm from './health/FeedbackForm';
-import ApiAccessPanel from './api/ApiAccessPanel';
+import FeedbackForm from '../lab/health/FeedbackForm';
+import ApiAccessPanel from '../lab/api/ApiAccessPanel';
 import { loadHealthSuites, newHealthSuite, saveHealthSuite } from '../../services/healthService';
 import { compileAppTemplate, effectiveInputs, appTemplateHash } from '../../utils/feedbackUtils';
 import { commitRevision } from '../../utils/promptRevisions';
 import { GEMINI_FLASH } from '../../config/models';
 
 interface AppPanelProps {
-  /** Mở Prompt Health ở suite vừa tạo/tìm thấy cho app (LabTab đổi chế độ). */
+  /** Chọn sẵn dự án đang mở trong Project Chain. */
+  initialProjectId?: string;
+  /** Mở Prompt Health ở suite vừa tạo/tìm thấy cho app. */
   onOpenHealth?: (suiteId: string) => void;
 }
 
-/** Chain → App: chạy một Project Chain như một app (form biến → output), chia sẻ qua link. */
-export default function AppPanel({ onOpenHealth }: AppPanelProps) {
+/**
+ * Chain → App: chạy một Project Chain như một app (form biến → output), chia sẻ qua link.
+ * Hiển thị trong Project Chain (nút "Chạy như App"); trước đây là chế độ trong Lab.
+ */
+export default function AppPanel({ initialProjectId, onOpenHealth }: AppPanelProps) {
   const { user, geminiApiKey, groqApiKey, openaiApiKey, useSystemGeminiKey, activeWorkspaceId } = useWorkspace();
 
   const [localProjects] = useState<PromptProject[]>(() => loadLocalProjects());
   const [sharedApp, setSharedApp] = useState<PromptProject | null>(null);
   const [sharedLoading, setSharedLoading] = useState(false);
-  const [selectedId, setSelectedId] = useState<string>(() => loadLocalProjects()[0]?.id || '');
+  const [selectedId, setSelectedId] = useState<string>(() => {
+    const list = loadLocalProjects();
+    return list.find((p) => p.id === initialProjectId)?.id || list[0]?.id || '';
+  });
   const [values, setValues] = useState<Record<string, string>>({});
   const [running, setRunning] = useState(false);
   const [steps, setSteps] = useState<ChainStep[] | null>(null);
@@ -45,7 +53,7 @@ export default function AppPanel({ onOpenHealth }: AppPanelProps) {
     loadSharedApp(id)
       .then((p) => { setSharedApp(p); if (!p) setError('Không tìm thấy app được chia sẻ (có thể đã gỡ).'); })
       .finally(() => setSharedLoading(false));
-    window.history.replaceState(null, '', `${window.location.pathname}${window.location.hash || '#lab'}`);
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.hash || '#projectchain'}`);
   }, []);
 
   const activeProject = sharedApp || localProjects.find((p) => p.id === selectedId) || null;
@@ -134,12 +142,12 @@ export default function AppPanel({ onOpenHealth }: AppPanelProps) {
         <div className="flex items-center gap-2 rounded-2xl border border-line bg-panel p-6 text-sm text-muted"><Loader2 size={16} className="animate-spin" /> Đang tải app được chia sẻ…</div>
       ) : !activeProject ? (
         <div className="rounded-2xl border border-dashed border-line bg-panel p-8 text-center text-sm text-muted">
-          Chưa có Project Chain nào ở máy này. Hãy tạo/mở một chuỗi ở tab <span className="font-semibold text-ink">Project Chain</span> trước, rồi quay lại đây.
+          Chưa có dự án nào ở máy này. Hãy tạo một dự án ở danh sách bên trái trước.
         </div>
       ) : (
         <div className="space-y-4">
           {/* Chọn / thông tin app */}
-          <div className="rounded-2xl border border-line bg-panel p-5">
+          <div className="rounded-2xl border border-glass-edge glass-1 p-5">
             {sharedApp ? (
               <div className="mb-3 flex items-center gap-2 text-sm">
                 <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">App chia sẻ</span>

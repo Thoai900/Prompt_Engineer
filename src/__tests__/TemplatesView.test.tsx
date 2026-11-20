@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
-import LibraryTab from '../components/tabs/LibraryTab';
+import LibraryTab from '../components/library/TemplatesView';
 import { PromptTemplate } from '../types';
 
 beforeEach(() => {

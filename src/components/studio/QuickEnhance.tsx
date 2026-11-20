@@ -9,11 +9,15 @@ import { toast } from '../common/Toaster';
 import { templateToGraphProject } from '../../utils/graphMigration';
 import { openProjectInGraph } from '../../services/graphExportService';
 
-interface EnhancerTabProps {
+/**
+ * Tăng cường nhanh — chế độ một bước của Prompt Studio (trước đây là tab AI Enhancer):
+ * dán prompt thô → AI cấu trúc lại thành các block. Không cần đăng nhập.
+ */
+interface QuickEnhanceProps {
   onApplyTemplate?: (template: PromptTemplate) => void;
 }
 
-export default function EnhancerTab({ onApplyTemplate }: EnhancerTabProps) {
+export default function QuickEnhance({ onApplyTemplate }: QuickEnhanceProps) {
   const { activePersona, user, activeWorkspaceId } = useWorkspace();
   const [inputPrompt, setInputPrompt] = useState('');
   const [optimizedBlocks, setOptimizedBlocks] = useState<PromptBlock[] | null>(null);
@@ -101,10 +105,10 @@ export default function EnhancerTab({ onApplyTemplate }: EnhancerTabProps) {
   };
 
   return (
-    <div className="flex-1 p-6 flex flex-col overflow-y-auto w-full max-w-5xl mx-auto pb-safe">
+    <div className="flex-1 p-6 flex flex-col w-full max-w-5xl mx-auto pb-safe">
       <div className="mb-6 flex justify-between items-start">
         <div>
-          <h2 className="text-lg font-bold">AI Prompt Upgrader</h2>
+          <h2 className="text-lg font-bold">Tăng cường nhanh</h2>
           <p className="text-sm text-slate-500">Tối ưu hóa các ý tưởng cơ bản thành cấu trúc prompt chuyên nghiệp và sắc bén.</p>
         </div>
         <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1.5 rounded-full border border-emerald-100 flex items-center gap-1.5 shadow-sm">

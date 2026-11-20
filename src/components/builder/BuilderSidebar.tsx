@@ -226,7 +226,7 @@ export const BuilderSidebar: React.FC<BuilderSidebarProps> = ({
                             {...provided.dragHandleProps}
                             className="group"
                           >
-                            <div className={`p-3 border border-slate-200 dark:border-slate-850 hover:border-violet-500/40 rounded-2xl bg-white/80 dark:bg-slate-900/60 backdrop-blur-md hover:bg-white/90 dark:hover:bg-slate-850/80 transition-all duration-300
+                            <div className={`p-3 border border-slate-200 dark:border-slate-850 hover:border-violet-500/40 rounded-2xl glass-1 hover:bg-hover/60 transition-all duration-300
                               ${snapshot.isDragging ? 'shadow-lg border-violet-500 ring-1 ring-violet-500/30 bg-white dark:bg-slate-800' : ''}`}
                             >
                               <div className="flex justify-between items-center min-h-[28px]">

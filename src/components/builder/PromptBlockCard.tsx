@@ -249,7 +249,7 @@ export const PromptBlockCard: React.FC<PromptBlockCardProps> = ({
                             className="fixed inset-0 z-40" 
                             onClick={(e) => { e.stopPropagation(); setOpenAiMenuId(null); }}
                           />
-                          <div className="absolute top-full right-0 mt-1 w-72 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-2xl rounded-xl z-50 flex flex-col overflow-hidden text-left animate-in fade-in slide-in-from-top-2 duration-150">
+                          <div className="absolute top-full right-0 mt-1 w-72 glass-3 border border-glass-edge rounded-xl z-50 flex flex-col overflow-hidden text-left animate-in fade-in slide-in-from-top-2 duration-150">
                             {/* Popover Header */}
                             <div className="px-3 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-955 flex items-center justify-between">
                               <span className="text-xs font-bold text-slate-550 dark:text-slate-400">Trợ lý AI khối</span>

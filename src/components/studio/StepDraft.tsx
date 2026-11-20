@@ -122,7 +122,7 @@ export default function StepDraft({ draft, onPatch }: StepDraftProps) {
 
       <div className="space-y-3">
         {draft.template.blocks.map((block) => (
-          <div key={block.id} className="group rounded-2xl border border-line bg-panel/80 p-4 transition-colors focus-within:border-violet-400/50">
+          <div key={block.id} className="group rounded-2xl border border-glass-edge glass-1 p-4 transition-colors focus-within:border-violet-400/50">
             <div className="mb-2 flex items-center justify-between gap-2">
               <div className="text-xs font-bold text-muted">{block.title}</div>
               <button

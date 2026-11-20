@@ -87,7 +87,7 @@ export default function FeedbackInbox({ suite, user, onAddTest }: Props) {
   );
 
   return (
-    <div className="rounded-2xl border border-line bg-panel p-5">
+    <div className="rounded-2xl border border-glass-edge glass-1 p-5">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1.5 text-xs font-bold text-muted">
           <Inbox size={14} /> Phản hồi từ người dùng app

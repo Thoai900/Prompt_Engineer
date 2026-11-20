@@ -360,7 +360,7 @@ export default function DomainLab({ domainId, onBack, onEarnXP }: DomainLabProps
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-slate-50 dark:bg-slate-950">
       {/* Header bar */}
-      <header className="flex items-center justify-between border-b border-slate-200/50 bg-white/80 p-4 backdrop-blur-md dark:border-slate-800/50 dark:bg-slate-900/80 shrink-0">
+      <header className="flex items-center justify-between border-b border-glass-edge glass-2 p-4 shrink-0">
         <div className="flex items-center gap-3.5">
           <button 
             onClick={onBack} 
@@ -536,7 +536,7 @@ export default function DomainLab({ domainId, onBack, onEarnXP }: DomainLabProps
             </div>
 
             {/* Input Bar */}
-            <div className="p-3 border-t border-slate-150 bg-white/50 backdrop-blur-md dark:border-slate-850 dark:bg-slate-950/50 shrink-0 flex items-center gap-2">
+            <div className="p-3 border-t border-glass-edge glass-2 shrink-0 flex items-center gap-2">
               <textarea
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}

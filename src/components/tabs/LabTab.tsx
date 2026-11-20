@@ -1,48 +1,63 @@
 import React, { useEffect, useState } from 'react';
-import { FlaskConical, Scale, Sparkles, Activity, ShieldCheck, Fingerprint, GraduationCap, AppWindow } from 'lucide-react';
+import { FlaskConical, Scale, Sparkles, Activity, Fingerprint } from 'lucide-react';
 import { PromptTemplate } from '../../types';
 import BakeoffPanel from '../lab/BakeoffPanel';
 import OptimizerPanel from '../lab/OptimizerPanel';
 import HealthPanel from '../lab/HealthPanel';
-import LinterPanel from '../lab/LinterPanel';
 import TastePanel from '../lab/TastePanel';
-import TutorPanel from '../lab/TutorPanel';
-import AppPanel from '../lab/AppPanel';
+import { LAB_SEED_EVENT, takeLabSeed, type LabSeed } from '../../services/labSeed';
 
-type LabMode = 'bakeoff' | 'optimizer' | 'health' | 'linter' | 'taste' | 'tutor' | 'app';
+type LabMode = 'bakeoff' | 'optimizer' | 'health' | 'taste';
+
+const MODES: { id: LabMode; label: string; icon: React.ReactNode }[] = [
+  { id: 'bakeoff', label: 'So tài Model', icon: <Scale size={15} /> },
+  { id: 'optimizer', label: 'Auto-Optimizer', icon: <Sparkles size={15} /> },
+  { id: 'health', label: 'Prompt Health', icon: <Activity size={15} /> },
+  { id: 'taste', label: 'Cá nhân hoá', icon: <Fingerprint size={15} /> },
+];
 
 /**
  * Lab (Tầng 1 · trung tâm chất lượng prompt). Chứa các công cụ "đo & cải thiện":
  * - Bake-off: so tài cùng prompt trên nhiều model (chất lượng × chi phí × tốc độ).
  * - Auto-Optimizer: tự tiến hoá prompt theo tiêu chí (chạy ở backend).
+ * Linter đã thành Prompt Inspector dùng chung; Gia sư chuyển sang Learn; Chain → App sang Project Chain.
  */
 interface LabTabProps {
+  /** Template trong thư viện (Prompt Health: chọn template nguồn, lưu bản hiện hành về template của tôi). */
   libraryTemplates?: PromptTemplate[];
   /** Mở một template trong Builder (App.tsx điều hướng). */
   onApplyTemplate?: (t: PromptTemplate) => void;
-  /** Lưu một template vào thư viện (App.tsx xử lý Firestore). */
-  onSaveTemplate?: (t: PromptTemplate) => void;
+  /** Lưu một template vào thư viện (App.tsx xử lý Firestore + lịch sử phiên bản). */
+  onSaveTemplate?: (t: PromptTemplate) => Promise<void> | void;
 }
 
 export default function LabTab({ libraryTemplates = [], onApplyTemplate, onSaveTemplate }: LabTabProps) {
   const [mode, setMode] = useState<LabMode>('bakeoff');
-  // Prompt gửi từ Linter sang Auto-Optimizer (mồi sẵn ô prompt gốc).
-  const [optimizerSeed, setOptimizerSeed] = useState('');
-  // Chain → App "Suite kiểm thử" → mở Prompt Health ở đúng suite.
+  // Seed gửi từ tab khác (Prompt Inspector, Library, Studio, Project Chain) → mồi sẵn từng chế độ.
+  // Giữ nguyên object seed để panel nhận lại cả khi gửi lặp cùng một prompt.
+  const [bakeoffSeed, setBakeoffSeed] = useState('');
+  const [optimizerSeed, setOptimizerSeed] = useState<LabSeed | null>(null);
+  // Prompt Health: seed từ template (mở/tạo suite gắn template) hoặc id suite (Chain → App).
+  const [healthSeed, setHealthSeed] = useState<LabSeed | null>(null);
   const [healthSuiteId, setHealthSuiteId] = useState<string | undefined>();
 
-  const sendToOptimizer = (prompt: string) => {
-    setOptimizerSeed(prompt);
-    setMode('optimizer');
-  };
-
-  // Link chia sẻ app (?app=<id>) → mở thẳng chế độ Chain → App.
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('app')) setMode('app');
+    const consume = () => {
+      const seed = takeLabSeed();
+      if (!seed) return;
+      if (seed.mode === 'bakeoff') setBakeoffSeed(seed.prompt);
+      else if (seed.mode === 'optimizer') setOptimizerSeed(seed);
+      else if (seed.suiteId) setHealthSuiteId(seed.suiteId);
+      else setHealthSeed(seed);
+      setMode(seed.mode);
+    };
+    consume();
+    window.addEventListener(LAB_SEED_EVENT, consume);
+    return () => window.removeEventListener(LAB_SEED_EVENT, consume);
   }, []);
 
   return (
-    <div className="flex-1 overflow-y-auto bg-surface p-4 md:p-6">
+    <div className="flex-1 overflow-y-auto p-4 md:p-6">
       <div className="mx-auto max-w-5xl">
         <div className="mb-5 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
@@ -55,57 +70,30 @@ export default function LabTab({ libraryTemplates = [], onApplyTemplate, onSaveT
         </div>
 
         <div className="mb-6 inline-flex max-w-full overflow-x-auto no-scrollbar rounded-xl border border-line bg-panel p-1" role="tablist">
-          <button
-            onClick={() => setMode('bakeoff')}
-            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 min-h-10 text-sm font-semibold transition-colors ${mode === 'bakeoff' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
-          >
-            <Scale size={15} /> So tài Model
-          </button>
-          <button
-            onClick={() => setMode('optimizer')}
-            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 min-h-10 text-sm font-semibold transition-colors ${mode === 'optimizer' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
-          >
-            <Sparkles size={15} /> Auto-Optimizer
-          </button>
-          <button
-            onClick={() => setMode('health')}
-            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 min-h-10 text-sm font-semibold transition-colors ${mode === 'health' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
-          >
-            <Activity size={15} /> Prompt Health
-          </button>
-          <button
-            onClick={() => setMode('linter')}
-            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 min-h-10 text-sm font-semibold transition-colors ${mode === 'linter' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
-          >
-            <ShieldCheck size={15} /> Linter
-          </button>
-          <button
-            onClick={() => setMode('taste')}
-            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 min-h-10 text-sm font-semibold transition-colors ${mode === 'taste' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
-          >
-            <Fingerprint size={15} /> Cá nhân hoá
-          </button>
-          <button
-            onClick={() => setMode('tutor')}
-            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 min-h-10 text-sm font-semibold transition-colors ${mode === 'tutor' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
-          >
-            <GraduationCap size={15} /> Gia sư
-          </button>
-          <button
-            onClick={() => setMode('app')}
-            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 min-h-10 text-sm font-semibold transition-colors ${mode === 'app' ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
-          >
-            <AppWindow size={15} /> Chain → App
-          </button>
+          {MODES.map((m) => (
+            <button
+              key={m.id}
+              onClick={() => setMode(m.id)}
+              className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 min-h-10 text-sm font-semibold transition-colors ${mode === m.id ? 'bg-emerald-600 text-white' : 'text-muted hover:text-ink'}`}
+            >
+              {m.icon} {m.label}
+            </button>
+          ))}
         </div>
 
-        {mode === 'bakeoff' && <BakeoffPanel />}
-        {mode === 'optimizer' && <OptimizerPanel initialPrompt={optimizerSeed} onApplyTemplate={onApplyTemplate} onSaveTemplate={onSaveTemplate} />}
-        {mode === 'health' && <HealthPanel key={healthSuiteId} libraryTemplates={libraryTemplates} onApplyTemplate={onApplyTemplate} initialSuiteId={healthSuiteId} />}
-        {mode === 'linter' && <LinterPanel onOptimize={sendToOptimizer} />}
+        {mode === 'bakeoff' && <BakeoffPanel initialPrompt={bakeoffSeed} />}
+        {mode === 'optimizer' && <OptimizerPanel seed={optimizerSeed} onApplyTemplate={onApplyTemplate} onSaveTemplate={onSaveTemplate} />}
+        {mode === 'health' && (
+          <HealthPanel
+            key={healthSuiteId}
+            libraryTemplates={libraryTemplates}
+            onApplyTemplate={onApplyTemplate}
+            onSaveTemplate={onSaveTemplate}
+            initialSuiteId={healthSuiteId}
+            seed={healthSeed}
+          />
+        )}
         {mode === 'taste' && <TastePanel />}
-        {mode === 'tutor' && <TutorPanel libraryTemplates={libraryTemplates} />}
-        {mode === 'app' && <AppPanel onOpenHealth={(id) => { setHealthSuiteId(id); setMode('health'); }} />}
       </div>
     </div>
   );

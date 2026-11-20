@@ -150,7 +150,7 @@ export default function StepPolish({ draft, assembledText, onPatch }: StepPolish
       </header>
 
       {/* 1. Chạy thử & chấm điểm */}
-      <div className="rounded-2xl border border-line bg-panel/80 p-4">
+      <div className="rounded-2xl border border-glass-edge glass-1 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600/10 text-emerald-700 dark:text-emerald-400">
@@ -190,7 +190,7 @@ export default function StepPolish({ draft, assembledText, onPatch }: StepPolish
       </div>
 
       {/* 2. Tối ưu bằng AI */}
-      <div className="rounded-2xl border border-line bg-panel/80 p-4">
+      <div className="rounded-2xl border border-glass-edge glass-1 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600/10 text-emerald-700 dark:text-emerald-400">
@@ -244,7 +244,7 @@ export default function StepPolish({ draft, assembledText, onPatch }: StepPolish
       </div>
 
       {/* 3. Bake-off nhanh */}
-      <div className="rounded-2xl border border-line bg-panel/80 p-4">
+      <div className="rounded-2xl border border-glass-edge glass-1 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600/10 text-emerald-700 dark:text-emerald-400">

@@ -26,14 +26,15 @@ export const usePromptBlocks = (initialTemplate: PromptTemplate | null) => {
   const [blockRedoList, setBlockRedoList] = useState<Record<string, HistoryEntry[]>>({});
 
   // BuilderTab luôn được mount sẵn (App dùng class `hidden` thay vì unmount), nên khi
-  // người dùng mở một template mới từ Home/Library, prop `initialTemplate` đổi nhưng
-  // state khởi tạo lazy ở trên không tự cập nhật. Effect này nạp lại blocks mỗi khi
-  // template (theo id) thực sự thay đổi, dùng ref để không ghi đè bản nháp đang sửa.
-  const loadedTemplateIdRef = useRef<string | null>(initialTemplate?.id ?? null);
+  // người dùng mở một template từ Home/Library, prop `initialTemplate` đổi nhưng
+  // state khởi tạo lazy ở trên không tự cập nhật. Effect này nạp lại blocks mỗi khi App
+  // truyền vào một template VỪA MỞ (object mới — App chỉ tạo object mới khi người dùng
+  // chọn mở), kể cả cùng id: "Khôi phục" một phiên bản cũ của chính template đang mở
+  // phải nạp lại được. Re-render bình thường giữ nguyên object nên không ghi đè bản nháp.
+  const loadedTemplateRef = useRef<PromptTemplate | null>(initialTemplate);
   useEffect(() => {
-    const incomingId = initialTemplate?.id ?? null;
-    if (incomingId && incomingId !== loadedTemplateIdRef.current) {
-      loadedTemplateIdRef.current = incomingId;
+    if (initialTemplate && initialTemplate !== loadedTemplateRef.current) {
+      loadedTemplateRef.current = initialTemplate;
       setBlocks(initialTemplate?.blocks ?? []);
       setBlockHistoryList({});
       setBlockRedoList({});

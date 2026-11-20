@@ -1018,6 +1018,61 @@ Nếu prompt đã tốt, trả {"issues":[]}.`;
     } as LintIssue));
 }
 
+// ── Vòng chất lượng (spec 2026-11-18-quality-loop-design) ───────────────────
+/**
+ * Soạn 3–5 test case cho Prompt Health từ một prompt. Trả mảng thô {input, criteria[]};
+ * gọi normalizeDraftTests (utils/healthUtils) để chuẩn hoá trước khi dùng.
+ */
+export async function draftHealthTests(prompt: string, options?: AiGenParams): Promise<unknown[]> {
+  const model = options?.model || GEMINI_FLASH;
+  const systemInstruction = `Bạn là kỹ sư kiểm thử prompt. Với prompt hệ thống được cho, hãy soạn 3–5 test case để đo chất lượng câu trả lời của AI khi chạy prompt đó.
+Mỗi test gồm:
+- "input": tin nhắn người dùng THẬT, cụ thể, đúng phạm vi prompt. Phủ ca thường, ca khó và một ca biên (mơ hồ, thiếu thông tin hoặc dễ làm AI lệch yêu cầu).
+- "criteria": 2–3 tiêu chí chấm, mỗi tiêu chí kiểm chứng được từ câu trả lời (vd "Có đúng 3 gạch đầu dòng", "Không bịa số liệu").
+Không lặp lại input. Viết bằng ngôn ngữ của prompt.
+Chỉ trả về JSON, KHÔNG markdown: {"tests":[{"input":"…","criteria":["…","…"]}]}`;
+
+  const text = await geminiGenerateWithFallback({
+    model,
+    systemInstruction,
+    userContent: `Prompt cần soạn test:\n"""${prompt}"""`,
+    temperature: TASK_DEFAULTS.evaluation.temperature,
+    json: true,
+    options,
+  });
+  const parsed = safeJsonParse(text);
+  return Array.isArray(parsed?.tests) ? parsed.tests : [];
+}
+
+/**
+ * Chia một prompt phẳng (vd kết quả Auto-Optimizer) thành các khối, GIỮ NGUYÊN câu chữ —
+ * chỉ cắt và đặt nhãn, ưu tiên các loại khối của template gốc. Trả mảng thô;
+ * gọi normalizeSplitBlocks (utils/healthUtils) để chuẩn hoá + fallback.
+ */
+export async function splitPromptIntoBlocks(
+  prompt: string,
+  preferredBlocks: { type: string; title: string }[],
+  options?: AiGenParams,
+): Promise<unknown[]> {
+  const model = options?.model || GEMINI_FLASH;
+  const preferred = preferredBlocks.map((b) => `${b.type} ("${b.title}")`).join(', ') || 'role, task, context, format, constraints';
+  const systemInstruction = `Bạn chia một prompt thành các khối có nhãn. QUY TẮC TUYỆT ĐỐI: KHÔNG viết lại, KHÔNG thêm, KHÔNG bớt, KHÔNG tóm tắt — nối "content" của mọi khối theo thứ tự phải ra lại đúng nội dung prompt gốc (chỉ được bỏ các dòng tiêu đề dạng "### …").
+Ưu tiên dùng các loại khối sau, theo thứ tự: ${preferred}. Phần không khớp loại nào thì dùng "custom".
+"type" phải là một trong: role, task, context, format, tone, constraints, example, thinking, input_data, custom.
+Chỉ trả về JSON, KHÔNG markdown: {"blocks":[{"type":"…","title":"…","content":"…"}]}`;
+
+  const text = await geminiGenerateWithFallback({
+    model,
+    systemInstruction,
+    userContent: `Prompt cần chia khối:\n"""${prompt}"""`,
+    temperature: 0,
+    json: true,
+    options,
+  });
+  const parsed = safeJsonParse(text);
+  return Array.isArray(parsed?.blocks) ? parsed.blocks : [];
+}
+
 // ── Gia sư thích ứng (Lab · Tầng 2 #6) ──────────────────────────────────────
 // Chẩn đoán kỹ năng viết prompt từ CHÍNH prompt thật của người dùng → bài học nhắm đúng yếu.
 export interface SkillGap {

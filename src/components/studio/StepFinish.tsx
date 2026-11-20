@@ -3,9 +3,11 @@
  * Mở trong Builder (deep-link, KHÔNG render lại UI Builder).
  */
 import React, { useState } from 'react';
-import { Check, Copy, Library, Loader2, PenTool, Workflow } from 'lucide-react';
+import { Activity, Check, Copy, Library, Loader2, PenTool, Workflow } from 'lucide-react';
 import { toast } from '../common/Toaster';
 import { PromptTemplate } from '../../types';
+import { sendToLab } from '../../services/labSeed';
+import { blocksToText } from '../../utils/templateVersionUtils';
 
 interface StepFinishProps {
   /** Prompt cuối kèm persona (nếu có) — đúng thứ người dùng sẽ dán vào AI. */
@@ -23,6 +25,8 @@ export default function StepFinish({ finalText, mergedTemplate, personaName, onS
   const [copied, setCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  // Vòng chất lượng: chỉ mời kiểm thử sau khi đã lưu (suite gắn với template đã lưu).
+  const [savedId, setSavedId] = useState<string | null>(null);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(finalText);
@@ -36,6 +40,7 @@ export default function StepFinish({ finalText, mergedTemplate, personaName, onS
     setIsSaving(true);
     try {
       await onSaveTemplate(mergedTemplate);
+      setSavedId(mergedTemplate.id);
       toast.success('Đã lưu vào Library.');
     } catch (err: any) {
       console.error(err);
@@ -68,7 +73,7 @@ export default function StepFinish({ finalText, mergedTemplate, personaName, onS
         </p>
       </header>
 
-      <div className="max-h-96 overflow-y-auto custom-scrollbar rounded-2xl border border-line bg-panel/80 p-4">
+      <div className="max-h-96 overflow-y-auto custom-scrollbar rounded-2xl border border-glass-edge glass-1 p-4">
         <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-ink/90">{finalText}</pre>
       </div>
 
@@ -109,6 +114,15 @@ export default function StepFinish({ finalText, mergedTemplate, personaName, onS
           {isExporting ? <Loader2 size={15} className="animate-spin" /> : <Workflow size={15} />}
           Xuất sang Prompt Graph
         </button>
+        {savedId === mergedTemplate.id && (
+          <button
+            onClick={() => sendToLab('health', blocksToText(mergedTemplate.blocks), { templateId: mergedTemplate.id, templateTitle: mergedTemplate.title })}
+            title="AI soạn bộ test cho prompt vừa lưu, chạy Prompt Health để đo chất lượng"
+            className="flex cursor-pointer items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300"
+          >
+            <Activity size={15} /> Kiểm thử chất lượng
+          </button>
+        )}
       </div>
 
       <p className="text-xs leading-relaxed text-faint">
