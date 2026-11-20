@@ -3,7 +3,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { TEMPLATES } from '../../data';
 import { PromptTemplate } from '../../types';
-import { Search, TrendingUp, Sparkles, Bookmark, History, Eye, X, Code2, Video, Brain, GraduationCap, FileText, Layout, Folder, FolderPlus, Plus, Trash2, Puzzle } from 'lucide-react';
+import { Search, TrendingUp, Sparkles, Bookmark, History, Eye, X, Code2, Video, Brain, GraduationCap, FileText, Layout, Folder, FolderPlus, Plus, Trash2, Puzzle, Trophy } from 'lucide-react';
 import PromptCard from '../common/PromptCard';
 import PromptDetailModal from '../modals/PromptDetailModal';
 import ExamplePreviewModal from '../modals/ExamplePreviewModal';
@@ -32,6 +32,8 @@ import { toggleTemplateLike } from '../../services/metricsService';
 import { sendToLab } from '../../services/labSeed';
 import { blocksToText } from '../../utils/templateVersionUtils';
 import { buildExtensionPayload, isExtensionInstalled, syncToExtension } from '../../utils/extensionBridge';
+import LeaderboardView from './LeaderboardView';
+import { publicCommunityTemplates } from '../../utils/leaderboard';
 
 interface LibraryTabProps {
   onSelectTemplate: (template: PromptTemplate) => void;
@@ -102,6 +104,8 @@ export default function TemplatesView({ onSelectTemplate, customTemplates = [], 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
   const [activeTab, setActiveTab] = useState<'trending' | 'new' | 'saved'>('trending');
+  // Bảng xếp hạng template cộng đồng (tab riêng — không đi qua bộ lọc lưới).
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<'all' | LibrarySource>('all');
 
   // Bộ lọc facet (Đợt 1 — Khám phá). Rỗng = không lọc.
@@ -464,25 +468,32 @@ export default function TemplatesView({ onSelectTemplate, customTemplates = [], 
         {/* Social Tabs */}
         <div className="flex gap-6 border-b border-slate-200 mb-6">
           <button
-            onClick={() => setActiveTab('trending')}
-            className={`pb-3 text-sm font-bold flex items-center gap-2 transition-colors relative ${activeTab === 'trending' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
+            onClick={() => { setActiveTab('trending'); setShowLeaderboard(false); }}
+            className={`pb-3 text-sm font-bold flex items-center gap-2 transition-colors relative ${!showLeaderboard && activeTab === 'trending' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
           >
             <TrendingUp className="w-4 h-4" /> Trending
-            {activeTab === 'trending' && <span className="absolute bottom-[-1px] left-0 w-full h-0.5 bg-indigo-600 rounded-t-full"></span>}
+            {!showLeaderboard && activeTab === 'trending' && <span className="absolute bottom-[-1px] left-0 w-full h-0.5 bg-indigo-600 rounded-t-full"></span>}
           </button>
           <button
-            onClick={() => setActiveTab('new')}
-            className={`pb-3 text-sm font-bold flex items-center gap-2 transition-colors relative ${activeTab === 'new' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
+            onClick={() => { setActiveTab('new'); setShowLeaderboard(false); }}
+            className={`pb-3 text-sm font-bold flex items-center gap-2 transition-colors relative ${!showLeaderboard && activeTab === 'new' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
           >
             <Sparkles className="w-4 h-4" /> Mới nhất
-            {activeTab === 'new' && <span className="absolute bottom-[-1px] left-0 w-full h-0.5 bg-indigo-600 rounded-t-full"></span>}
+            {!showLeaderboard && activeTab === 'new' && <span className="absolute bottom-[-1px] left-0 w-full h-0.5 bg-indigo-600 rounded-t-full"></span>}
           </button>
           <button
-            onClick={() => setActiveTab('saved')}
-            className={`pb-3 text-sm font-bold flex items-center gap-2 transition-colors relative ${activeTab === 'saved' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
+            onClick={() => { setActiveTab('saved'); setShowLeaderboard(false); }}
+            className={`pb-3 text-sm font-bold flex items-center gap-2 transition-colors relative ${!showLeaderboard && activeTab === 'saved' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
           >
             <Bookmark className="w-4 h-4" /> Đã lưu{savedIds.size > 0 ? ` (${savedIds.size})` : ''}
-            {activeTab === 'saved' && <span className="absolute bottom-[-1px] left-0 w-full h-0.5 bg-indigo-600 rounded-t-full"></span>}
+            {!showLeaderboard && activeTab === 'saved' && <span className="absolute bottom-[-1px] left-0 w-full h-0.5 bg-indigo-600 rounded-t-full"></span>}
+          </button>
+          <button
+            onClick={() => setShowLeaderboard(true)}
+            className={`pb-3 text-sm font-bold flex items-center gap-2 transition-colors relative ${showLeaderboard ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}
+          >
+            <Trophy className="w-4 h-4" /> Xếp hạng
+            {showLeaderboard && <span className="absolute bottom-[-1px] left-0 w-full h-0.5 bg-indigo-600 rounded-t-full"></span>}
           </button>
         </div>
 
@@ -572,7 +583,7 @@ export default function TemplatesView({ onSelectTemplate, customTemplates = [], 
         </div>
 
         {/* Facet Filters — chỉ hiện tiêu chí có dữ liệu thật */}
-        {(facets.outputTypes.length > 0 || facets.frameworks.length > 0 || facets.tags.length > 0) && (
+        {!showLeaderboard && (facets.outputTypes.length > 0 || facets.frameworks.length > 0 || facets.tags.length > 0) && (
           <div className="mt-4 flex flex-col gap-3">
             {facets.outputTypes.length > 0 && (
               <FacetGroup label="Loại kết quả" options={facets.outputTypes} active={outputTypes} onToggle={(v) => toggleFacet(outputTypes, setOutputTypes, v)} />
@@ -587,6 +598,7 @@ export default function TemplatesView({ onSelectTemplate, customTemplates = [], 
         )}
 
         {/* Result count + clear */}
+        {!showLeaderboard && (
         <div className="flex items-center justify-between mt-5">
           <span className="text-xs font-bold text-slate-500">
             {displayedTemplates.length} mẫu prompt{activeCollection ? ` · ${activeCollection.name}` : ''}
@@ -597,8 +609,17 @@ export default function TemplatesView({ onSelectTemplate, customTemplates = [], 
             </button>
           )}
         </div>
+        )}
       </div>
 
+      {showLeaderboard ? (
+        <LeaderboardView
+          templates={publicCommunityTemplates(allTemplates)}
+          category={selectedCategory}
+          onOpen={openDetail}
+          onRemix={(t) => { markRecent(t); onSelectTemplate(prepareRemixTemplate(t, user?.uid)); }}
+        />
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20">
         {displayedTemplates.map((template) => (
           <PromptCard
@@ -641,6 +662,7 @@ export default function TemplatesView({ onSelectTemplate, customTemplates = [], 
           </div>
         )}
       </div>
+      )}
 
       {selectedPrompt && (
         <PromptDetailModal

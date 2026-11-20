@@ -79,6 +79,14 @@ service cloud.firestore {
         && ( !('workspaceId' in data.keys()) || (data.workspaceId is string && data.workspaceId.size() <= 128) )
         && ( !('versions' in data.keys()) || (data.versions is list && data.versions.size() <= 20) )
         && ( !('forkedFrom' in data.keys()) || (data.forkedFrom is string && data.forkedFrom.size() <= 128) )
+        // Điểm Prompt Health tác giả công bố (bảng xếp hạng). Chỉ chủ template ghi được (luật update chủ sở hữu).
+        && ( !('quality' in data.keys()) || (data.quality is map
+              && data.quality.keys().hasOnly(['score', 'model', 'tests', 'at', 'contentHash'])
+              && data.quality.score is int && data.quality.score >= 0 && data.quality.score <= 100
+              && data.quality.model is string && data.quality.model.size() <= 60
+              && data.quality.tests is int && data.quality.tests >= 1 && data.quality.tests <= 50
+              && data.quality.at is string && data.quality.at.size() <= 40
+              && data.quality.contentHash is string && data.quality.contentHash.size() <= 16) )
         && data.blocks is list && data.blocks.size() <= 50
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
@@ -206,7 +214,7 @@ service cloud.firestore {
         && incoming().createdAt == existing().createdAt
         && incoming().updatedAt == request.time
         // Action: Edit Template
-        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'category', 'blocks', 'variables', 'version', 'parentPromptId', 'changelog', 'tags', 'language', 'difficultyLevel', 'useCase', 'aiConfig', 'metrics', 'fewShots', 'isPublic', 'status', 'authorId', 'authorName', 'workspaceId', 'versions', 'forkedFrom', 'updatedAt']);
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'category', 'blocks', 'variables', 'version', 'parentPromptId', 'changelog', 'tags', 'language', 'difficultyLevel', 'useCase', 'aiConfig', 'metrics', 'fewShots', 'isPublic', 'status', 'authorId', 'authorName', 'workspaceId', 'versions', 'forkedFrom', 'quality', 'updatedAt']);
 
       // H1: bất kỳ user đã đăng nhập nào cũng được "bump" metrics của template PUBLIC
       // (mở vào Builder +1 usageCount, thích/bỏ thích ±1 likes). Chỉ field metrics
