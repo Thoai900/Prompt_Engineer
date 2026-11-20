@@ -1,4 +1,7 @@
-import { AiSkill, AiRule } from '../types';
+import { AiSkill, AiRule, PromptProject } from '../types';
+import { collectGraphVariables } from './graphCompile';
+import { compileAppTemplate } from './feedbackUtils';
+import { DOWNLOAD_TARGETS, slugifySkill, type AgentCommand } from './agentInstall';
 
 // Xuất skill/rule ra các định dạng file mà coding agent dùng. Hàm thuần (test được);
 // downloadText() là side-effect DOM tách riêng.
@@ -56,6 +59,63 @@ export function toAgentsMd(x: Exportable): string {
 /** CLAUDE.md — cùng cấu trúc AGENTS.md (khác tên file). */
 export function toClaudeMd(x: Exportable): string {
   return toAgentsMd(x);
+}
+
+// ── Prompt Graph → Agent Skill (spec 2026-11-19-graph-export-api-mcp-skill-design.md, Đợt 1) ──
+
+/**
+ * SKILL.md từ một Prompt Graph: prompt mẫu (giữ `{{biến}}`) + danh sách biến + hướng dẫn agent điền biến.
+ * null nếu app legacy (cây v2, nhiều bước) hoặc prompt trống.
+ */
+export function graphToSkillMd(project: PromptProject): string | null {
+  const template = compileAppTemplate(project);
+  if (!template || !template.trim()) return null;
+  const vars = collectGraphVariables(project);
+  const name = slugifySkill(project.name);
+  const description = oneLine(project.description || '') ||
+    `Chạy prompt "${oneLine(project.name)}" (dựng bằng PromptBuilder)${vars.length ? ` — cần: ${vars.map((v) => v.name).join(', ')}` : ''}.`;
+
+  // description đặt trong nháy kép (chuỗi JSON là YAML hợp lệ) — tránh vỡ frontmatter khi có dấu ":".
+  let md = `---\nname: ${name}\ndescription: ${JSON.stringify(description)}\n---\n\n# ${oneLine(project.name)}\n\n`;
+  if (vars.length) {
+    md += `## Inputs\n`;
+    for (const v of vars) {
+      md += `- \`${v.name}\` (${v.required ? 'bắt buộc' : 'tuỳ chọn'})`;
+      if (v.description) md += `: ${oneLine(v.description)}`;
+      if (v.defaultValue) md += ` — mặc định: ${JSON.stringify(v.defaultValue)}`;
+      md += `\n`;
+    }
+    md += `\n## Cách dùng\nThay mỗi \`{{tên_biến}}\` trong phần Instructions bằng giá trị người dùng cung cấp. ` +
+      `Thiếu biến bắt buộc thì hỏi lại người dùng; biến tuỳ chọn bỏ trống thì dùng giá trị mặc định. ` +
+      `Sau đó làm theo Instructions như chỉ dẫn hệ thống.\n\n`;
+  }
+  md += `## Instructions\n${template.trim()}\n`;
+  return md;
+}
+
+/** Delimiter heredoc không trùng dòng nào trong nội dung (nội dung có thể chứa "EOF"). */
+function heredocDelimiter(content: string): string {
+  const lines = new Set(content.split('\n'));
+  let d = 'PB_SKILL_EOF';
+  for (let i = 2; lines.has(d); i++) d = `PB_SKILL_EOF_${i}`;
+  return d;
+}
+
+/**
+ * Lệnh dán-là-chạy tạo `<thư mục skills của agent>/<slug>/SKILL.md` bằng heredoc (không cần host file).
+ * Delimiter trong nháy đơn → shell KHÔNG khai triển $, `, \ trong nội dung. [] nếu không xuất được.
+ */
+export function graphSkillInstallCommands(project: PromptProject): AgentCommand[] {
+  const md = graphToSkillMd(project);
+  if (!md) return [];
+  const slug = slugifySkill(project.name);
+  const delim = heredocDelimiter(md);
+  return DOWNLOAD_TARGETS.map((t) => ({
+    agent: t.label,
+    kind: 'download' as const,
+    command: `mkdir -p ${t.dir}/${slug} && cat > ${t.dir}/${slug}/SKILL.md <<'${delim}'\n${md}${md.endsWith('\n') ? '' : '\n'}${delim}`,
+    note: t.note,
+  }));
 }
 
 /** Tải một chuỗi text về máy (side-effect DOM). */

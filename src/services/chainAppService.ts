@@ -6,6 +6,7 @@ import { compileGraph, collectGraphVariables, findRootNode } from '../utils/grap
 import { isGraphProject } from '../utils/graphMigration';
 import { runPromptOnModel } from './aiService';
 import { ALL_MODEL_OPTIONS, GEMINI_FLASH } from '../config/models';
+import { buildPublishSnapshot } from '../utils/apiAccess';
 
 // Chain → App (Lab · Tầng 3 #7): biến một Project Chain thành app chạy được — form
 // nhập biến → chạy ở client → output. Chia sẻ qua `sharedApps` (public read),
@@ -143,8 +144,12 @@ export function loadLocalProjects(): PromptProject[] {
   }
 }
 
-/** Xuất bản một chuỗi thành app công khai (snapshot). Trả về id để dựng link chia sẻ. */
-export async function publishApp(user: { uid: string }, project: PromptProject): Promise<string> {
+/**
+ * Xuất bản một chuỗi thành app công khai (snapshot). Trả về id để dựng link chia sẻ.
+ * App Prompt Graph còn ghi snapshot cho API (`promptTemplate`/`variables`/`model` — server không compile graph).
+ * `opts.apiEnabled`: bật/tắt gọi qua API; bỏ trống = giữ nguyên trạng thái cũ (mới tạo = tắt).
+ */
+export async function publishApp(user: { uid: string }, project: PromptProject, opts: { apiEnabled?: boolean } = {}): Promise<string> {
   const ref = doc(db, 'sharedApps', project.id);
   const base: any = {
     userId: user.uid,
@@ -157,9 +162,15 @@ export async function publishApp(user: { uid: string }, project: PromptProject):
     edges: project.edges || null,
     updatedAt: serverTimestamp(),
   };
+  const snapshot = buildPublishSnapshot(project);
+  if (snapshot) Object.assign(base, snapshot);
+  if (opts.apiEnabled !== undefined) {
+    if (opts.apiEnabled && !snapshot) throw new Error('App này không bật API được (Project Chain dạng cây, prompt trống hoặc quá dài).');
+    base.apiEnabled = opts.apiEnabled;
+  }
   const exists = (await getDoc(ref)).exists();
   if (exists) await setDoc(ref, base, { merge: true });
-  else await setDoc(ref, { ...base, createdAt: serverTimestamp() });
+  else await setDoc(ref, { apiEnabled: false, ...base, createdAt: serverTimestamp() });
   return project.id;
 }
 
@@ -185,6 +196,16 @@ export async function loadSharedApp(appId: string): Promise<PromptProject | null
   } catch (err) {
     try { handleFirestoreError(err, 'get', `sharedApps/${appId}`); } catch (e: any) { console.error(e.message); }
     return null;
+  }
+}
+
+/** Trạng thái xuất bản / API của một app (chủ app xem). */
+export async function getAppApiState(appId: string): Promise<{ published: boolean; apiEnabled: boolean }> {
+  try {
+    const snap = await getDoc(doc(db, 'sharedApps', appId));
+    return { published: snap.exists(), apiEnabled: snap.exists() && (snap.data() as any).apiEnabled === true };
+  } catch {
+    return { published: false, apiEnabled: false };
   }
 }
 

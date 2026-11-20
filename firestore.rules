@@ -153,6 +153,11 @@ service cloud.firestore {
         && data.name is string && data.name.size() > 0 && data.name.size() <= 200
         && ( !('description' in data.keys()) || (data.description is string && data.description.size() <= 2000) )
         && data.nodes is list && data.nodes.size() <= 100
+        // API (Đợt 2 #4): snapshot để api/run.ts chạy app không cần compile graph. Khớp SNAPSHOT_LIMITS.
+        && ( !('promptTemplate' in data.keys()) || (data.promptTemplate is string && data.promptTemplate.size() <= 50000) )
+        && ( !('variables' in data.keys()) || (data.variables is list && data.variables.size() <= 30) )
+        && ( !('model' in data.keys()) || (data.model is string && data.model.size() <= 60) )
+        && ( !('apiEnabled' in data.keys()) || data.apiEnabled is bool )
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
@@ -416,6 +421,39 @@ service cloud.firestore {
         && isValidAppFeedback(incoming())
         && incoming().diff(existing()).affectedKeys().hasOnly(['status']);
       allow delete: if isValidId(feedbackId) && isOwner(existing().ownerId);
+    }
+
+    // API key cho Prompt Graph (Đợt 2 #4). Doc id = SHA-256 của key (key gốc không lưu).
+    // Chủ tạo / xem / thu hồi; KHÔNG sửa được `usage` (server ghi bằng service account) và chỉ HẠ được quota.
+    function isValidApiKey(data) {
+      return data.keys().hasOnly(['ownerId', 'name', 'prefix', 'appIds', 'dailyQuota', 'usage', 'createdAt', 'revokedAt'])
+        && data.keys().hasAll(['ownerId', 'name', 'prefix', 'appIds', 'dailyQuota', 'usage', 'createdAt'])
+        && data.ownerId is string && data.ownerId.size() <= 128
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.prefix is string && data.prefix.size() <= 16
+        && data.appIds is list && data.appIds.size() > 0 && data.appIds.size() <= 50
+        && data.dailyQuota is int && data.dailyQuota >= 1 && data.dailyQuota <= 100
+        && data.usage is map
+        && data.createdAt is timestamp
+        && ( !('revokedAt' in data.keys()) || data.revokedAt is timestamp );
+    }
+
+    match /apiKeys/{keyHash} {
+      allow get: if keyHash.matches('^[0-9a-f]{64}$') && isOwner(resource.data.ownerId);
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if keyHash.matches('^[0-9a-f]{64}$')
+        && isSignedIn()
+        && isValidApiKey(incoming())
+        && incoming().ownerId == request.auth.uid
+        && incoming().usage == { 'day': '', 'count': 0 }
+        && incoming().createdAt == request.time
+        && !('revokedAt' in incoming().keys());
+      allow update: if isOwner(existing().ownerId)
+        && isValidApiKey(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'appIds', 'dailyQuota', 'revokedAt'])
+        && incoming().dailyQuota <= existing().dailyQuota
+        && ( !('revokedAt' in existing().keys()) || incoming().revokedAt == existing().revokedAt );
+      allow delete: if isOwner(existing().ownerId);
     }
 
     match /healthSuites/{suiteId} {
