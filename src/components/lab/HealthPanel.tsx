@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Trash2, Play, Loader2, Save, Activity, TrendingUp, TrendingDown, Minus, AlertTriangle, RefreshCw, ExternalLink, Wand2 } from 'lucide-react';
+import { Plus, Trash2, Play, Loader2, Save, Activity, TrendingUp, TrendingDown, Minus, AlertTriangle, RefreshCw, ExternalLink, Wand2, Trophy } from 'lucide-react';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { ALL_MODEL_OPTIONS, GEMINI_FLASH } from '../../config/models';
 import { HealthSuite, HealthTest, PromptTemplate } from '../../types';
@@ -22,6 +22,8 @@ import { draftHealthTests } from '../../services/aiService';
 import type { LabSeed } from '../../services/labSeed';
 import { MAX_SUITE_TESTS, findSuiteForTemplate, normalizeDraftTests } from '../../utils/healthUtils';
 import SaveAsVersionPanel from './SaveAsVersionPanel';
+import { qualityFromSuite, qualityStatus } from '../../utils/leaderboard';
+import { setTemplateQuality } from '../../services/templateQualityService';
 
 function scoreColor(score: number): string {
   if (score >= 80) return 'text-emerald-600 dark:text-emerald-400';
@@ -269,6 +271,23 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate, in
     await replaceAndSave(commitRevision(active, blocksToText(blocks), 'source-sync', `Đã lưu về template "${sourceTemplate.title}"`));
   };
 
+  // Bảng xếp hạng: công bố điểm Health lên template của tôi (chỉ khi phiên bản hiện hành trùng nội dung template).
+  const [publishingQuality, setPublishingQuality] = useState(false);
+  const ownsSource = !!(sourceTemplate && user && sourceTemplate.userId === user.uid);
+  const qualityCandidate = active && sourceTemplate && ownsSource ? qualityFromSuite(active, sourceTemplate) : null;
+  const publishQuality = async () => {
+    if (!sourceTemplate || !qualityCandidate?.quality) return;
+    setPublishingQuality(true);
+    try {
+      await setTemplateQuality(sourceTemplate.id, qualityCandidate.quality);
+      toast.success(`Đã công bố điểm ${qualityCandidate.quality.score} lên template "${sourceTemplate.title}".`);
+    } catch {
+      toast.error('Không công bố được điểm.');
+    } finally {
+      setPublishingQuality(false);
+    }
+  };
+
   const openInBuilder = () => {
     if (!active || !onApplyTemplate) return;
     onApplyTemplate(promptToTemplate(headRevision(active)?.content || active.prompt, 'health'));
@@ -470,6 +489,31 @@ export default function HealthPanel({ libraryTemplates = [], onApplyTemplate, in
                   <button onClick={() => setPendingJudge(null)} className="rounded-xl border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-muted hover:bg-hover">Đóng</button>
                 </span>
               </div>
+            </div>
+          )}
+
+          {ownsSource && qualityCandidate && !running && (
+            <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-panel px-4 py-3 text-xs">
+              <Trophy size={14} className="text-amber-500" />
+              <span className="text-ink">
+                Điểm trên bảng xếp hạng của "{sourceTemplate!.title}":{' '}
+                {sourceTemplate!.quality
+                  ? <b>{sourceTemplate!.quality.score}{qualityStatus(sourceTemplate!) === 'outdated' ? ' (bản cũ)' : ''}</b>
+                  : <span className="text-faint">chưa công bố</span>}
+              </span>
+              {qualityCandidate.quality ? (
+                <button
+                  onClick={publishQuality}
+                  disabled={publishingQuality}
+                  className="ml-auto rounded-lg bg-amber-500 px-3 py-1.5 font-bold text-white hover:bg-amber-400 disabled:opacity-60"
+                  title={`${qualityCandidate.quality.tests} test · ${qualityCandidate.quality.model}`}
+                >
+                  {publishingQuality ? 'Đang công bố…' : `Công bố điểm ${qualityCandidate.quality.score}`}
+                </button>
+              ) : (
+                <span className="ml-auto text-faint">{qualityCandidate.reason}</span>
+              )}
+              {!sourceTemplate!.isPublic && <span className="w-full text-faint">Template đang riêng tư — điểm chỉ hiện trên bảng xếp hạng khi template công khai.</span>}
             </div>
           )}
 

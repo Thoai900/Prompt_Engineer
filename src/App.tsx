@@ -263,6 +263,7 @@ export default function App() {
       workspaceId: data.workspaceId,
       versions: data.versions,
       forkedFrom: data.forkedFrom,
+      quality: data.quality,
     });
 
     // Hai listener ghi vào hai map riêng; publish gộp (doc của mình thắng bản public trùng id).

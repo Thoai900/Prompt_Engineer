@@ -188,6 +188,18 @@ export interface PromptTemplate {
 
   // 9. H2: lịch sử phiên bản (mới nhất ở đầu, giữ tối đa ~10 bản).
   versions?: TemplateVersion[];
+
+  // 10. Điểm chất lượng tác giả công bố từ Prompt Health (bảng xếp hạng — utils/leaderboard.ts).
+  quality?: TemplateQuality;
+}
+
+/** Điểm Prompt Health tác giả công bố cho template (tự báo cáo — UI ghi rõ nguồn). */
+export interface TemplateQuality {
+  score: number;        // 0–100, điểm TB lần chạy gần nhất của phiên bản trùng nội dung template
+  model: string;        // model đã chạy
+  tests: number;        // số test trong lần chạy
+  at: string;           // ISO thời điểm chạy
+  contentHash: string;  // hashPrompt(blocksToText(blocks)) lúc công bố — khác hiện tại = điểm của bản cũ
 }
 
 export type EvolutionType = 
