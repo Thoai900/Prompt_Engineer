@@ -3,7 +3,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { TEMPLATES } from '../../data';
 import { PromptTemplate } from '../../types';
-import { Search, TrendingUp, Sparkles, Bookmark, History, Eye, X, Code2, Video, Brain, GraduationCap, FileText, Layout, Folder, FolderPlus, Plus, Trash2 } from 'lucide-react';
+import { Search, TrendingUp, Sparkles, Bookmark, History, Eye, X, Code2, Video, Brain, GraduationCap, FileText, Layout, Folder, FolderPlus, Plus, Trash2, Puzzle } from 'lucide-react';
 import PromptCard from '../common/PromptCard';
 import PromptDetailModal from '../modals/PromptDetailModal';
 import ExamplePreviewModal from '../modals/ExamplePreviewModal';
@@ -31,6 +31,7 @@ import { loadLikedIds } from '../../utils/likedTemplates';
 import { toggleTemplateLike } from '../../services/metricsService';
 import { sendToLab } from '../../services/labSeed';
 import { blocksToText } from '../../utils/templateVersionUtils';
+import { buildExtensionPayload, isExtensionInstalled, syncToExtension } from '../../utils/extensionBridge';
 
 interface LibraryTabProps {
   onSelectTemplate: (template: PromptTemplate) => void;
@@ -246,6 +247,29 @@ export default function TemplatesView({ onSelectTemplate, customTemplates = [], 
     return { allTemplates: out, sourceMap: map };
   }, [myTemplates, communityProcessed, enrichedTemplates]);
 
+  // Tiện ích trình duyệt (extension/): gửi template "Của tôi" + template đã lưu sang tiện ích.
+  const [syncingExt, setSyncingExt] = useState(false);
+  const extensionTemplates = useMemo(
+    () => allTemplates.filter((t) => sourceMap.get(t.id) === 'mine' || savedIds.has(t.id)),
+    [allTemplates, sourceMap, savedIds],
+  );
+  const handleSyncExtension = async () => {
+    if (!isExtensionInstalled()) {
+      toast.info('Chưa thấy tiện ích PromptBuilder trên trình duyệt này. Cài từ thư mục extension/ của dự án (xem extension/README.md), rồi tải lại trang.');
+      return;
+    }
+    const payload = buildExtensionPayload(extensionTemplates);
+    if (payload.prompts.length === 0) {
+      toast('Chưa có template của bạn hoặc template đã lưu để đồng bộ.');
+      return;
+    }
+    setSyncingExt(true);
+    const count = await syncToExtension(payload);
+    setSyncingExt(false);
+    if (count === null) toast.error('Chưa đồng bộ: tiện ích không phản hồi hoặc bạn đã từ chối.');
+    else toast.success(`Đã đồng bộ ${count} prompt sang tiện ích.`);
+  };
+
   const sourceCounts = useMemo(() => {
     let mine = 0, community = 0;
     for (const s of sourceMap.values()) {
@@ -427,6 +451,14 @@ export default function TemplatesView({ onSelectTemplate, customTemplates = [], 
               </button>
             );
           })}
+          <button
+            onClick={handleSyncExtension}
+            disabled={syncingExt}
+            title={`Gửi ${extensionTemplates.length} template (của bạn + đã lưu) sang tiện ích trình duyệt để dùng trong ChatGPT, Claude, Gemini`}
+            className="ml-auto flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-full border border-slate-200 bg-white text-slate-600 hover:border-slate-300 disabled:opacity-60"
+          >
+            <Puzzle className="w-3.5 h-3.5" /> {syncingExt ? 'Đang đồng bộ…' : 'Đồng bộ sang tiện ích'}
+          </button>
         </div>
 
         {/* Social Tabs */}

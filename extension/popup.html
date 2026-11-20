@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>PromptBuilder</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header>
+    <strong>PromptBuilder</strong>
+    <span id="meta" class="muted"></span>
+  </header>
+
+  <section id="list-view">
+    <input id="search" type="search" placeholder="Tìm prompt… (không cần gõ dấu)" aria-label="Tìm prompt" autocomplete="off" />
+    <ul id="list" role="listbox" aria-label="Danh sách prompt"></ul>
+    <p id="empty" class="muted" hidden></p>
+  </section>
+
+  <section id="detail-view" hidden>
+    <button id="back" class="link" type="button">← Danh sách</button>
+    <h1 id="title"></h1>
+    <p id="desc" class="muted"></p>
+    <form id="vars"></form>
+    <pre id="preview" aria-label="Xem trước"></pre>
+    <p id="status" role="status"></p>
+    <div class="actions">
+      <button id="insert" type="button" class="primary">Chèn vào trang</button>
+      <button id="copy" type="button">Sao chép</button>
+    </div>
+  </section>
+
+  <script src="lib/core.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "PromptBuilder — Chèn prompt",
+  "version": "1.0.0",
+  "description": "Gọi thư viện prompt PromptBuilder ngay trong ChatGPT, Claude, Gemini: tìm, điền {{biến}}, chèn vào ô soạn tin.",
+  "permissions": ["storage", "activeTab"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "PromptBuilder (Alt+Shift+P)"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": { "default": "Alt+Shift+P" },
+      "description": "Mở thư viện prompt"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.vercel.app/*", "http://localhost/*", "http://127.0.0.1/*"],
+      "js": ["lib/core.js", "sync.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*"
+      ],
+      "js": ["insert.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
