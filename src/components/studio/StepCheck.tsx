@@ -33,6 +33,8 @@ export default function StepCheck({ draft, assembledText, onPatch }: StepCheckPr
       const { lintPrompt } = await import('../../services/aiService');
       const issues = await lintPrompt(assembledText);
       onPatch({ lintIssues: issues, lintRanAt: new Date().toISOString() });
+      // Gia sư cá nhân hoá (Learn): ghi nhận lỗi để tìm lỗi lặp lại.
+      (await import('../../services/mistakeLogService')).recordLintMistakes(issues);
       if (issues.length === 0) toast.success('Prompt sạch — không tìm thấy vấn đề nào.');
     } catch (err: any) {
       console.error(err);

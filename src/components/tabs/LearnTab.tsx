@@ -23,6 +23,7 @@ import DomainLab from '../learn/DomainLab';
 import PersonalGuide from '../learn/PersonalGuide';
 import AiNewsSection from '../aifuture/AiNewsSection';
 import TutorPanel from '../learn/TutorPanel';
+import MistakeCoach from '../learn/MistakeCoach';
 
 // 'news' = bản tin AI (trước đây ở tab AI Future). Deep-link `?learn=news` mở thẳng.
 // 'tutor' = Gia sư chi tiết (trước đây là chế độ trong Lab).
@@ -237,6 +238,9 @@ export default function LearnTab({ libraryTemplates = [] }: LearnTabProps) {
 
       {/* Gợi ý cá nhân hóa từ chẩn đoán kỹ năng thật */}
       <PersonalGuide libraryTemplates={libraryTemplates} onNavigate={(view) => setActiveView(view)} onOpenTutor={() => setActiveView('tutor')} />
+
+      {/* Gia sư cá nhân hoá: lỗi lặp lại từ những lần kiểm tra prompt → bài luyện riêng */}
+      <MistakeCoach />
 
       {/* Hành trình cơ bản (Complexity Tiers) */}
       <section>

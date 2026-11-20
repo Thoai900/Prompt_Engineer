@@ -33,6 +33,8 @@ export default function PromptInspector({ text, labActions = true }: PromptInspe
       const { lintPrompt } = await import('../../services/aiService');
       const result = await lintPrompt(text);
       setIssues(result);
+      // Gia sư cá nhân hoá (Learn): ghi nhận lỗi để tìm lỗi lặp lại.
+      (await import('../../services/mistakeLogService')).recordLintMistakes(result);
       setCheckedText(text);
       setExpanded(true);
     } catch (e: any) {
