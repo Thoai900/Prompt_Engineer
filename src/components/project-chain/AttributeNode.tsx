@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { Eye, EyeOff, Variable, ListOrdered, Globe, Loader2, DownloadCloud, Boxes } from 'lucide-react';
+import { Eye, EyeOff, Variable, ListOrdered, Globe, Loader2, DownloadCloud, Boxes, Wand2 } from 'lucide-react';
 import { GraphNode } from '../../types';
 import { SLOT_COLORS, SLOT_LABELS, renderNodeText } from '../../utils/graphCompile';
 import { getPreset } from '../../utils/graphPresets';
+import { getAiOp, type AiNodeStatus } from '../../utils/graphAi';
 import { fetchUrlAsText } from '../../services/webFetchService';
 import { toast } from '../common/Toaster';
 
@@ -11,6 +12,8 @@ export interface AttributeNodeData {
   node: GraphNode;
   onToggleEnabled: (id: string) => void;
   onUpdateNode: (id: string, fields: Partial<GraphNode>) => void;
+  /** Node AI: trạng thái so với đầu vào hiện tại (canvas tính sẵn). */
+  aiStatus?: AiNodeStatus;
   [key: string]: unknown;
 }
 
@@ -22,7 +25,8 @@ export interface AttributeNodeData {
  * - fewshot: hiện số cặp Ví dụ mẫu, soạn trong Inspector
  */
 export function AttributeNode(props: NodeProps) {
-  const { node, onToggleEnabled, onUpdateNode } = props.data as AttributeNodeData;
+  const { node, onToggleEnabled, onUpdateNode, aiStatus } = props.data as AttributeNodeData;
+  const isAi = node.nodeType === 'ai';
   const isGroup = node.nodeType === 'group';
   const isWeb = node.nodeType === 'web';
   const color = isGroup ? '#7c3aed' : (SLOT_COLORS[node.attrType] || SLOT_COLORS.custom);
@@ -74,7 +78,7 @@ export function AttributeNode(props: NodeProps) {
           position={Position.Left}
           className="!w-3 !h-3 !border-2 !border-white dark:!border-slate-900"
           style={{ background: '#94a3b8' }}
-          title="Ghép thêm: cắm node khác vào đây để nối tiếp nội dung"
+          title={isAi ? 'Đầu vào: cắm node cần AI biến đổi vào đây' : 'Ghép thêm: cắm node khác vào đây để nối tiếp nội dung'}
         />
       )}
 
@@ -90,6 +94,8 @@ export function AttributeNode(props: NodeProps) {
             <Globe size={12} className="shrink-0" style={{ color }} />
           ) : isGroup ? (
             <Boxes size={12} className="shrink-0" style={{ color }} />
+          ) : isAi ? (
+            <Wand2 size={12} className="shrink-0" style={{ color }} />
           ) : (
             <span className="shrink-0 h-2 w-2 rounded-full" style={{ background: color }} />
           )}
@@ -101,6 +107,7 @@ export function AttributeNode(props: NodeProps) {
               : node.nodeType === 'fewshot' ? 'Few-Shot'
               : isWeb ? 'Web'
               : isGroup ? 'Nhóm'
+              : isAi ? 'AI'
               : SLOT_LABELS[node.attrType]}
           </span>
           <span className="text-xs font-bold text-ink truncate" title={node.title}>
@@ -196,6 +203,25 @@ export function AttributeNode(props: NodeProps) {
             ) : (
               <p className="text-[9px] text-faint italic">Chưa có dữ liệu — nhập URL rồi bấm Cào (cần đăng nhập).</p>
             )}
+          </div>
+        ) : isAi ? (
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between gap-1.5 text-[10px] font-bold">
+              <span className="text-ink truncate">{getAiOp(node.aiOp).label}</span>
+              <span className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] ${
+                aiStatus === 'fresh' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                : aiStatus === 'stale' ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                : 'bg-black/5 text-faint dark:bg-white/10'}`}>
+                {aiStatus === 'fresh' ? 'Đã cập nhật'
+                  : aiStatus === 'stale' ? 'Cần chạy lại'
+                  : aiStatus === 'no-input' ? 'Chưa có đầu vào'
+                  : aiStatus === 'needs-instruction' ? 'Thiếu yêu cầu'
+                  : 'Chưa chạy'}
+              </span>
+            </div>
+            <p className="text-[10px] leading-relaxed text-faint italic line-clamp-3 whitespace-pre-line break-words">
+              {renderedText || 'Cắm node vào cổng "Ghép thêm" bên trái làm đầu vào, rồi bấm Chạy AI trong Inspector. Chưa chạy thì đầu vào đi thẳng qua.'}
+            </p>
           </div>
         ) : isGroup ? (
           <div className="flex flex-col gap-1">
