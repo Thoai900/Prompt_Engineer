@@ -127,6 +127,10 @@ export const renderNodeText = (node: GraphNode): string => {
     if (!cached) return '';
     return `Dữ liệu tham khảo từ ${node.url || 'web'}:\n"""\n${cached}\n"""`;
   }
+  if (node.nodeType === 'ai') {
+    // content = kết quả AI đã cache (compile thuần, KHÔNG gọi AI). Chưa chạy → '' (đầu vào đi thẳng qua).
+    return (node.content || '').trim();
+  }
   if (node.nodeType === 'group') {
     // Cho preview/quét biến — khi compile, member được xử lý riêng theo cổng.
     return (node.members || [])
@@ -161,12 +165,30 @@ const compileAttributeText = (
   if (visited.has(node.id)) return ''; // chống chu trình phòng thủ (UI đã chặn khi nối)
   visited.add(node.id);
   collect(node.id);
-  const parts = [renderNodeText(node).trim()];
-  getEnabledSources(nodeMap, edges, node.id, 'append').forEach((child) => {
-    const childText = compileAttributeText(child, nodeMap, edges, visited, collect);
-    if (childText) parts.push(childText);
-  });
-  return parts.filter(Boolean).join('\n\n');
+  const childTexts = getEnabledSources(nodeMap, edges, node.id, 'append')
+    .map((child) => compileAttributeText(child, nodeMap, edges, visited, collect))
+    .filter(Boolean);
+  // Node AI: cổng "Ghép thêm" là ĐẦU VÀO — có kết quả cache thì kết quả THAY đầu vào;
+  // chưa chạy thì đầu vào đi thẳng qua (prompt không mất phần đó). Node con vẫn được tính là tham gia.
+  if (node.nodeType === 'ai') {
+    const output = renderNodeText(node);
+    return output || childTexts.join('\n\n');
+  }
+  return [renderNodeText(node).trim(), ...childTexts].filter(Boolean).join('\n\n');
+};
+
+/**
+ * Đầu vào của node AI: văn bản các node bật cắm vào cổng "Ghép thêm" (đệ quy, như khi compile).
+ * Biến `{{x}}` GIỮ NGUYÊN (không điền) để AI biến đổi prompt mẫu.
+ */
+export const compileAiNodeInput = (project: PromptProject, nodeId: string): string => {
+  const nodeMap = new Map((project.graphNodes || []).map((n) => [n.id, n] as const));
+  const edges = project.edges || [];
+  const visited = new Set<string>([nodeId]);
+  return getEnabledSources(nodeMap, edges, nodeId, 'append')
+    .map((child) => compileAttributeText(child, nodeMap, edges, visited, () => {}))
+    .filter(Boolean)
+    .join('\n\n');
 };
 
 /** Lắp ráp prompt cuối từ đồ thị. Hàm thuần — không đụng state/UI. */

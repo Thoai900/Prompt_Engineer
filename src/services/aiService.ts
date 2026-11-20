@@ -3,6 +3,8 @@ import { proxyGenerate, proxyGenerateStream } from "./aiProxy";
 import { GEMINI_FLASH, GEMINI_FLASH_LATEST, GEMINI_PRO, GROQ_DEFAULT, GPT_MINI, TASK_DEFAULTS, type ModelProvider } from "../config/models";
 import { recordUsage } from "../utils/usageStats";
 import { sanitizeJsonString, extractJson, safeJsonParse } from "../utils/jsonUtils";
+import { buildAiTransformRequest, cleanAiOutput } from "../utils/graphAi";
+import type { AiTransformOp } from "../types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Quản lý API key:
@@ -544,6 +546,27 @@ KHÔNG MỞ ĐẦU, KHÔNG GIẢI THÍCH, KHÔNG FORMAT MARKDOWN LOẠI BỎ (\`
     console.error("AI Auto Fill failed:", error);
     throw error;
   }
+}
+
+/**
+ * Node AI biến đổi (Prompt Graph): biến đổi một đoạn prompt theo thao tác, giữ nguyên {{biến}}.
+ * Gemini trước, lỗi thì Groq. Nhiệt độ thấp để kết quả ổn định.
+ */
+export async function transformPromptSegment(
+  op: AiTransformOp | undefined,
+  instruction: string | undefined,
+  input: string,
+  options?: AiGenParams,
+): Promise<string> {
+  const { systemInstruction, userContent } = buildAiTransformRequest(op, instruction, input);
+  const text = await geminiGenerateWithFallback({
+    model: options?.model || GEMINI_FLASH_LATEST,
+    systemInstruction, // không chèn Persona: đây là biến đổi prompt, không phải trả lời người dùng
+    userContent,
+    temperature: 0.3,
+    options,
+  });
+  return cleanAiOutput(text);
 }
 
 export async function generateQuickResponse(

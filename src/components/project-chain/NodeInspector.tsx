@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
-import { Trash2, Save, Eye, EyeOff, Variable, Plus, Crown, MousePointerClick, Unlink, ListOrdered, Globe, Loader2, DownloadCloud, Boxes, PackageOpen } from 'lucide-react';
+import { Trash2, Save, Eye, EyeOff, Variable, Plus, Crown, MousePointerClick, Unlink, ListOrdered, Globe, Loader2, DownloadCloud, Boxes, PackageOpen, Wand2, AlertTriangle } from 'lucide-react';
 import { AttrSlot, FewShotExample, GraphNode, PromptVariable } from '../../types';
 import { ROOT_SLOTS, SLOT_COLORS, SLOT_LABELS, renderNodeText } from '../../utils/graphCompile';
 import { getPreset } from '../../utils/graphPresets';
 import { fetchUrlAsText } from '../../services/webFetchService';
 import { toast } from '../common/Toaster';
+import { useWorkspace } from '../../context/WorkspaceContext';
+import { transformPromptSegment } from '../../services/aiService';
+import { AI_OPS, aiInputHash, aiNodeStatus, getAiOp, lostVariables } from '../../utils/graphAi';
+import type { AiTransformOp } from '../../types';
 
 interface NodeInspectorProps {
   node: GraphNode | null;
@@ -13,6 +17,8 @@ interface NodeInspectorProps {
   onExportTemplate: (node: GraphNode) => void;
   onUngroupNode: (id: string) => void;
   canExport: boolean;
+  /** Node AI: văn bản đầu vào (node cắm vào cổng Ghép thêm), workspace tính sẵn. */
+  aiInput?: string;
 }
 
 /**
@@ -21,8 +27,10 @@ interface NodeInspectorProps {
  * - preset (Modifier): control params + text sinh ra (read-only) + nút "tháo" thành text
  * - fewshot: editor cặp Đầu vào → Đầu ra
  */
-export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTemplate, onUngroupNode, canExport }: NodeInspectorProps) {
+export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTemplate, onUngroupNode, canExport, aiInput = '' }: NodeInspectorProps) {
   const [isFetching, setIsFetching] = useState(false);
+  const [isRunningAi, setIsRunningAi] = useState(false);
+  const { geminiApiKey, groqApiKey, useSystemGeminiKey } = useWorkspace();
   if (!node) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
@@ -40,7 +48,8 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
   const isFewShot = node.nodeType === 'fewshot';
   const isWeb = node.nodeType === 'web';
   const isGroup = node.nodeType === 'group';
-  const isPlainText = !isRoot && !preset && !isFewShot && !isWeb && !isGroup;
+  const isAi = node.nodeType === 'ai';
+  const isPlainText = !isRoot && !preset && !isFewShot && !isWeb && !isGroup && !isAi;
   const color = isRoot ? SLOT_COLORS.task
     : isGroup ? '#7c3aed'
     : (SLOT_COLORS[node.attrType] || SLOT_COLORS.custom);
@@ -60,6 +69,29 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
       toast.error(err.message || 'Không cào được trang.');
     } finally {
       setIsFetching(false);
+    }
+  };
+
+  // Node AI: biến đổi đầu vào, cache kết quả + dấu vân tay đầu vào (để biết khi nào kết quả đã cũ).
+  const handleRunAi = async () => {
+    const status = aiNodeStatus(node, aiInput);
+    if (status === 'no-input') { toast('Cắm ít nhất một node vào cổng "Ghép thêm" (bên trái node AI) làm đầu vào.'); return; }
+    if (status === 'needs-instruction') { toast('Thao tác này cần ô yêu cầu (vd ngôn ngữ đích).'); return; }
+    setIsRunningAi(true);
+    try {
+      const output = await transformPromptSegment(node.aiOp, node.aiInstruction, aiInput, {
+        apiKey: useSystemGeminiKey ? undefined : (geminiApiKey || undefined),
+        groqApiKey: groqApiKey || undefined,
+      });
+      if (!output.trim()) { toast.error('AI không trả nội dung — thử lại.'); return; }
+      onUpdateNode(node.id, { content: output, aiInputHash: aiInputHash(node, aiInput), generatedAt: new Date().toISOString() });
+      const lost = lostVariables(aiInput, output);
+      if (lost.length) toast.error(`Kết quả làm mất biến: ${lost.map((v) => `{{${v}}}`).join(', ')} — sửa tay hoặc chạy lại.`);
+      else toast.success('Đã biến đổi xong.');
+    } catch (err: any) {
+      toast.error(err?.message || 'Không chạy được AI.');
+    } finally {
+      setIsRunningAi(false);
     }
   };
 
@@ -91,6 +123,8 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
           <Globe size={14} style={{ color }} />
         ) : isGroup ? (
           <Boxes size={14} style={{ color }} />
+        ) : isAi ? (
+          <Wand2 size={14} style={{ color }} />
         ) : (
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
         )}
@@ -100,6 +134,7 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
             : isFewShot ? 'Few-Shot · Ví dụ mẫu'
             : isWeb ? 'Web · Dữ liệu từ URL'
             : isGroup ? `Nhóm · ${(node.members || []).length} node`
+            : isAi ? `AI biến đổi · cắm vào ${SLOT_LABELS[node.attrType]}`
             : `Thuộc tính · ${SLOT_LABELS[node.attrType]}`}
         </span>
         {!isRoot && (
@@ -291,6 +326,80 @@ export function NodeInspector({ node, onUpdateNode, onDeleteNode, onExportTempla
             />
           </div>
         </div>
+      ) : isAi ? (
+        (() => {
+          const op = getAiOp(node.aiOp);
+          const status = aiNodeStatus(node, aiInput);
+          const lost = node.content ? lostVariables(aiInput, node.content) : [];
+          return (
+            <div className="flex flex-col gap-3">
+              <div>
+                <label htmlFor="ai-op" className="text-xs font-extrabold text-faint block mb-1.5">Thao tác</label>
+                <select
+                  id="ai-op"
+                  value={op.id}
+                  onChange={(e) => onUpdateNode(node.id, { aiOp: e.target.value as AiTransformOp })}
+                  className="w-full bg-transparent border border-line/70 rounded-xl px-3 py-2 text-xs font-bold text-ink focus:outline-none"
+                >
+                  {AI_OPS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                </select>
+                <p className="text-xs text-faint mt-1">{op.hint}</p>
+              </div>
+              <div>
+                <label htmlFor="ai-instruction" className="text-xs font-extrabold text-faint block mb-1.5">
+                  Yêu cầu {op.needsInstruction ? <span className="text-rose-500">*</span> : '(tuỳ chọn)'}
+                </label>
+                <textarea
+                  id="ai-instruction"
+                  value={node.aiInstruction || ''}
+                  onChange={(e) => onUpdateNode(node.id, { aiInstruction: e.target.value })}
+                  rows={2}
+                  placeholder={op.instructionPlaceholder}
+                  className="w-full bg-transparent border border-line/70 rounded-xl px-3 py-2 text-xs text-ink resize-y focus:outline-none"
+                />
+              </div>
+              <details>
+                <summary className="cursor-pointer text-xs font-extrabold text-faint">
+                  Đầu vào ({aiInput.length.toLocaleString()} ký tự từ node cắm vào cổng Ghép thêm)
+                </summary>
+                <pre className="mt-1.5 max-h-40 overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-line/60 p-2.5 text-xs text-muted font-mono">
+                  {aiInput || 'Chưa có — kéo dây từ một node vào chấm tròn bên trái node AI.'}
+                </pre>
+              </details>
+              <button
+                onClick={handleRunAi}
+                disabled={isRunningAi}
+                className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold text-white cursor-pointer transition-all active:scale-95 disabled:opacity-60"
+                style={{ background: color }}
+              >
+                {isRunningAi ? <Loader2 size={12} className="animate-spin" /> : <Wand2 size={12} />}
+                {node.content ? 'Chạy lại AI' : 'Chạy AI'}
+              </button>
+              {status === 'stale' && (
+                <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                  <AlertTriangle size={12} className="mt-0.5 shrink-0" /> Đầu vào hoặc yêu cầu đã đổi sau lần chạy trước — prompt đang dùng kết quả cũ.
+                </p>
+              )}
+              {lost.length > 0 && (
+                <p className="flex items-start gap-1.5 text-xs text-rose-600 dark:text-rose-400">
+                  <AlertTriangle size={12} className="mt-0.5 shrink-0" /> Kết quả thiếu biến {lost.map((v) => `{{${v}}}`).join(', ')} có trong đầu vào.
+                </p>
+              )}
+              <div className="flex-1 flex flex-col min-h-[140px]">
+                <label htmlFor="ai-output" className="text-xs font-extrabold text-faint block mb-1.5">
+                  Kết quả (dùng trong prompt — sửa tay được{node.generatedAt ? ` · chạy lúc ${new Date(node.generatedAt).toLocaleString()}` : ''})
+                </label>
+                <textarea
+                  id="ai-output"
+                  value={node.content}
+                  onChange={(e) => onUpdateNode(node.id, { content: e.target.value })}
+                  placeholder="Chưa chạy — trong lúc này đầu vào đi thẳng vào prompt."
+                  className="flex-1 w-full min-h-[140px] bg-transparent border border-line/70 rounded-xl px-3 py-2.5 text-xs leading-relaxed text-ink resize-y focus:outline-none font-mono"
+                />
+              </div>
+            </div>
+          );
+        })()
       ) : isGroup ? (
         <div className="flex flex-col gap-3">
           <button

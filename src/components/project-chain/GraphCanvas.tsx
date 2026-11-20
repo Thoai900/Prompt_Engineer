@@ -7,7 +7,8 @@ import {
 import '@xyflow/react/dist/style.css';
 import { toast } from '../common/Toaster';
 import { AttrSlot, GraphEdge, GraphNode, PromptProject } from '../../types';
-import { ROOT_SLOTS, SLOT_COLORS, computeGraphLayout, findRootNode, wouldCreateCycle } from '../../utils/graphCompile';
+import { ROOT_SLOTS, SLOT_COLORS, compileAiNodeInput, computeGraphLayout, findRootNode, wouldCreateCycle } from '../../utils/graphCompile';
+import { aiNodeStatus } from '../../utils/graphAi';
 import { AttributeNode } from './AttributeNode';
 import { RootPromptNode } from './RootPromptNode';
 import { NodePalette } from './NodePalette';
@@ -29,6 +30,7 @@ interface GraphCanvasProps {
   onAddPresetNode: (presetId: string) => void;
   onAddFewShotNode: () => void;
   onAddWebNode: () => void;
+  onAddAiNode: () => void;
   /** Gom các node đang chọn (Shift+kéo / Ctrl+click) thành 1 Bundle node. */
   onGroupNodes: (ids: string[]) => void;
   onOpenImportTemplate: () => void;
@@ -41,7 +43,7 @@ interface GraphCanvasProps {
 export function GraphCanvas({
   project, selectedNodeId, setSelectedNodeId, theme = 'dark',
   onUpdateLocal, onCommit, onUpdateNode,
-  onAddNode, onAddPresetNode, onAddFewShotNode, onAddWebNode, onGroupNodes, onOpenImportTemplate,
+  onAddNode, onAddPresetNode, onAddFewShotNode, onAddWebNode, onAddAiNode, onGroupNodes, onOpenImportTemplate,
 }: GraphCanvasProps) {
   const { fitView } = useReactFlow();
   const graphNodes = project.graphNodes || [];
@@ -63,8 +65,13 @@ export function GraphCanvas({
     deletable: n.kind !== 'root',
     data: n.kind === 'root'
       ? { node: n, edges }
-      : { node: n, onToggleEnabled: handleToggleEnabled, onUpdateNode },
-  })), [graphNodes, edges, selectedNodeId, multiSelected, handleToggleEnabled, onUpdateNode]);
+      : {
+        node: n,
+        onToggleEnabled: handleToggleEnabled,
+        onUpdateNode,
+        ...(n.nodeType === 'ai' ? { aiStatus: aiNodeStatus(n, compileAiNodeInput(project, n.id)) } : {}),
+      },
+  })), [project, graphNodes, edges, selectedNodeId, multiSelected, handleToggleEnabled, onUpdateNode]);
 
   const nodeById = useMemo(() => new Map(graphNodes.map((n) => [n.id, n] as const)), [graphNodes]);
 
@@ -240,6 +247,7 @@ export function GraphCanvas({
             onAddPresetNode={onAddPresetNode}
             onAddFewShotNode={onAddFewShotNode}
             onAddWebNode={onAddWebNode}
+            onAddAiNode={onAddAiNode}
             onOpenImportTemplate={onOpenImportTemplate}
             onAutoLayout={handleAutoLayout}
             disabled={!hasRoot}

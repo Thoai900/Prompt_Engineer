@@ -249,7 +249,10 @@ export type AttrSlot = 'role' | 'context' | 'task' | 'format' | 'tone' | 'constr
  *   giữ attrType riêng và đóng góp section vào đúng cổng đó của Prompt Gốc
  *   (không cần dây), mute nhóm = tắt cả cụm.
  */
-export type GraphNodeType = 'text' | 'preset' | 'fewshot' | 'web' | 'group';
+export type GraphNodeType = 'text' | 'preset' | 'fewshot' | 'web' | 'group' | 'ai';
+
+/** Thao tác của node AI biến đổi (src/utils/graphAi.ts). */
+export type AiTransformOp = 'rewrite' | 'shorten' | 'expand' | 'constraints' | 'translate' | 'custom';
 
 export interface FewShotExample {
   input: string;
@@ -274,6 +277,10 @@ export interface GraphNode {
   url?: string;                           // nodeType 'web'
   fetchedAt?: string;                     // nodeType 'web' — ISO thời điểm cào
   members?: GraphNode[];                  // nodeType 'group' — các node thành viên
+  aiOp?: AiTransformOp;                   // nodeType 'ai' — thao tác biến đổi
+  aiInstruction?: string;                 // nodeType 'ai' — yêu cầu thêm / ngôn ngữ đích / yêu cầu tuỳ chỉnh
+  aiInputHash?: string;                   // nodeType 'ai' — hash (đầu vào + thao tác) lúc chạy, để biết đã cũ
+  generatedAt?: string;                   // nodeType 'ai' — ISO thời điểm chạy
 }
 
 export interface GraphEdge {

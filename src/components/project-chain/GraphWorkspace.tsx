@@ -6,7 +6,7 @@ import { confirmDialog } from '../common/ConfirmDialog';
 import {
   AttrSlot, GraphEdge, GraphNode, PromptProject, PromptTemplate, PromptVersion, TestCase,
 } from '../../types';
-import { compileGraph, LAYOUT, findRootNode, SLOT_LABELS, SECTION_ORDER, renderNodeText } from '../../utils/graphCompile';
+import { compileGraph, compileAiNodeInput, LAYOUT, findRootNode, SLOT_LABELS, SECTION_ORDER, renderNodeText } from '../../utils/graphCompile';
 import { getPreset, defaultPresetParams } from '../../utils/graphPresets';
 import { addTemplateAsAttributeNode } from '../../utils/graphMigration';
 import { useWorkspace } from '../../context/WorkspaceContext';
@@ -163,6 +163,15 @@ export function GraphWorkspace({
     addAttributeNode('context', 'Dữ liệu từ web', '', {
       nodeType: 'web',
       url: '',
+    });
+  };
+
+  // Node AI biến đổi (v3.1): cắm node vào cổng Ghép thêm làm đầu vào, kết quả AI cache vào node.
+  const handleAddAiNode = () => {
+    addAttributeNode('task', 'AI biến đổi', '', {
+      nodeType: 'ai',
+      aiOp: 'rewrite',
+      aiInstruction: '',
     });
   };
 
@@ -364,6 +373,7 @@ export function GraphWorkspace({
           onAddPresetNode={handleAddPresetNode}
           onAddFewShotNode={handleAddFewShotNode}
           onAddWebNode={handleAddWebNode}
+          onAddAiNode={handleAddAiNode}
           onGroupNodes={handleGroupNodes}
           onOpenImportTemplate={() => setIsImportModalOpen(true)}
         />
@@ -395,6 +405,7 @@ export function GraphWorkspace({
             onExportTemplate={handleExportTemplate}
             onUngroupNode={handleUngroup}
             canExport={!!onSaveTemplate}
+            aiInput={selectedNode?.nodeType === 'ai' ? compileAiNodeInput(activeProject, selectedNode.id) : ''}
           />
         )}
         {rightTab === 'preview' && (
