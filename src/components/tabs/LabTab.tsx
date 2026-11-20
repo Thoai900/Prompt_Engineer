@@ -1,20 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { FlaskConical, Scale, Sparkles, Activity, Fingerprint, Repeat } from 'lucide-react';
+import { FlaskConical, Scale, Sparkles, Activity, Fingerprint, Repeat, Wand2 } from 'lucide-react';
 import { PromptTemplate } from '../../types';
 import BakeoffPanel from '../lab/BakeoffPanel';
 import OptimizerPanel from '../lab/OptimizerPanel';
 import HealthPanel from '../lab/HealthPanel';
 import TastePanel from '../lab/TastePanel';
 import ProfilerPanel from '../lab/ProfilerPanel';
+import InductionPanel from '../lab/InductionPanel';
 import { LAB_SEED_EVENT, takeLabSeed, type LabSeed } from '../../services/labSeed';
 
-type LabMode = 'bakeoff' | 'optimizer' | 'health' | 'profiler' | 'taste';
+type LabMode = 'bakeoff' | 'optimizer' | 'health' | 'profiler' | 'induce' | 'taste';
 
 const MODES: { id: LabMode; label: string; icon: React.ReactNode }[] = [
   { id: 'bakeoff', label: 'So tài Model', icon: <Scale size={15} /> },
   { id: 'optimizer', label: 'Auto-Optimizer', icon: <Sparkles size={15} /> },
   { id: 'health', label: 'Prompt Health', icon: <Activity size={15} /> },
   { id: 'profiler', label: 'Độ ổn định', icon: <Repeat size={15} /> },
+  { id: 'induce', label: 'Từ ví dụ', icon: <Wand2 size={15} /> },
   { id: 'taste', label: 'Cá nhân hoá', icon: <Fingerprint size={15} /> },
 ];
 
@@ -22,6 +24,7 @@ const MODES: { id: LabMode; label: string; icon: React.ReactNode }[] = [
  * Lab (Tầng 1 · trung tâm chất lượng prompt). Chứa các công cụ "đo & cải thiện":
  * - Bake-off: so tài cùng prompt trên nhiều model (chất lượng × chi phí × tốc độ).
  * - Auto-Optimizer: tự tiến hoá prompt theo tiêu chí (chạy ở backend).
+ * - Từ ví dụ: suy ngược prompt từ cặp Đầu vào → Đầu ra, chạy thử + tự sửa (utils/promptInduction.ts).
  * - Độ ổn định (Prompt Profiler): chạy một prompt nhiều lần, đo nhất quán / định dạng / độ dài / độ trễ / chi phí.
  * Linter đã thành Prompt Inspector dùng chung; Gia sư chuyển sang Learn; Chain → App sang Project Chain.
  */
@@ -97,6 +100,7 @@ export default function LabTab({ libraryTemplates = [], onApplyTemplate, onSaveT
           />
         )}
         {mode === 'profiler' && <ProfilerPanel />}
+        {mode === 'induce' && <InductionPanel onApplyTemplate={onApplyTemplate} onSaveTemplate={onSaveTemplate} />}
         {mode === 'taste' && <TastePanel />}
       </div>
     </div>

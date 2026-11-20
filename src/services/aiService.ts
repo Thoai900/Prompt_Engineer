@@ -569,6 +569,24 @@ export async function transformPromptSegment(
   return cleanAiOutput(text);
 }
 
+/**
+ * Gọi AI với chỉ dẫn hệ thống + nội dung, yêu cầu trả JSON (Gemini trước, lỗi thì Groq).
+ * Dùng cho các vòng lặp nhiều bước (vd suy ngược prompt) tự đọc JSON trả về.
+ */
+export async function generateJsonText(
+  req: { systemInstruction: string; userContent: string },
+  options?: AiGenParams & { temperature?: number },
+): Promise<string> {
+  return geminiGenerateWithFallback({
+    model: options?.model || GEMINI_FLASH_LATEST,
+    systemInstruction: req.systemInstruction,
+    userContent: req.userContent,
+    temperature: options?.temperature ?? 0.4,
+    json: true,
+    options,
+  });
+}
+
 export async function generateQuickResponse(
   shortInput: string,
   packBlocks?: { type: string, title: string, content: string }[],
